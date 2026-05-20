@@ -36,6 +36,7 @@ export default function AdminPanel() {
   const [editing, setEditing] = useState<Product | null>(null);
   const [form, setForm] = useState(emptyForm);
   const [saving, setSaving] = useState(false);
+  const [uploading, setUploading] = useState(false);
 
   useEffect(() => {
     fetchProducts();
@@ -73,14 +74,46 @@ export default function AdminPanel() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setSaving(true);
-    if (editing) {
-      await supabase.from("products").update(form).eq("id", editing.id);
-    } else {
-      await supabase.from("products").insert(form);
-    }
+
+    const { error } = editing
+      ? await supabase.from("products").update(form).eq("id", editing.id)
+      : await supabase.from("products").insert(form);
+
     setSaving(false);
+
+    if (error) {
+      alert("저장 실패: " + error.message);
+      return;
+    }
+
     setShowForm(false);
     fetchProducts();
+  }
+
+  async function handleImageUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setUploading(true);
+    const ext = file.name.split(".").pop();
+    const fileName = `${Date.now()}.${ext}`;
+
+    const { error } = await supabase.storage
+      .from("product-images")
+      .upload(fileName, file);
+
+    if (error) {
+      alert("업로드 실패: " + error.message);
+      setUploading(false);
+      return;
+    }
+
+    const { data: { publicUrl } } = supabase.storage
+      .from("product-images")
+      .getPublicUrl(fileName);
+
+    setForm((prev) => ({ ...prev, image_url: publicUrl }));
+    setUploading(false);
   }
 
   async function handleDelete(id: string) {
@@ -226,16 +259,43 @@ export default function AdminPanel() {
               </div>
               <div>
                 <label className="text-xs font-semibold text-gray-500 block mb-1">
-                  이미지 URL
+                  상품 이미지
                 </label>
-                <input
-                  type="url"
-                  value={form.image_url}
-                  onChange={(e) => setForm({ ...form, image_url: e.target.value })}
-                  required
-                  placeholder="https://..."
-                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-[#FF5A00] transition-colors"
-                />
+                {form.image_url ? (
+                  <div className="relative w-full aspect-square rounded-lg overflow-hidden border border-gray-200">
+                    <img
+                      src={form.image_url}
+                      alt="미리보기"
+                      className="w-full h-full object-cover"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setForm({ ...form, image_url: "" })}
+                      className="absolute top-2 right-2 bg-white/90 text-gray-600 rounded-full w-7 h-7 flex items-center justify-center text-xs hover:bg-white shadow"
+                    >
+                      ✕
+                    </button>
+                  </div>
+                ) : (
+                  <label className="flex flex-col items-center justify-center w-full h-36 border-2 border-dashed border-gray-200 rounded-lg cursor-pointer hover:border-[#FF5A00] transition-colors">
+                    {uploading ? (
+                      <span className="text-sm text-gray-400">업로드 중...</span>
+                    ) : (
+                      <>
+                        <span className="text-2xl mb-1">📷</span>
+                        <span className="text-sm text-gray-400">클릭하여 이미지 선택</span>
+                        <span className="text-xs text-gray-300 mt-1">JPG, PNG, WEBP</span>
+                      </>
+                    )}
+                    <input
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={handleImageUpload}
+                      disabled={uploading}
+                    />
+                  </label>
+                )}
               </div>
               <div>
                 <label className="text-xs font-semibold text-gray-500 block mb-1">
@@ -285,10 +345,10 @@ export default function AdminPanel() {
                 </button>
                 <button
                   type="submit"
-                  disabled={saving}
+                  disabled={saving || uploading}
                   className="flex-1 bg-[#FF5A00] text-white text-sm font-bold py-2.5 rounded-lg hover:bg-[#e04e00] transition-colors disabled:opacity-50"
                 >
-                  {saving ? "저장 중..." : editing ? "수정 완료" : "추가 완료"}
+                  {uploading ? "이미지 업로드 중..." : saving ? "저장 중..." : editing ? "수정 완료" : "추가 완료"}
                 </button>
               </div>
             </form>
