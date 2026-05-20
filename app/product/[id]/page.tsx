@@ -1,0 +1,109 @@
+import { supabase } from "@/lib/supabase";
+import { notFound } from "next/navigation";
+import type { Metadata } from "next";
+import ProductCard from "@/components/ProductCard";
+import ShareButton from "@/components/ShareButton";
+
+type Props = { params: Promise<{ id: string }> };
+
+const categoryLabel: Record<string, string> = {
+  mild: "이게 머고?",
+  medium: "이게? 머고???",
+  hot: "이게??? 머고???????",
+};
+
+export async function generateMetadata({ params }: Props): Promise<Metadata> {
+  const { id } = await params;
+  const { data: product } = await supabase
+    .from("products")
+    .select("title, image_url, price")
+    .eq("id", id)
+    .single();
+
+  if (!product) return { title: "이게머고?" };
+
+  return {
+    title: `${product.title} | 이게머고?`,
+    description: `${product.price} · 이게 대체 머고?`,
+    openGraph: {
+      title: `${product.title} | 이게머고?`,
+      description: `${product.price} · 이게 대체 머고?`,
+      images: [{ url: product.image_url }],
+    },
+  };
+}
+
+export default async function ProductPage({ params }: Props) {
+  const { id } = await params;
+
+  const [{ data: product }, { data: others }] = await Promise.all([
+    supabase.from("products").select("*").eq("id", id).single(),
+    supabase
+      .from("products")
+      .select("*")
+      .eq("is_active", true)
+      .neq("id", id)
+      .order("created_at", { ascending: false })
+      .limit(8),
+  ]);
+
+  if (!product) notFound();
+
+  return (
+    <div>
+      {/* 상단: 상품 상세 */}
+      <div className="max-w-3xl mx-auto mb-16">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-start">
+          {/* 이미지 */}
+          <div className="aspect-square w-full overflow-hidden rounded-2xl border border-gray-100">
+            <img
+              src={product.image_url}
+              alt={product.title}
+              className="w-full h-full object-cover"
+            />
+          </div>
+
+          {/* 정보 */}
+          <div className="flex flex-col gap-4 py-2">
+            <span className="text-sm font-semibold text-gray-400">
+              {categoryLabel[product.category]}
+            </span>
+            <h1 className="text-2xl font-black text-[#111111] leading-snug">
+              {product.title}
+            </h1>
+            <p className="text-3xl font-black text-[#FF5A00]">{product.price}</p>
+            <a
+              href={product.affiliate_link}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="block w-full text-center font-bold text-white bg-[#FF5A00] rounded-xl py-4 hover:bg-[#e04e00] transition-colors text-lg"
+            >
+              구경하러 가기
+            </a>
+            <ShareButton />
+          </div>
+        </div>
+      </div>
+
+      {/* 하단: 다른 상품 */}
+      {others && others.length > 0 && (
+        <div>
+          <h2 className="text-lg font-black text-[#111111] mb-4">이것도 머고?</h2>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+            {others.map((p) => (
+              <ProductCard
+                key={p.id}
+                id={p.id}
+                category={p.category}
+                imageUrl={p.image_url}
+                title={p.title}
+                price={p.price}
+                link={p.affiliate_link}
+              />
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}

@@ -1,6 +1,7 @@
 type Category = "mild" | "medium" | "hot";
 
 type ProductCardProps = {
+  id: string;
   category: Category;
   imageUrl: string;
   title: string;
@@ -15,6 +16,7 @@ const categoryLabel: Record<Category, string> = {
 };
 
 export default function ProductCard({
+  id,
   category,
   imageUrl,
   title,
@@ -30,20 +32,27 @@ export default function ProductCard({
         </span>
       </div>
 
-      {/* 2층: 1:1 이미지 */}
-      <div className="relative w-full aspect-square mt-2 overflow-hidden">
+      {/* 2층: 1:1 이미지 — 클릭 시 쿠팡 링크 */}
+      <a
+        href={link}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="relative w-full aspect-square mt-2 overflow-hidden block"
+      >
         <img
           src={imageUrl}
           alt={title}
-          className="w-full h-full object-cover"
+          className="w-full h-full object-cover hover:scale-105 transition-transform duration-300"
         />
-      </div>
+      </a>
 
-      {/* 3층: 드립형 제목 */}
+      {/* 3층: 드립형 제목 — 클릭 시 상세 페이지 */}
       <div className="px-3 pt-3">
-        <h2 className="text-sm font-bold text-[#111111] leading-snug line-clamp-2">
-          {title}
-        </h2>
+        <a href={`/product/${id}`}>
+          <h2 className="text-sm font-bold text-[#111111] leading-snug line-clamp-2 hover:text-[#FF5A00] transition-colors">
+            {title}
+          </h2>
+        </a>
       </div>
 
       {/* 4층: 가격 */}
