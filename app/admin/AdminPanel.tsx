@@ -14,9 +14,18 @@ type Product = {
   is_active: boolean;
 };
 
-const emptyForm = {
+type FormState = {
+  title: string;
+  category: "mild" | "medium" | "hot";
+  image_url: string;
+  price: string;
+  affiliate_link: string;
+  is_active: boolean;
+};
+
+const emptyForm: FormState = {
   title: "",
-  category: "mild" as const,
+  category: "mild",
   image_url: "",
   price: "",
   affiliate_link: "",
@@ -34,7 +43,7 @@ export default function AdminPanel() {
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState<Product | null>(null);
-  const [form, setForm] = useState(emptyForm);
+  const [form, setForm] = useState<FormState>(emptyForm);
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
 
