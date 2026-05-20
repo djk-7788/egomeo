@@ -1,61 +1,40 @@
+import { supabase } from "@/lib/supabase";
 import ProductCard from "@/components/ProductCard";
 
-const sampleProducts = [
-  {
-    id: 1,
-    category: "hot" as const,
-    imageUrl: "https://placehold.co/400x400/f0f0f0/999?text=???",
-    title: "이게 뭔지 설명하면 내가 짐",
-    price: "₩32,900",
-    link: "#",
-  },
-  {
-    id: 2,
-    category: "medium" as const,
-    imageUrl: "https://placehold.co/400x400/f0f0f0/999?text=??",
-    title: "사무실에 이거 놔두면 다들 한마디씩 함",
-    price: "₩14,500",
-    link: "#",
-  },
-  {
-    id: 3,
-    category: "mild" as const,
-    imageUrl: "https://placehold.co/400x400/f0f0f0/999?text=?",
-    title: "실용적인데 왜 이렇게 생긴 거야",
-    price: "₩8,900",
-    link: "#",
-  },
-  {
-    id: 4,
-    category: "hot" as const,
-    imageUrl: "https://placehold.co/400x400/f0f0f0/999?text=???",
-    title: "기프티콘으로 받으면 인연 끊고 싶은 아이템",
-    price: "₩67,000",
-    link: "#",
-  },
-  {
-    id: 5,
-    category: "medium" as const,
-    imageUrl: "https://placehold.co/400x400/f0f0f0/999?text=??",
-    title: "집에 있으면 손님한테 설명해야 하는 물건",
-    price: "₩22,000",
-    link: "#",
-  },
-  {
-    id: 6,
-    category: "mild" as const,
-    imageUrl: "https://placehold.co/400x400/f0f0f0/999?text=?",
-    title: "이거 선물 받으면 일단 웃어야 함",
-    price: "₩5,500",
-    link: "#",
-  },
-];
+export default async function Home() {
+  const { data: products, error } = await supabase
+    .from("products")
+    .select("id, title, category, image_url, price, affiliate_link")
+    .eq("is_active", true)
+    .order("created_at", { ascending: false });
 
-export default function Home() {
+  if (error) {
+    return (
+      <p className="text-center text-gray-400 py-20">
+        상품을 불러오지 못했습니다. 잠시 후 다시 시도해주세요.
+      </p>
+    );
+  }
+
+  if (!products || products.length === 0) {
+    return (
+      <p className="text-center text-gray-400 py-20">
+        등록된 상품이 없습니다.
+      </p>
+    );
+  }
+
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-      {sampleProducts.map((product) => (
-        <ProductCard key={product.id} {...product} />
+      {products.map((product) => (
+        <ProductCard
+          key={product.id}
+          category={product.category}
+          imageUrl={product.image_url}
+          title={product.title}
+          price={product.price}
+          link={product.affiliate_link}
+        />
       ))}
     </div>
   );
