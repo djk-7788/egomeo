@@ -55,22 +55,22 @@ export default function ProductCard({
         </h2>
       </div>
 
-      {/* 4층: 가격 */}
-      <div className="px-3 pt-1">
+      {/* 4층: 가격 + 공유 버튼 */}
+      <div className="px-3 pt-1 flex items-center justify-between">
         <span className="text-base font-black text-[#FF5A00]">{price}</span>
+        <CardShareButton id={id} />
       </div>
 
-      {/* 5층: 외부링크 버튼 + 공유 아이콘 */}
-      <div className="px-3 pt-2 pb-3 mt-auto flex gap-2">
+      {/* 5층: 외부링크 버튼 */}
+      <div className="px-3 pt-2 pb-3 mt-auto">
         <a
           href={link}
           target="_blank"
           rel="noopener noreferrer"
-          className="flex-1 text-center text-sm font-bold text-white bg-[#FF5A00] rounded-lg py-2 hover:bg-[#e04e00] transition-colors"
+          className="block w-full text-center text-sm font-bold text-white bg-[#FF5A00] rounded-lg py-2 hover:bg-[#e04e00] transition-colors"
         >
           구경하러 가기
         </a>
-        <CardShareButton id={id} />
       </div>
     </div>
   );

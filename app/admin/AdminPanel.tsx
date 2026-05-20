@@ -125,6 +125,11 @@ export default function AdminPanel() {
     setUploading(false);
   }
 
+  async function handleToggleActive(id: string, current: boolean) {
+    await supabase.from("products").update({ is_active: !current }).eq("id", id);
+    fetchProducts();
+  }
+
   async function handleDelete(id: string) {
     if (!confirm("정말 삭제할까요?")) return;
     await supabase.from("products").delete().eq("id", id);
@@ -187,15 +192,16 @@ export default function AdminPanel() {
                       {product.price}
                     </td>
                     <td className="px-4 py-3">
-                      <span
-                        className={`text-xs font-semibold px-2 py-1 rounded-full ${
+                      <button
+                        onClick={() => handleToggleActive(product.id, product.is_active)}
+                        className={`text-xs font-semibold px-2 py-1 rounded-full transition-colors ${
                           product.is_active
-                            ? "bg-green-100 text-green-600"
-                            : "bg-gray-100 text-gray-400"
+                            ? "bg-green-100 text-green-600 hover:bg-green-200"
+                            : "bg-gray-100 text-gray-400 hover:bg-gray-200"
                         }`}
                       >
-                        {product.is_active ? "노출" : "숨김"}
-                      </span>
+                        {product.is_active ? "노출 중" : "숨김"}
+                      </button>
                     </td>
                     <td className="px-4 py-3 text-right">
                       <div className="flex gap-2 justify-end">
