@@ -1,3 +1,5 @@
+import CardShareButton from "@/components/CardShareButton";
+
 type Category = "mild" | "medium" | "hot";
 
 type ProductCardProps = {
@@ -46,13 +48,11 @@ export default function ProductCard({
         />
       </a>
 
-      {/* 3층: 드립형 제목 — 클릭 시 상세 페이지 */}
+      {/* 3층: 드립형 제목 */}
       <div className="px-3 pt-3">
-        <a href={`/product/${id}`}>
-          <h2 className="text-sm font-bold text-[#111111] leading-snug line-clamp-2 hover:text-[#FF5A00] transition-colors">
-            {title}
-          </h2>
-        </a>
+        <h2 className="text-sm font-bold text-[#111111] leading-snug line-clamp-2">
+          {title}
+        </h2>
       </div>
 
       {/* 4층: 가격 */}
@@ -60,16 +60,17 @@ export default function ProductCard({
         <span className="text-base font-black text-[#FF5A00]">{price}</span>
       </div>
 
-      {/* 5층: 외부링크 버튼 */}
-      <div className="px-3 pt-2 pb-3 mt-auto">
+      {/* 5층: 외부링크 버튼 + 공유 아이콘 */}
+      <div className="px-3 pt-2 pb-3 mt-auto flex gap-2">
         <a
           href={link}
           target="_blank"
           rel="noopener noreferrer"
-          className="block w-full text-center text-sm font-bold text-white bg-[#FF5A00] rounded-lg py-2 hover:bg-[#e04e00] transition-colors"
+          className="flex-1 text-center text-sm font-bold text-white bg-[#FF5A00] rounded-lg py-2 hover:bg-[#e04e00] transition-colors"
         >
           구경하러 가기
         </a>
+        <CardShareButton id={id} />
       </div>
     </div>
   );

@@ -88,7 +88,7 @@ export default async function ProductPage({ params }: Props) {
       {/* 하단: 다른 상품 */}
       {others && others.length > 0 && (
         <div>
-          <h2 className="text-lg font-black text-[#111111] mb-4">이것도 머고?</h2>
+          <h2 className="text-lg font-black text-[#111111] mb-4">이건 또 머고?</h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
             {others.map((p) => (
               <ProductCard

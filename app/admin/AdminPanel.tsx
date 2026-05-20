@@ -199,6 +199,14 @@ export default function AdminPanel() {
                     </td>
                     <td className="px-4 py-3 text-right">
                       <div className="flex gap-2 justify-end">
+                        <a
+                          href={`/product/${product.id}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-xs text-blue-400 hover:text-blue-600 transition-colors px-2 py-1 border border-blue-100 rounded"
+                        >
+                          미리보기
+                        </a>
                         <button
                           onClick={() => openEdit(product)}
                           className="text-xs text-gray-500 hover:text-[#111111] transition-colors px-2 py-1 border border-gray-200 rounded"
