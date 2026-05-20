@@ -1,65 +1,62 @@
-import Image from "next/image";
+import ProductCard from "@/components/ProductCard";
+
+const sampleProducts = [
+  {
+    id: 1,
+    category: "hot" as const,
+    imageUrl: "https://placehold.co/400x400/f0f0f0/999?text=???",
+    title: "이게 뭔지 설명하면 내가 짐",
+    price: "₩32,900",
+    link: "#",
+  },
+  {
+    id: 2,
+    category: "medium" as const,
+    imageUrl: "https://placehold.co/400x400/f0f0f0/999?text=??",
+    title: "사무실에 이거 놔두면 다들 한마디씩 함",
+    price: "₩14,500",
+    link: "#",
+  },
+  {
+    id: 3,
+    category: "mild" as const,
+    imageUrl: "https://placehold.co/400x400/f0f0f0/999?text=?",
+    title: "실용적인데 왜 이렇게 생긴 거야",
+    price: "₩8,900",
+    link: "#",
+  },
+  {
+    id: 4,
+    category: "hot" as const,
+    imageUrl: "https://placehold.co/400x400/f0f0f0/999?text=???",
+    title: "기프티콘으로 받으면 인연 끊고 싶은 아이템",
+    price: "₩67,000",
+    link: "#",
+  },
+  {
+    id: 5,
+    category: "medium" as const,
+    imageUrl: "https://placehold.co/400x400/f0f0f0/999?text=??",
+    title: "집에 있으면 손님한테 설명해야 하는 물건",
+    price: "₩22,000",
+    link: "#",
+  },
+  {
+    id: 6,
+    category: "mild" as const,
+    imageUrl: "https://placehold.co/400x400/f0f0f0/999?text=?",
+    title: "이거 선물 받으면 일단 웃어야 함",
+    price: "₩5,500",
+    link: "#",
+  },
+];
 
 export default function Home() {
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
-        </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
-      </main>
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+      {sampleProducts.map((product) => (
+        <ProductCard key={product.id} {...product} />
+      ))}
     </div>
   );
 }
