@@ -1,6 +1,8 @@
 import { supabase } from "@/lib/supabase";
 import ProductCard from "@/components/ProductCard";
 
+export const dynamic = "force-dynamic";
+
 export default async function Home() {
   const { data: products, error } = await supabase
     .from("products")
@@ -9,6 +11,7 @@ export default async function Home() {
     .order("created_at", { ascending: false });
 
   if (error) {
+    console.error("[Supabase 에러]", error);
     return (
       <p className="text-center text-gray-400 py-20">
         상품을 불러오지 못했습니다. 잠시 후 다시 시도해주세요.
