@@ -21,7 +21,7 @@ function calcSign(params: Record<string, string>, secret: string): string {
 function formatPrice(price: string, currency: string): string {
   const num = parseFloat(price);
   if (isNaN(num)) return price || "";
-  if (currency === "KRW") return `₩${Math.round(num).toLocaleString("ko-KR")}`;
+  if (currency === "KRW") return `₩ ${Math.round(num).toLocaleString("ko-KR")}`;
   return `$${num.toFixed(2)}`;
 }
 

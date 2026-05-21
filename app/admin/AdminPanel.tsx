@@ -286,8 +286,8 @@ export default function AdminPanel() {
       {/* 등록/수정 모달 */}
       {showForm && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 px-4">
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg">
-            <div className="px-6 py-5 border-b border-gray-100 flex items-center justify-between">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg max-h-[90vh] flex flex-col">
+            <div className="px-6 py-5 border-b border-gray-100 flex items-center justify-between flex-shrink-0">
               <h2 className="font-black text-[#111111]">
                 {editing ? "상품 수정" : "상품 추가"}
               </h2>
@@ -298,7 +298,7 @@ export default function AdminPanel() {
                 ✕
               </button>
             </div>
-            <form onSubmit={handleSubmit} className="px-6 py-5 flex flex-col gap-4">
+            <form onSubmit={handleSubmit} className="px-6 py-5 flex flex-col gap-4 overflow-y-auto">
               {/* 알리에서 불러온 경우 원본 상품명 참고 표시 */}
               {aliHint && (
                 <div className="bg-orange-50 border border-orange-100 rounded-lg px-3 py-2">
