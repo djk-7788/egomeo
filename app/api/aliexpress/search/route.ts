@@ -58,7 +58,7 @@ export async function GET(req: NextRequest) {
     page_size: "20",
     target_currency: "KRW",
     target_language: "KO",
-    tracking_id: appKey,
+    tracking_id: "egomeo",
     fields: [
       "product_id",
       "product_title",
