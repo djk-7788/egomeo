@@ -46,6 +46,9 @@ export default function AliexpressSearch({ onSelect }: Props) {
   const [selectedImage, setSelectedImage] = useState("");
   const [hoverImage, setHoverImage] = useState<string | null>(null);
   const [hoverStyle, setHoverStyle] = useState({ left: 0, top: 0 });
+  const [urlInput, setUrlInput] = useState("");
+  const [urlLoading, setUrlLoading] = useState(false);
+  const [urlError, setUrlError] = useState("");
 
   async function handleSearch(e: React.FormEvent) {
     e.preventDefault();
@@ -77,6 +80,28 @@ export default function AliexpressSearch({ onSelect }: Props) {
       setError("네트워크 오류가 발생했습니다.");
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function handleUrlSearch(e: React.FormEvent) {
+    e.preventDefault();
+    if (!urlInput.trim()) return;
+    setUrlLoading(true);
+    setUrlError("");
+    try {
+      const res = await fetch(`/api/aliexpress/parse?url=${encodeURIComponent(urlInput.trim())}`);
+      const data = await res.json();
+      if (!res.ok || data.error) {
+        setUrlError(data.error || "상품 정보를 불러올 수 없습니다.");
+      } else {
+        setSelectedProduct(data);
+        setSelectedImage(data.images[0] ?? "");
+        setUrlInput("");
+      }
+    } catch {
+      setUrlError("네트워크 오류가 발생했습니다.");
+    } finally {
+      setUrlLoading(false);
     }
   }
 
@@ -120,6 +145,34 @@ export default function AliexpressSearch({ onSelect }: Props) {
             {loading ? "검색 중..." : "검색"}
           </button>
         </form>
+
+        {/* URL 직접 불러오기 */}
+        <div className="mb-4">
+          <div className="flex items-center gap-3 mb-2">
+            <div className="flex-1 border-t border-gray-100" />
+            <span className="text-[10px] text-gray-300 font-semibold whitespace-nowrap">또는 URL로 직접 불러오기</span>
+            <div className="flex-1 border-t border-gray-100" />
+          </div>
+          <form onSubmit={handleUrlSearch} className="flex gap-2">
+            <input
+              type="text"
+              value={urlInput}
+              onChange={(e) => setUrlInput(e.target.value)}
+              placeholder="https://www.aliexpress.com/item/..."
+              className="flex-1 border border-gray-200 rounded-lg px-3 py-2 text-xs outline-none focus:border-[#FF5A00] transition-colors"
+            />
+            <button
+              type="submit"
+              disabled={urlLoading || !urlInput.trim()}
+              className="bg-gray-100 text-gray-600 text-xs font-semibold px-4 py-2 rounded-lg hover:bg-gray-200 transition-colors disabled:opacity-40 flex-shrink-0"
+            >
+              {urlLoading ? "로딩 중..." : "불러오기"}
+            </button>
+          </form>
+          {urlError && (
+            <p className="text-xs text-red-500 mt-1.5 bg-red-50 rounded-lg px-3 py-2">{urlError}</p>
+          )}
+        </div>
 
         {/* 필터 바 */}
         <div className="flex flex-wrap gap-3 items-center mb-5">
