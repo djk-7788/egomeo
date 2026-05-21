@@ -31,10 +31,20 @@
 NEXT_PUBLIC_SUPABASE_URL=https://akcpwirzkjdmdrajntum.supabase.co
 NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
 ADMIN_PASSWORD=egomeo1234
+ALIEXPRESS_APP_KEY=발급받은키
+ALIEXPRESS_APP_SECRET=발급받은시크릿
+ALIEXPRESS_TRACKING_ID=default
 ```
 
-### Vercel — 대시보드에서 직접 설정됨
-위 3개 환경변수 모두 Vercel Settings > Environment Variables에 등록 완료.
+### Vercel — 대시보드에서 직접 설정됨 (Production + Preview)
+| 변수명 | 비고 |
+|---|---|
+| `NEXT_PUBLIC_SUPABASE_URL` | Supabase 프로젝트 URL |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Supabase anon 키 |
+| `ADMIN_PASSWORD` | 관리자 페이지 비밀번호 (`egomeo1234`) |
+| `ALIEXPRESS_APP_KEY` | 알리 Open Platform 앱 키 (6자리) |
+| `ALIEXPRESS_APP_SECRET` | 알리 Open Platform 앱 시크릿 (32자리) |
+| `ALIEXPRESS_TRACKING_ID` | 알리 트래킹 ID (현재 `default`) |
 
 ---
 
@@ -124,7 +134,14 @@ egomeo/
 │   │   ├── page.tsx          # 쿠키 확인 → LoginForm or AdminPanel
 │   │   ├── actions.ts        # 로그인/로그아웃 서버 액션
 │   │   ├── LoginForm.tsx     # 비밀번호 입력 화면 (클라이언트)
-│   │   └── AdminPanel.tsx    # 상품 CRUD 관리 패널 (클라이언트)
+│   │   ├── AdminPanel.tsx    # 상품 CRUD 관리 패널 (클라이언트) + 알리 검색 탭
+│   │   └── AliexpressSearch.tsx  # 알리익스프레스 상품 검색 컴포넌트 (클라이언트)
+│   ├── api/
+│   │   └── aliexpress/
+│   │       ├── search/
+│   │       │   └── route.ts  # 알리 Affiliate API 키워드 검색 (MD5 서명, KRW 변환)
+│   │       └── debug/
+│   │           └── route.ts  # 환경변수 진단용 엔드포인트 (임시, 나중에 삭제 가능)
 │   └── product/
 │       └── [id]/
 │           └── page.tsx      # 상품 상세 페이지 (공유 링크용)
@@ -155,8 +172,10 @@ egomeo/
 ### 관리자 페이지 (`/admin`)
 - 비밀번호: `ADMIN_PASSWORD` 환경변수 (현재 `egomeo1234`)
 - 인증: HttpOnly 쿠키 기반, 24시간 유지
-- 기능: 상품 등록/수정/삭제, 노출/숨김 토글, 미리보기 링크
-- 이미지: 파일 업로드 → Supabase Storage 자동 저장
+- **탭 1 — 상품 목록**: 등록/수정/삭제, 노출/숨김 토글, 미리보기 링크
+- **탭 2 — 알리익스프레스 검색**: 키워드 검색 → 상품 클릭 → 폼에 이미지/가격/링크 자동입력
+- 이미지: 파일 업로드(Supabase Storage) 또는 알리 검색으로 외부 URL 자동 입력
+- 모달: backdrop 클릭 시 닫기, 내부 스크롤(max-height 90vh)
 
 ---
 
@@ -165,10 +184,12 @@ egomeo/
 | 플랫폼 | 상태 | 비고 |
 |---|---|---|
 | 쿠팡파트너스 | 가입 신청 중 / 예정 | 링크 발급 후 즉시 적용 가능 |
-| 알리익스프레스 | 가입 신청 중 / 예정 | 링크 발급 후 즉시 적용 가능 |
+| 알리익스프레스 | **API 연동 완료** | APP_KEY/SECRET/TRACKING_ID Vercel 등록 완료. 검색 → 폼 자동입력 동작 중 |
 | 아마존 어소시에이트 | 가입 신청 중 / 예정 | 해외 상품 대응용, 달러 수익 |
 
-> 현재 `affiliate_link` 필드에 임시 링크 사용 중. 각 플랫폼 가입 승인 후 관리자 패널에서 실제 어필리에이트 링크로 교체 필요.
+> 알리익스프레스: API로 불러온 `promotion_link`가 어필리에이트 링크로 자동 저장됨. 트래킹 ID는 현재 `default` 사용 중 — 포털에서 별도 ID 생성 후 `ALIEXPRESS_TRACKING_ID` 환경변수 교체 가능.
+>
+> 쿠팡파트너스/아마존: 가입 승인 후 관리자 패널에서 `affiliate_link` 필드 직접 수정.
 
 ---
 
@@ -194,16 +215,22 @@ egomeo/
 - [완료] 관리자 노출/숨김 토글 버튼
 - [완료] 헤더 카테고리 필터 — URL 쿼리 파라미터 방식 (`?category=mild|medium|hot`)
 - [완료] 메인 페이지 dynamic 렌더링 설정 + Supabase 에러 로그 추가
+- [완료] 알리익스프레스 Affiliate API 연동 (`/api/aliexpress/search` — MD5 서명, KRW 변환)
+- [완료] 관리자 페이지 알리 검색 탭 추가 (`AliexpressSearch.tsx`)
+- [완료] 알리 검색 결과 클릭 시 등록 폼 자동입력 (이미지/가격/링크 + 원본명 참고 힌트)
+- [완료] 모달 스크롤 개선 (backdrop 분리, max-height 90vh, 바깥 클릭 닫기)
 
 ---
 
 ## 다음 할 일 (우선순위순)
 
-1. **반자동 포스팅 시스템** — 상품 URL 입력 시 제목/이미지/가격 자동 추출 + AI 드립 제목 생성 (구현 방식 미정)
-2. **무한 스크롤** — 메인 페이지 상품 목록 페이지네이션 (현재 전체 로드)
-3. **어필리에이트 링크 교체** — 각 플랫폼 가입 승인 후 실제 링크로 업데이트
-4. **소셜 로그인** — Supabase Auth (구글/카카오/네이버)
-5. **찜하기** — 하트 버튼, 마이페이지
+1. **AI 드립 제목 생성** — 알리 검색 후 원본 상품명 기반으로 Claude API 호출해 드립형 제목 자동 생성
+2. **반자동 포스팅 시스템** — 상품 URL 입력 시 제목/이미지/가격 자동 추출 (구현 방식 미정)
+3. **무한 스크롤** — 메인 페이지 상품 목록 페이지네이션 (현재 전체 로드)
+4. **알리 트래킹 ID 교체** — 포털에서 전용 ID 생성 후 `ALIEXPRESS_TRACKING_ID` 환경변수 교체
+5. **debug 엔드포인트 삭제** — `/api/aliexpress/debug/route.ts` (진단 후 불필요)
+6. **소셜 로그인** — Supabase Auth (구글/카카오/네이버)
+7. **찜하기** — 하트 버튼, 마이페이지
 
 ---
 
