@@ -1,0 +1,17 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm run *)",
+      "Bash(git add *)",
+      "Bash(git commit *)",
+      "Bash(git push *)",
+      "WebSearch",
+      "WebFetch(domain:www.oriollopez.com)",
+      "WebFetch(domain:vandevliet.me)",
+      "WebFetch(domain:www.scribd.com)",
+      "WebFetch(domain:github.com)",
+      "WebFetch(domain:affi.ai)",
+      "WebFetch(domain:raw.githubusercontent.com)"
+    ]
+  }
+}
