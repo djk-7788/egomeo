@@ -71,12 +71,12 @@ export default function AdminPanel() {
     setShowForm(true);
   }
 
-  function handleAliSelect(product: AliProduct) {
+  function handleAliSelect(product: AliProduct, imageUrl: string) {
     setEditing(null);
     setAliHint(product.title);
     setForm({
       ...emptyForm,
-      image_url: product.image_url,
+      image_url: imageUrl,
       price: product.price,
       affiliate_link: product.affiliate_link,
     });

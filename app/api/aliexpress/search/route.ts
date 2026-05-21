@@ -62,6 +62,7 @@ export async function GET(req: NextRequest) {
       "product_id",
       "product_title",
       "product_main_image_url",
+      "product_small_image_urls",
       "target_sale_price",
       "target_sale_price_currency",
       "promotion_link",
@@ -88,15 +89,27 @@ export async function GET(req: NextRequest) {
       );
     }
 
-    const raw: Record<string, string>[] = respResult.result?.products?.product ?? [];
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const raw: any[] = respResult.result?.products?.product ?? [];
 
-    const products = raw.map((p) => ({
-      product_id: String(p.product_id),
-      title: p.product_title ?? "",
-      image_url: p.product_main_image_url ?? "",
-      price: formatPrice(p.target_sale_price, p.target_sale_price_currency),
-      affiliate_link: p.promotion_link ?? "",
-    }));
+    const products = raw.map((p) => {
+      const mainImage: string = p.product_main_image_url ?? "";
+      const smallRaw = p.product_small_image_urls;
+      const smallImages: string[] = Array.isArray(smallRaw)
+        ? smallRaw
+        : Array.isArray(smallRaw?.string)
+        ? smallRaw.string
+        : [];
+      const images = [mainImage, ...smallImages.filter((u: string) => u && u !== mainImage)].filter(Boolean);
+
+      return {
+        product_id: String(p.product_id),
+        title: p.product_title ?? "",
+        images,
+        price: formatPrice(p.target_sale_price, p.target_sale_price_currency),
+        affiliate_link: p.promotion_link ?? "",
+      };
+    });
 
     return NextResponse.json({ products });
   } catch {
