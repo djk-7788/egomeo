@@ -35,7 +35,15 @@ export async function GET(req: NextRequest) {
   const appSecret = process.env.ALIEXPRESS_APP_SECRET;
 
   if (!appKey || !appSecret) {
-    return NextResponse.json({ error: "API 키가 설정되지 않았습니다." }, { status: 500 });
+    const missing = [
+      !appKey && "ALIEXPRESS_APP_KEY",
+      !appSecret && "ALIEXPRESS_APP_SECRET",
+    ].filter(Boolean);
+    console.error("[aliexpress] 누락된 환경변수:", missing);
+    return NextResponse.json(
+      { error: `환경변수 누락: ${missing.join(", ")}` },
+      { status: 500 }
+    );
   }
 
   const params: Record<string, string> = {
