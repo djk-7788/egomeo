@@ -138,10 +138,8 @@ egomeo/
 │   │   └── AliexpressSearch.tsx  # 알리익스프레스 상품 검색 컴포넌트 (클라이언트)
 │   ├── api/
 │   │   └── aliexpress/
-│   │       ├── search/
-│   │       │   └── route.ts  # 알리 Affiliate API 키워드 검색 (MD5 서명, KRW 변환)
-│   │       └── debug/
-│   │           └── route.ts  # 환경변수 진단용 엔드포인트 (임시, 나중에 삭제 가능)
+│   │       └── search/
+│   │           └── route.ts  # 알리 Affiliate API 키워드 검색 (MD5 서명, KRW 변환)
 │   └── product/
 │       └── [id]/
 │           └── page.tsx      # 상품 상세 페이지 (공유 링크용)
@@ -228,9 +226,8 @@ egomeo/
 2. **반자동 포스팅 시스템** — 상품 URL 입력 시 제목/이미지/가격 자동 추출 (구현 방식 미정)
 3. **무한 스크롤** — 메인 페이지 상품 목록 페이지네이션 (현재 전체 로드)
 4. **알리 트래킹 ID 교체** — 포털에서 전용 ID 생성 후 `ALIEXPRESS_TRACKING_ID` 환경변수 교체
-5. **debug 엔드포인트 삭제** — `/api/aliexpress/debug/route.ts` (진단 후 불필요)
-6. **소셜 로그인** — Supabase Auth (구글/카카오/네이버)
-7. **찜하기** — 하트 버튼, 마이페이지
+5. **소셜 로그인** — Supabase Auth (구글/카카오/네이버)
+6. **찜하기** — 하트 버튼, 마이페이지
 
 ---
 
