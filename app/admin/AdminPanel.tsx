@@ -285,13 +285,25 @@ export default function AdminPanel() {
 
       {/* 등록/수정 모달 */}
       {showForm && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 px-4">
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg max-h-[90vh] flex flex-col">
+        <>
+          {/* 배경 — 클릭 시 닫기 */}
+          <div
+            className="fixed inset-0 bg-black/40 z-50"
+            onClick={() => setShowForm(false)}
+          />
+          {/* 모달 본체 */}
+          <div className="fixed z-50 top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-lg px-4">
+          <div
+            className="bg-white rounded-2xl shadow-xl flex flex-col"
+            style={{ maxHeight: "90vh" }}
+            onClick={(e) => e.stopPropagation()}
+          >
             <div className="px-6 py-5 border-b border-gray-100 flex items-center justify-between flex-shrink-0">
               <h2 className="font-black text-[#111111]">
                 {editing ? "상품 수정" : "상품 추가"}
               </h2>
               <button
+                type="button"
                 onClick={() => setShowForm(false)}
                 className="text-gray-400 hover:text-gray-600"
               >
@@ -431,7 +443,8 @@ export default function AdminPanel() {
               </div>
             </form>
           </div>
-        </div>
+          </div>
+        </>
       )}
     </div>
   );
