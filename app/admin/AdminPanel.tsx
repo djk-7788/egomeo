@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabase";
 import { logout } from "./actions";
+import AliexpressSearch, { AliProduct } from "./AliexpressSearch";
 
 type Product = {
   id: string;
@@ -39,6 +40,7 @@ const categoryLabel = {
 };
 
 export default function AdminPanel() {
+  const [activeTab, setActiveTab] = useState<"list" | "search">("list");
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
@@ -46,6 +48,7 @@ export default function AdminPanel() {
   const [form, setForm] = useState<FormState>(emptyForm);
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [aliHint, setAliHint] = useState("");
 
   useEffect(() => {
     fetchProducts();
@@ -63,12 +66,26 @@ export default function AdminPanel() {
 
   function openAdd() {
     setEditing(null);
+    setAliHint("");
     setForm(emptyForm);
+    setShowForm(true);
+  }
+
+  function handleAliSelect(product: AliProduct) {
+    setEditing(null);
+    setAliHint(product.title);
+    setForm({
+      ...emptyForm,
+      image_url: product.image_url,
+      price: product.price,
+      affiliate_link: product.affiliate_link,
+    });
     setShowForm(true);
   }
 
   function openEdit(product: Product) {
     setEditing(product);
+    setAliHint("");
     setForm({
       title: product.title,
       category: product.category,
@@ -159,7 +176,37 @@ export default function AdminPanel() {
         </div>
       </div>
 
-      {/* 상품 목록 */}
+      {/* 탭 */}
+      <div className="bg-white border-b border-gray-100 px-6 flex gap-0">
+        <button
+          onClick={() => setActiveTab("list")}
+          className={`text-sm font-semibold px-4 py-3 border-b-2 transition-colors ${
+            activeTab === "list"
+              ? "border-[#FF5A00] text-[#FF5A00]"
+              : "border-transparent text-gray-400 hover:text-gray-600"
+          }`}
+        >
+          상품 목록
+        </button>
+        <button
+          onClick={() => setActiveTab("search")}
+          className={`text-sm font-semibold px-4 py-3 border-b-2 transition-colors ${
+            activeTab === "search"
+              ? "border-[#FF5A00] text-[#FF5A00]"
+              : "border-transparent text-gray-400 hover:text-gray-600"
+          }`}
+        >
+          🛍️ 알리익스프레스 검색
+        </button>
+      </div>
+
+      {/* 알리익스프레스 검색 탭 */}
+      {activeTab === "search" && (
+        <AliexpressSearch onSelect={handleAliSelect} />
+      )}
+
+      {/* 상품 목록 탭 */}
+      {activeTab === "list" && (
       <div className="max-w-5xl mx-auto px-6 py-8">
         {loading ? (
           <p className="text-center text-gray-400 py-20">불러오는 중...</p>
@@ -234,6 +281,7 @@ export default function AdminPanel() {
           </div>
         )}
       </div>
+      )}
 
       {/* 등록/수정 모달 */}
       {showForm && (
@@ -251,6 +299,13 @@ export default function AdminPanel() {
               </button>
             </div>
             <form onSubmit={handleSubmit} className="px-6 py-5 flex flex-col gap-4">
+              {/* 알리에서 불러온 경우 원본 상품명 참고 표시 */}
+              {aliHint && (
+                <div className="bg-orange-50 border border-orange-100 rounded-lg px-3 py-2">
+                  <p className="text-[10px] font-semibold text-orange-400 mb-0.5">알리 원본 상품명 (참고용)</p>
+                  <p className="text-xs text-orange-700 line-clamp-2">{aliHint}</p>
+                </div>
+              )}
               <div>
                 <label className="text-xs font-semibold text-gray-500 block mb-1">
                   드립형 제목
