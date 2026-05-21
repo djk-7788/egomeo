@@ -2,6 +2,26 @@
 
 import { useState } from "react";
 
+const SORT_OPTIONS = [
+  { value: "", label: "관련도순" },
+  { value: "VOLUME_DESC", label: "판매량순" },
+  { value: "SALE_PRICE_ASC", label: "가격 낮은순" },
+  { value: "SALE_PRICE_DESC", label: "가격 높은순" },
+];
+
+const CATEGORIES = [
+  { id: "", label: "전체" },
+  { id: "44", label: "⚡ 가전/전자" },
+  { id: "509", label: "📱 휴대폰" },
+  { id: "523", label: "💻 컴퓨터" },
+  { id: "13", label: "🏠 홈/생활" },
+  { id: "200000343", label: "👗 패션" },
+  { id: "66", label: "💄 뷰티" },
+  { id: "26", label: "🧸 장난감" },
+  { id: "18", label: "⚽ 스포츠" },
+  { id: "36", label: "💍 주얼리" },
+];
+
 export type AliProduct = {
   product_id: string;
   title: string;
@@ -16,6 +36,8 @@ type Props = {
 
 export default function AliexpressSearch({ onSelect }: Props) {
   const [keyword, setKeyword] = useState("");
+  const [sort, setSort] = useState("");
+  const [category, setCategory] = useState("");
   const [results, setResults] = useState<AliProduct[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -36,7 +58,10 @@ export default function AliexpressSearch({ onSelect }: Props) {
     setSelectedImage("");
 
     try {
-      const res = await fetch(`/api/aliexpress/search?keyword=${encodeURIComponent(keyword.trim())}`);
+      const params = new URLSearchParams({ keyword: keyword.trim() });
+      if (sort) params.set("sort", sort);
+      if (category) params.set("category", category);
+      const res = await fetch(`/api/aliexpress/search?${params}`);
       const data = await res.json();
 
       if (!res.ok || data.error) {
@@ -91,6 +116,44 @@ export default function AliexpressSearch({ onSelect }: Props) {
         </button>
       </form>
 
+      {/* 필터 바 */}
+      <div className="flex flex-wrap gap-3 items-start mb-6">
+        {/* 정렬 */}
+        <div className="flex items-center gap-1.5 flex-shrink-0">
+          <span className="text-xs text-gray-400 font-semibold">정렬</span>
+          <select
+            value={sort}
+            onChange={(e) => setSort(e.target.value)}
+            className="border border-gray-200 rounded-lg px-2 py-1.5 text-xs outline-none focus:border-[#FF5A00] transition-colors bg-white"
+          >
+            {SORT_OPTIONS.map((o) => (
+              <option key={o.value} value={o.value}>{o.label}</option>
+            ))}
+          </select>
+        </div>
+
+        {/* 카테고리 */}
+        <div className="flex items-center gap-1.5 min-w-0">
+          <span className="text-xs text-gray-400 font-semibold flex-shrink-0">카테고리</span>
+          <div className="flex gap-1.5 overflow-x-auto pb-0.5">
+            {CATEGORIES.map((c) => (
+              <button
+                key={c.id}
+                type="button"
+                onClick={() => setCategory(c.id)}
+                className={`text-xs px-2.5 py-1.5 rounded-full whitespace-nowrap border transition-colors flex-shrink-0 ${
+                  category === c.id
+                    ? "bg-[#FF5A00] text-white border-[#FF5A00]"
+                    : "bg-white text-gray-500 border-gray-200 hover:border-[#FF5A00] hover:text-[#FF5A00]"
+                }`}
+              >
+                {c.label}
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+
       {/* 에러 메시지 */}
       {error && (
         <div className="bg-red-50 border border-red-100 text-red-600 text-sm rounded-lg px-4 py-3 mb-6">
@@ -118,7 +181,7 @@ export default function AliexpressSearch({ onSelect }: Props) {
       {!loading && results.length > 0 && (
         <>
           <p className="text-xs text-gray-400 mb-4">
-            {results.length}개 상품 검색됨 — 상품 클릭 후 이미지를 선택하세요
+            {results.length}개 상품 검색됨 (최대 50개) — 상품 클릭 후 이미지를 선택하세요
           </p>
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
             {results.map((product) => {

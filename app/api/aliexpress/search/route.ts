@@ -27,6 +27,8 @@ function formatPrice(price: string, currency: string): string {
 
 export async function GET(req: NextRequest) {
   const keyword = req.nextUrl.searchParams.get("keyword")?.trim();
+  const sort = req.nextUrl.searchParams.get("sort")?.trim() || "";
+  const categoryId = req.nextUrl.searchParams.get("category")?.trim() || "";
   if (!keyword) {
     return NextResponse.json({ error: "키워드를 입력하세요." }, { status: 400 });
   }
@@ -55,9 +57,11 @@ export async function GET(req: NextRequest) {
     method: "aliexpress.affiliate.product.query",
     keywords: keyword,
     page_no: "1",
-    page_size: "20",
+    page_size: "50",
     target_currency: "KRW",
     target_language: "KO",
+    ...(sort ? { sort } : {}),
+    ...(categoryId ? { category_ids: categoryId } : {}),
     fields: [
       "product_id",
       "product_title",
