@@ -3,12 +3,27 @@ import ProductCard from "@/components/ProductCard";
 
 export const dynamic = "force-dynamic";
 
-export default async function Home() {
-  const { data: products, error } = await supabase
+const VALID_CATEGORIES = ["mild", "medium", "hot"];
+
+type Props = {
+  searchParams: Promise<{ category?: string }>;
+};
+
+export default async function Home({ searchParams }: Props) {
+  const { category } = await searchParams;
+  const activeCategory = VALID_CATEGORIES.includes(category ?? "") ? category : undefined;
+
+  let query = supabase
     .from("products")
     .select("id, title, category, image_url, price, affiliate_link")
     .eq("is_active", true)
     .order("created_at", { ascending: false });
+
+  if (activeCategory) {
+    query = query.eq("category", activeCategory);
+  }
+
+  const { data: products, error } = await query;
 
   if (error) {
     console.error("[Supabase 에러]", error);
