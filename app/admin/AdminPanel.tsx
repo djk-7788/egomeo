@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabase";
 import { logout } from "./actions";
 import AliexpressSearch, { AliProduct } from "./AliexpressSearch";
+import UrlParser, { ParsedProduct } from "./UrlParser";
 
 type Product = {
   id: string;
@@ -40,7 +41,7 @@ const categoryLabel = {
 };
 
 export default function AdminPanel() {
-  const [activeTab, setActiveTab] = useState<"list" | "search">("list");
+  const [activeTab, setActiveTab] = useState<"list" | "search" | "parse">("list");
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
@@ -68,6 +69,18 @@ export default function AdminPanel() {
     setEditing(null);
     setAliHint("");
     setForm(emptyForm);
+    setShowForm(true);
+  }
+
+  function handleUrlSelect(product: ParsedProduct, imageUrl: string) {
+    setEditing(null);
+    setAliHint(product.title);
+    setForm({
+      ...emptyForm,
+      image_url: imageUrl,
+      price: product.price,
+      affiliate_link: product.productUrl,
+    });
     setShowForm(true);
   }
 
@@ -198,11 +211,26 @@ export default function AdminPanel() {
         >
           🛍️ 알리익스프레스 검색
         </button>
+        <button
+          onClick={() => setActiveTab("parse")}
+          className={`text-sm font-semibold px-4 py-3 border-b-2 transition-colors ${
+            activeTab === "parse"
+              ? "border-[#FF5A00] text-[#FF5A00]"
+              : "border-transparent text-gray-400 hover:text-gray-600"
+          }`}
+        >
+          🔗 URL 파싱 (쿠팡/아마존)
+        </button>
       </div>
 
       {/* 알리익스프레스 검색 탭 */}
       {activeTab === "search" && (
         <AliexpressSearch onSelect={handleAliSelect} />
+      )}
+
+      {/* URL 파싱 탭 */}
+      {activeTab === "parse" && (
+        <UrlParser onSelect={handleUrlSelect} />
       )}
 
       {/* 상품 목록 탭 */}
