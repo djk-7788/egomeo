@@ -231,13 +231,23 @@ export default function AliexpressSearch({ onSelect }: Props) {
                   <p className="text-[10px] font-semibold text-[#FF5A00] mb-1">이미지 선택</p>
                   <p className="text-xs text-gray-600 line-clamp-1">{selectedProduct.title}</p>
                 </div>
-                <button
-                  onClick={() => onSelect(selectedProduct, selectedImage)}
-                  disabled={!selectedImage}
-                  className="bg-[#FF5A00] text-white text-sm font-bold px-5 py-2 rounded-lg hover:bg-[#e04e00] transition-colors disabled:opacity-40 flex-shrink-0"
-                >
-                  폼에 불러오기
-                </button>
+                <div className="flex gap-2 flex-shrink-0">
+                  <a
+                    href={`https://www.aliexpress.com/item/${selectedProduct.product_id}.html`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-sm font-semibold px-4 py-2 rounded-lg border border-gray-200 text-gray-500 hover:border-gray-400 hover:text-gray-700 transition-colors"
+                  >
+                    원본 보기 ↗
+                  </a>
+                  <button
+                    onClick={() => onSelect(selectedProduct, selectedImage)}
+                    disabled={!selectedImage}
+                    className="bg-[#FF5A00] text-white text-sm font-bold px-5 py-2 rounded-lg hover:bg-[#e04e00] transition-colors disabled:opacity-40"
+                  >
+                    폼에 불러오기
+                  </button>
+                </div>
               </div>
 
               {/* 썸네일 목록 */}
