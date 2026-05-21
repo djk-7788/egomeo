@@ -22,6 +22,8 @@ export default function AliexpressSearch({ onSelect }: Props) {
   const [searched, setSearched] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<AliProduct | null>(null);
   const [selectedImage, setSelectedImage] = useState("");
+  const [hoverImage, setHoverImage] = useState<string | null>(null);
+  const [hoverStyle, setHoverStyle] = useState({ left: 0, top: 0 });
 
   async function handleSearch(e: React.FormEvent) {
     e.preventDefault();
@@ -56,6 +58,17 @@ export default function AliexpressSearch({ onSelect }: Props) {
   function handleProductClick(product: AliProduct) {
     setSelectedProduct(product);
     setSelectedImage(product.images[0] ?? "");
+  }
+
+  function handleThumbnailEnter(img: string, e: React.MouseEvent<HTMLButtonElement>) {
+    const rect = e.currentTarget.getBoundingClientRect();
+    const W = 320;
+    const margin = 10;
+    let left = rect.left + rect.width / 2 - W / 2;
+    left = Math.max(margin, Math.min(left, window.innerWidth - W - margin));
+    const top = rect.top > W + margin ? rect.top - W - margin : rect.bottom + margin;
+    setHoverImage(img);
+    setHoverStyle({ left, top });
   }
 
   return (
@@ -171,6 +184,8 @@ export default function AliexpressSearch({ onSelect }: Props) {
                     key={i}
                     type="button"
                     onClick={() => setSelectedImage(img)}
+                    onMouseEnter={(e) => handleThumbnailEnter(img, e)}
+                    onMouseLeave={() => setHoverImage(null)}
                     className={`w-16 h-16 rounded-lg overflow-hidden flex-shrink-0 border-2 transition-colors ${
                       selectedImage === img
                         ? "border-[#FF5A00]"
@@ -194,6 +209,15 @@ export default function AliexpressSearch({ onSelect }: Props) {
             </div>
           )}
         </>
+      )}
+      {/* hover 이미지 확대 팝업 */}
+      {hoverImage && (
+        <div
+          className="fixed z-[9999] pointer-events-none rounded-xl overflow-hidden shadow-2xl border border-gray-200 bg-white"
+          style={{ left: hoverStyle.left, top: hoverStyle.top, width: 320 }}
+        >
+          <img src={hoverImage} alt="" className="w-full h-auto block" />
+        </div>
       )}
     </div>
   );
