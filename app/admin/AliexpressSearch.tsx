@@ -130,13 +130,27 @@ export default function AliexpressSearch({ onSelect }: Props) {
 
         {/* 검색창 */}
         <form onSubmit={handleSearch} className="flex gap-3 mb-4">
-          <input
-            type="text"
-            value={keyword}
-            onChange={(e) => setKeyword(e.target.value)}
-            placeholder="검색 키워드 입력 (예: mini fridge, cat lamp)"
-            className="flex-1 border border-gray-200 rounded-lg px-4 py-2.5 text-sm outline-none focus:border-[#FF5A00] transition-colors"
-          />
+          <div className="relative flex-1">
+            <input
+              type="text"
+              value={keyword}
+              onChange={(e) => setKeyword(e.target.value)}
+              placeholder="검색 키워드 입력 (예: mini fridge, cat lamp)"
+              className="w-full border border-gray-200 rounded-lg px-4 py-2.5 pr-8 text-sm outline-none focus:border-[#FF5A00] transition-colors"
+            />
+            {keyword && (
+              <button
+                type="button"
+                onClick={() => setKeyword("")}
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-300 hover:text-gray-500 transition-colors"
+                tabIndex={-1}
+              >
+                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            )}
+          </div>
           <button
             type="submit"
             disabled={loading || !keyword.trim()}
@@ -154,13 +168,27 @@ export default function AliexpressSearch({ onSelect }: Props) {
             <div className="flex-1 border-t border-gray-100" />
           </div>
           <form onSubmit={handleUrlSearch} className="flex gap-2">
-            <input
-              type="text"
-              value={urlInput}
-              onChange={(e) => setUrlInput(e.target.value)}
-              placeholder="https://www.aliexpress.com/item/..."
-              className="flex-1 border border-gray-200 rounded-lg px-3 py-2 text-xs outline-none focus:border-[#FF5A00] transition-colors"
-            />
+            <div className="relative flex-1">
+              <input
+                type="text"
+                value={urlInput}
+                onChange={(e) => setUrlInput(e.target.value)}
+                placeholder="https://www.aliexpress.com/item/..."
+                className="w-full border border-gray-200 rounded-lg px-3 py-2 pr-7 text-xs outline-none focus:border-[#FF5A00] transition-colors"
+              />
+              {urlInput && (
+                <button
+                  type="button"
+                  onClick={() => setUrlInput("")}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-300 hover:text-gray-500 transition-colors"
+                  tabIndex={-1}
+                >
+                  <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              )}
+            </div>
             <button
               type="submit"
               disabled={urlLoading || !urlInput.trim()}
