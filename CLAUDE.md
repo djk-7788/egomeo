@@ -18,7 +18,7 @@
 
 - **Frontend**: Next.js 16 (TypeScript, App Router, Tailwind CSS)
 - **DB/Auth**: Supabase
-- **이미지 스토리지**: Supabase Storage (`product-images` 버킷)
+- **미디어 스토리지**: Cloudflare R2 (`@aws-sdk/client-s3`, S3 호환 API)
 - **배포**: Vercel (GitHub 자동 연동, push하면 자동 재배포)
 - **저장소**: https://github.com/djk-7788/egomeo.git
 
@@ -34,6 +34,11 @@ ADMIN_PASSWORD=egomeo1234
 ALIEXPRESS_APP_KEY=발급받은키
 ALIEXPRESS_APP_SECRET=발급받은시크릿
 ALIEXPRESS_TRACKING_ID=default
+CLOUDFLARE_R2_ENDPOINT=https://<계정ID>.r2.cloudflarestorage.com
+CLOUDFLARE_R2_ACCESS_KEY_ID=액세스키
+CLOUDFLARE_R2_SECRET_ACCESS_KEY=시크릿키
+CLOUDFLARE_R2_BUCKET_NAME=버킷명
+CLOUDFLARE_R2_PUBLIC_URL=https://퍼블릭도메인
 ```
 
 ### Vercel — 대시보드에서 직접 설정됨 (Production + Preview)
@@ -45,6 +50,11 @@ ALIEXPRESS_TRACKING_ID=default
 | `ALIEXPRESS_APP_KEY` | 알리 Open Platform 앱 키 (6자리) |
 | `ALIEXPRESS_APP_SECRET` | 알리 Open Platform 앱 시크릿 (32자리) |
 | `ALIEXPRESS_TRACKING_ID` | 알리 트래킹 ID (현재 `default`) |
+| `CLOUDFLARE_R2_ENDPOINT` | `https://<계정ID>.r2.cloudflarestorage.com` |
+| `CLOUDFLARE_R2_ACCESS_KEY_ID` | R2 API 토큰 액세스 키 |
+| `CLOUDFLARE_R2_SECRET_ACCESS_KEY` | R2 API 토큰 시크릿 키 |
+| `CLOUDFLARE_R2_BUCKET_NAME` | R2 버킷명 |
+| `CLOUDFLARE_R2_PUBLIC_URL` | R2 퍼블릭 도메인 (버킷에 연결된 도메인) |
 
 ---
 
@@ -56,7 +66,8 @@ id            uuid (PK, 자동생성)
 created_at    timestamp (자동생성)
 title         text          -- 드립형 제목
 category      text          -- 'mild' | 'medium' | 'hot'
-image_url     text          -- Supabase Storage 퍼블릭 URL
+image_url     text          -- Cloudflare R2 퍼블릭 URL (기존 Supabase Storage에서 마이그레이션 완료)
+video_url     text          -- Cloudflare R2 영상 URL (선택, null 가능)
 price         text          -- 표시용 (예: ₩32,900)
 affiliate_link text         -- 쿠팡/알리 링크
 is_active     boolean       -- false면 메인페이지에 안 보임
@@ -66,9 +77,8 @@ is_active     boolean       -- false면 메인페이지에 안 보임
 → 나중에 Supabase Auth 연동 시 RLS 정책 재설정 필요
 
 ### Storage
-- 버킷명: `product-images` (퍼블릭)
-- 정책: anon INSERT 허용
-- 관리자 페이지에서 이미지 업로드 → 자동으로 퍼블릭 URL 저장
+- 버킷명: `product-images` (퍼블릭) — 기존 레거시. 신규 업로드는 R2로만
+- 신규 이미지/영상은 모두 Cloudflare R2에 저장됨 (`/api/upload`)
 
 ---
 
@@ -91,7 +101,7 @@ is_active     boolean       -- false면 메인페이지에 안 보임
 ```
 ┌─────────────────────────┐
 │ 1층: 카테고리 뱃지        │
-│ 2층: 1:1 이미지          │  ← 클릭 시 쿠팡/알리 링크 새 창
+│ 2층: 1:1 영상 또는 이미지  │  ← 클릭 시 쿠팡/알리 링크 새 창 (video_url 있으면 autoplay 영상)
 │ 3층: 드립형 제목          │
 │ 4층: 가격 ₩00,000  [🔗]  │  ← 🔗 클릭 시 상세페이지 URL 복사
 │ 5층: [구경하러 가기]       │  ← 쿠팡/알리 링크 새 창
@@ -134,28 +144,33 @@ egomeo/
 │   │   ├── page.tsx          # 쿠키 확인 → LoginForm or AdminPanel
 │   │   ├── actions.ts        # 로그인/로그아웃 서버 액션
 │   │   ├── LoginForm.tsx     # 비밀번호 입력 화면 (클라이언트)
-│   │   ├── AdminPanel.tsx    # 상품 CRUD 관리 패널 — 3개 탭
+│   │   ├── AdminPanel.tsx    # 상품 CRUD 관리 패널 — 3개 탭 + R2 업로드 + 마이그레이션 버튼
 │   │   ├── AliexpressSearch.tsx  # 알리 검색 탭 (좌우 분할, URL 직접 입력, 클리어 버튼)
 │   │   └── UrlParser.tsx     # URL 파싱 탭 (쿠팡/아마존 URL → 이미지/가격 추출)
 │   ├── api/
+│   │   ├── upload/
+│   │   │   └── route.ts      # R2 파일 업로드 (이미지/영상, admin_auth 쿠키 필요)
+│   │   ├── migrate-to-r2/
+│   │   │   └── route.ts      # Supabase Storage → R2 일괄 마이그레이션 (maxDuration 300s)
 │   │   ├── aliexpress/
 │   │   │   ├── search/
 │   │   │   │   └── route.ts  # 알리 키워드 검색 (MD5 서명, KRW 변환, 최대 50개)
 │   │   │   └── parse/
-│   │   │       └── route.ts  # 알리 URL → 상품 ID 추출 → API 조회 (productdetail.get → product.query 순)
+│   │   │       └── route.ts  # 알리 URL → 상품 ID 추출 → API 조회
 │   │   └── parse-url/
-│   │       └── route.ts      # 쿠팡/아마존 URL 파싱 (OG태그/JSON-LD/사이트별 파싱, 차단 시 에러)
+│   │       └── route.ts      # 쿠팡/아마존 URL 파싱 (봇 차단으로 제한적)
 │   └── product/
 │       └── [id]/
-│           └── page.tsx      # 상품 상세 페이지 (공유 링크용)
+│           └── page.tsx      # 상품 상세 페이지 (공유 링크용, 영상 지원)
 ├── components/
 │   ├── Header.tsx            # 상단 고정 헤더 + 카테고리 네비
 │   ├── Footer.tsx            # 쿠팡파트너스 고지 문구 + 저작권
-│   ├── ProductCard.tsx       # 5층 카드 컴포넌트
+│   ├── ProductCard.tsx       # 5층 카드 컴포넌트 (video_url 있으면 영상 표시)
 │   ├── CardShareButton.tsx   # 카드 내 공유 버튼 (클라이언트)
 │   └── ShareButton.tsx       # 상세 페이지 공유 버튼 (클라이언트)
 └── lib/
-    └── supabase.ts           # Supabase 클라이언트 싱글톤
+    ├── supabase.ts           # Supabase 클라이언트 싱글톤
+    └── r2.ts                 # Cloudflare R2 S3 클라이언트 (endpoint/bucket/publicUrl export)
 ```
 
 ---
@@ -168,14 +183,15 @@ egomeo/
 
 ### 상품 상세 페이지 (`/product/[id]`)
 - **공유 링크 전용** — 카드에서 직접 진입 불가, 공유 버튼으로만 접근
-- 상단: 해당 상품 크게 표시 (이미지 + 카테고리 + 제목 + 가격 + 구경하러가기 버튼 + 공유 버튼)
+- 상단: 해당 상품 크게 표시 (영상 또는 이미지 + 카테고리 + 제목 + 가격 + 구경하러가기 버튼 + 공유 버튼)
 - 하단: 다른 상품 그리드 ("이건 또 머고?" 섹션)
 - OG 태그 포함 → 카톡/SNS 공유 시 미리보기 표시
 
 ### 관리자 페이지 (`/admin`)
 - 비밀번호: `ADMIN_PASSWORD` 환경변수 (현재 `egomeo1234`)
 - 인증: HttpOnly 쿠키 기반, 24시간 유지
-- **탭 1 — 상품 목록**: 등록/수정/삭제, 노출/숨김 토글, 미리보기 링크
+- **탭 1 — 상품 목록**: 등록/수정/삭제, 노출/숨김 토글, 미리보기 링크, 미디어 타입 표시
+  - "☁️ Supabase → R2 마이그레이션" 버튼 (Supabase Storage URL → R2 URL 일괄 변환)
 - **탭 2 — 알리익스프레스 검색**:
   - 좌우 분할 레이아웃 (왼쪽 65% 그리드 스크롤 / 오른쪽 35% sticky 패널)
   - 키워드 검색 (최대 50개, 정렬: 관련도/판매량/가격순, 카테고리 필터 10종)
@@ -185,10 +201,11 @@ egomeo/
   - 입력창 클리어(X) 버튼 (키워드/URL 모두)
 - **탭 3 — URL 파싱**:
   - 쿠팡/아마존 상품 URL 붙여넣기 → 이미지/가격/상품명 자동 추출
-  - 서버에서 fetch + HTML 파싱 (OG태그, JSON-LD, 사이트별 파싱)
   - **주의**: 쿠팡/아마존 모두 봇 차단(403/Cloudflare)으로 현재 제한적으로만 동작
-- 이미지: 파일 업로드(Supabase Storage) 또는 외부 URL 자동 입력
-- 모달: backdrop 클릭 시 닫기, 내부 스크롤(max-height 90vh)
+- **상품 등록/수정 모달**:
+  - 이미지 업로드 → R2 저장 (`/api/upload`)
+  - 영상 업로드 (선택) → R2 저장, `video_url` 컬럼에 저장
+  - 모달: backdrop 클릭 시 닫기, 내부 스크롤(max-height 90vh)
 
 ---
 
@@ -200,10 +217,6 @@ egomeo/
 | 알리익스프레스 | **API 연동 완료** | APP_KEY/SECRET/TRACKING_ID Vercel 등록 완료. 검색 → 폼 자동입력 동작 중 |
 | 아마존 어소시에이트 | 가입 신청 중 / 예정 | 해외 상품 대응용, 달러 수익 |
 
-> 알리익스프레스: API로 불러온 `promotion_link`가 어필리에이트 링크로 자동 저장됨. 트래킹 ID는 현재 `default` 사용 중 — 포털에서 별도 ID 생성 후 `ALIEXPRESS_TRACKING_ID` 환경변수 교체 가능.
->
-> 쿠팡파트너스/아마존: 가입 승인 후 관리자 패널에서 `affiliate_link` 필드 직접 수정.
-
 ---
 
 ## 완료된 작업
@@ -213,11 +226,11 @@ egomeo/
 - [완료] Vercel 배포 + 환경변수 등록
 - [완료] Supabase 연동 (`lib/supabase.ts`)
 - [완료] `products` 테이블 생성 + RLS 비활성화
-- [완료] Supabase Storage 버킷 생성 (`product-images`, 퍼블릭)
+- [완료] Supabase Storage 버킷 생성 (`product-images`, 퍼블릭) — 레거시, 신규는 R2
 - [완료] 전역 디자인 시스템 (색상, 폰트, 레이아웃)
 - [완료] Header 컴포넌트 (sticky, 카테고리 네비)
 - [완료] Footer 컴포넌트 (쿠팡파트너스 고지 문구)
-- [완료] ProductCard 컴포넌트 (5층 구조)
+- [완료] ProductCard 컴포넌트 (5층 구조, video_url 지원)
 - [완료] 메인 페이지 — Supabase 실데이터 연결
 - [완료] 관리자 페이지 (`/admin`) — 전체 CRUD
 - [완료] 상품 상세 페이지 (`/product/[id]`) — 공유 링크용
@@ -239,6 +252,13 @@ egomeo/
 - [완료] 알리 URL 직접 입력 기능 (`/api/aliexpress/parse` — 상품 ID 추출 후 API 조회)
 - [완료] 입력창 커스텀 클리어(X) 버튼 (키워드/URL 입력창, 텍스트 있을 때만 표시)
 - [완료] URL 파싱 탭 추가 (`UrlParser.tsx` + `/api/parse-url`) — 쿠팡/아마존 URL 파싱 (봇 차단으로 제한적)
+- [완료] Cloudflare R2 연동 (`lib/r2.ts`, `@aws-sdk/client-s3`)
+- [완료] R2 업로드 API (`/api/upload`) — 이미지/영상 모두 처리, admin_auth 쿠키 인증
+- [완료] Supabase Storage → R2 마이그레이션 API (`/api/migrate-to-r2`) + 관리자 버튼
+- [완료] `products` 테이블에 `video_url` 컬럼 추가 (text, nullable)
+- [완료] ProductCard에 영상 지원 — video_url 있으면 autoplay/muted/loop 영상, 없으면 이미지
+- [완료] 상품 상세 페이지에 영상 지원 (controls 포함)
+- [완료] 관리자 모달에 영상 업로드 필드 추가 (선택사항)
 
 ---
 
@@ -261,7 +281,8 @@ egomeo/
 | 가격을 text 타입으로 저장 | `₩32,900` 형태 그대로 표시, 정렬/계산 기능 없음 |
 | RLS 비활성화 | 소셜 로그인 미구현 상태에서 임시 조치. Auth 붙이면 재설정 필요 |
 | 관리자 인증을 쿠키+환경변수로 | Supabase Auth 없이 빠르게 구현. 나중에 Supabase Admin 역할로 교체 가능 |
-| 이미지를 Supabase Storage에 저장 | CDN 역할, 퍼블릭 URL 영구 유지 |
+| 이미지/영상을 Cloudflare R2에 저장 | Supabase Storage 대비 대용량 파일 비용 유리, 글로벌 CDN, 영상 스트리밍 적합 |
+| R2 업로드를 서버 API 경유 | 브라우저에서 직접 R2에 올리면 시크릿 키 노출 위험. `/api/upload`가 admin 쿠키 검증 후 처리 |
 | 서버 컴포넌트로 데이터 fetch | SEO와 초기 로딩 속도 최적화 |
 
 ---
