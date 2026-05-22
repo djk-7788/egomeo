@@ -141,16 +141,41 @@ export default function AdminPanel() {
     fetchProducts();
   }
 
-  async function uploadToR2(file: File): Promise<string> {
+  // 이미지: 서버 API 경유 (Supabase URL 외부 이미지 → R2 저장도 여기서)
+  async function uploadImageToR2(file: File): Promise<string> {
     const fd = new FormData();
     fd.append("file", file);
     const res = await fetch("/api/upload", { method: "POST", body: fd });
-    if (!res.ok) {
-      const body = await res.json().catch(() => ({}));
-      throw new Error(body.error || "업로드 실패");
+    const body = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(body.error || `서버 오류 (${res.status})`);
+    return body.url;
+  }
+
+  // 영상: Presigned URL → 브라우저에서 R2 직접 업로드 (Vercel 4.5MB 제한 우회)
+  async function uploadVideoToR2(file: File): Promise<string> {
+    // 1. 서버에서 presigned URL 발급
+    const presignRes = await fetch("/api/upload", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ filename: file.name, contentType: file.type }),
+    });
+    const presignBody = await presignRes.json().catch(() => ({}));
+    if (!presignRes.ok) throw new Error(presignBody.error || `Presign 실패 (${presignRes.status})`);
+
+    const { uploadUrl, publicUrl } = presignBody;
+
+    // 2. 브라우저에서 R2로 직접 업로드
+    const uploadRes = await fetch(uploadUrl, {
+      method: "PUT",
+      headers: { "Content-Type": file.type },
+      body: file,
+    });
+    if (!uploadRes.ok) {
+      const txt = await uploadRes.text().catch(() => "");
+      throw new Error(`R2 직접 업로드 실패 (${uploadRes.status}): ${txt.slice(0, 200)}`);
     }
-    const { url } = await res.json();
-    return url;
+
+    return publicUrl;
   }
 
   async function handleImageUpload(e: React.ChangeEvent<HTMLInputElement>) {
@@ -158,7 +183,7 @@ export default function AdminPanel() {
     if (!file) return;
     setUploading(true);
     try {
-      const url = await uploadToR2(file);
+      const url = await uploadImageToR2(file);
       setForm((prev) => ({ ...prev, image_url: url }));
     } catch (err) {
       alert("이미지 업로드 실패: " + String(err));
@@ -172,7 +197,7 @@ export default function AdminPanel() {
     if (!file) return;
     setUploadingVideo(true);
     try {
-      const url = await uploadToR2(file);
+      const url = await uploadVideoToR2(file);
       setForm((prev) => ({ ...prev, video_url: url }));
     } catch (err) {
       alert("영상 업로드 실패: " + String(err));
