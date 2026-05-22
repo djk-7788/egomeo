@@ -256,9 +256,11 @@ egomeo/
 - [완료] R2 업로드 API (`/api/upload`) — 이미지/영상 모두 처리, admin_auth 쿠키 인증
 - [완료] Supabase Storage → R2 마이그레이션 API (`/api/migrate-to-r2`) + 관리자 버튼
 - [완료] `products` 테이블에 `video_url` 컬럼 추가 (text, nullable)
-- [완료] ProductCard에 영상 지원 — video_url 있으면 autoplay/muted/loop 영상, 없으면 이미지
-- [완료] 상품 상세 페이지에 영상 지원 (controls 포함)
+- [완료] ProductCard에 영상 지원 — video_url 있으면 VideoPlayer(Intersection Observer), 없으면 이미지
+- [완료] 상품 상세 페이지에 VideoPlayer 적용 (뷰포트 이탈 시 정지+되감기)
 - [완료] 관리자 모달에 영상 업로드 필드 추가 (선택사항)
+- [완료] 무한 스크롤 (`InfiniteProductGrid`) — 메인 피드 + 상세 페이지 하단, 12개씩 추가 로드, 하단 400px 전 미리 로드, 스피너
+- [완료] 상품 페이지네이션 API (`/api/products`) — page, limit, excludeId, category 파라미터
 
 ---
 
@@ -266,10 +268,9 @@ egomeo/
 
 1. **AI 드립 제목 생성** — 알리 검색 후 원본 상품명 기반으로 Claude API 호출해 드립형 제목 자동 생성
 2. **쿠팡/아마존 URL 파싱 개선** — 현재 봇 차단으로 제한적. Puppeteer/플레이라이트 서버리스 또는 별도 파싱 서비스 검토 필요
-3. **무한 스크롤** — 메인 페이지 상품 목록 페이지네이션 (현재 전체 로드)
-4. **알리 트래킹 ID 교체** — 포털에서 전용 ID 생성 후 `ALIEXPRESS_TRACKING_ID` 환경변수 교체
-5. **소셜 로그인** — Supabase Auth (구글/카카오/네이버)
-6. **찜하기** — 하트 버튼, 마이페이지
+3. **알리 트래킹 ID 교체** — 포털에서 전용 ID 생성 후 `ALIEXPRESS_TRACKING_ID` 환경변수 교체
+4. **소셜 로그인** — Supabase Auth (구글/카카오/네이버)
+5. **찜하기** — 하트 버튼, 마이페이지
 
 ---
 
