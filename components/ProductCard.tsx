@@ -1,4 +1,5 @@
 import CardShareButton from "@/components/CardShareButton";
+import VideoPlayer from "@/components/VideoPlayer";
 
 type Category = "mild" | "medium" | "hot";
 
@@ -44,14 +45,7 @@ export default function ProductCard({
         className="relative w-full aspect-square mt-2 overflow-hidden block bg-black"
       >
         {videoUrl ? (
-          <video
-            src={videoUrl}
-            autoPlay
-            muted
-            loop
-            playsInline
-            className="w-full h-full object-cover"
-          />
+          <VideoPlayer src={videoUrl} className="w-full h-full object-cover" />
         ) : (
           <img
             src={imageUrl}
