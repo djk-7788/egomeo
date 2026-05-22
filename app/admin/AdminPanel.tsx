@@ -185,32 +185,38 @@ export default function AdminPanel() {
     return await uploadVideoInChunks(file);
   }
 
-  // 청크 3.5MB씩 분할 → Vercel API 경유 → R2 멀티파트 조립
+  // 청크 3.5MB씩 분할 → Vercel API 경유 → R2에 임시 저장 후 서버에서 병합
   async function uploadVideoInChunks(file: File): Promise<string> {
     const CHUNK_SIZE = 3.5 * 1024 * 1024; // 3.5MB
 
-    // 1. 멀티파트 시작
+    // 50MB 초과 시 경고
+    if (file.size > 50 * 1024 * 1024) {
+      const ok = confirm(`영상 크기가 ${(file.size / 1024 / 1024).toFixed(0)}MB입니다.\n50MB 초과 시 업로드 시간이 오래 걸릴 수 있습니다. 계속할까요?`);
+      if (!ok) throw new Error("업로드 취소됨");
+    }
+
+    // 1. 업로드 ID 발급
     const initRes = await fetch("/api/upload/multipart?action=init", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ filename: file.name, contentType: file.type }),
     });
     const initBody = await initRes.json().catch(() => ({}));
-    if (!initRes.ok) throw new Error(initBody.error || "멀티파트 초기화 실패");
+    if (!initRes.ok) throw new Error(initBody.error || "업로드 초기화 실패");
     const { uploadId, key } = initBody as { uploadId: string; key: string };
     console.log("[Chunked Upload] 시작, uploadId:", uploadId);
 
-    const parts: { PartNumber: number; ETag: string }[] = [];
     const totalChunks = Math.ceil(file.size / CHUNK_SIZE);
+    let uploadedChunks = 0;
 
     try {
+      // 2. 청크 순서대로 업로드
       for (let i = 0; i < totalChunks; i++) {
         const start = i * CHUNK_SIZE;
         const chunk = file.slice(start, start + CHUNK_SIZE);
         const fd = new FormData();
         fd.append("file", chunk, file.name);
         fd.append("uploadId", uploadId);
-        fd.append("key", key);
         fd.append("partNumber", String(i + 1));
 
         const chunkRes = await fetch("/api/upload/multipart?action=chunk", {
@@ -219,26 +225,31 @@ export default function AdminPanel() {
         });
         const chunkBody = await chunkRes.json().catch(() => ({}));
         if (!chunkRes.ok) throw new Error(chunkBody.error || `청크 ${i + 1} 업로드 실패`);
-        parts.push({ PartNumber: i + 1, ETag: chunkBody.etag });
+        uploadedChunks++;
         console.log(`[Chunked Upload] 청크 ${i + 1}/${totalChunks} 완료`);
       }
 
-      // 3. 조립 완료
+      // 3. 서버에서 병합 → 최종 R2 저장
       const finishRes = await fetch("/api/upload/multipart?action=finish", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ uploadId, key, parts }),
+        body: JSON.stringify({
+          uploadId,
+          key,
+          numParts: totalChunks,
+          contentType: file.type,
+        }),
       });
       const finishBody = await finishRes.json().catch(() => ({}));
-      if (!finishRes.ok) throw new Error(finishBody.error || "멀티파트 완료 실패");
+      if (!finishRes.ok) throw new Error(finishBody.error || "병합 완료 실패");
       console.log("[Chunked Upload] 완료:", finishBody.url);
       return finishBody.url;
     } catch (err) {
-      // 실패 시 중단
+      // 실패 시 임시 청크 정리
       fetch("/api/upload/multipart?action=abort", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ uploadId, key }),
+        body: JSON.stringify({ uploadId, numParts: uploadedChunks }),
       }).catch(() => {});
       throw err;
     }
