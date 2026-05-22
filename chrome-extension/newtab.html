@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>이게머고? 미디어툴</title>
+  <link rel="stylesheet" href="newtab.css" />
+</head>
+<body>
+  <div class="app">
+    <!-- 헤더 -->
+    <header class="app-header">
+      <span class="logo">이게머고? <em>미디어툴</em></span>
+      <nav class="tab-nav">
+        <button class="tab-btn active" data-tab="slideshow">슬라이드쇼 만들기</button>
+        <button class="tab-btn" data-tab="trimmer">영상 자르기</button>
+      </nav>
+    </header>
+
+    <!-- ───────────── 탭 1: 슬라이드쇼 ───────────── -->
+    <section id="tab-slideshow" class="tab-panel active">
+
+      <!-- STEP 1: URL 입력 -->
+      <div id="step1" class="step active">
+        <h2 class="step-title">1단계 — 알리익스프레스 상품 URL 입력</h2>
+        <div class="url-input-row">
+          <div class="input-wrap">
+            <input id="ali-url" type="text" placeholder="https://www.aliexpress.com/item/..." />
+            <button class="clear-btn" id="ali-url-clear" title="지우기">✕</button>
+          </div>
+          <button class="btn-primary" id="fetch-images-btn">이미지 불러오기</button>
+        </div>
+        <p id="fetch-error" class="error-msg hidden"></p>
+        <div id="js-page-notice" class="notice-box hidden">
+          <strong>JS 렌더링 페이지 안내</strong><br/>
+          알리익스프레스 페이지가 JavaScript로만 이미지를 로드하는 경우, 정적 HTML에서 이미지를 추출할 수 없습니다.<br/>
+          <strong>해결 방법:</strong> 알리 상품 페이지를 직접 열고 → 주소창 URL을 복사해서 붙여넣으세요. 또는 상품 이미지 URL을 직접 입력해볼 수 있습니다.
+        </div>
+        <div id="fetch-loading" class="spinner-wrap hidden">
+          <div class="spinner"></div>
+          <span>이미지 불러오는 중...</span>
+        </div>
+      </div>
+
+      <!-- STEP 2: 이미지 선택 -->
+      <div id="step2" class="step hidden">
+        <div class="step-header">
+          <h2 class="step-title">2단계 — 이미지 선택</h2>
+          <div class="step-actions">
+            <button class="btn-ghost" id="select-all-btn">전체 선택</button>
+            <button class="btn-ghost" id="deselect-all-btn">전체 해제</button>
+            <span id="selected-count" class="badge">0개 선택됨</span>
+          </div>
+        </div>
+        <div id="image-grid" class="image-grid"></div>
+        <div class="step-footer">
+          <button class="btn-ghost" id="back-to-step1">← 다시 입력</button>
+          <button class="btn-primary" id="to-step3-btn" disabled>다음 단계 →</button>
+        </div>
+      </div>
+
+      <!-- STEP 3: 순서 조정 + 설정 -->
+      <div id="step3" class="step hidden">
+        <div class="step-header">
+          <h2 class="step-title">3단계 — 순서 조정 &amp; 설정</h2>
+        </div>
+        <div class="step3-layout">
+          <!-- 드래그 순서 조정 -->
+          <div class="sortable-area">
+            <p class="hint">드래그해서 순서를 바꿔보세요</p>
+            <div id="sortable-list" class="sortable-list"></div>
+          </div>
+          <!-- 설정 패널 -->
+          <div class="settings-panel">
+            <label class="setting-label">
+              이미지 전환 간격
+              <span id="interval-display" class="setting-value">1.0초</span>
+            </label>
+            <input type="range" id="interval-slider" min="5" max="20" value="10" step="1" />
+            <div class="range-hints"><span>0.5초</span><span>2.0초</span></div>
+
+            <label class="setting-label" style="margin-top:24px">
+              출력 해상도
+            </label>
+            <select id="resolution-select" class="select-box">
+              <option value="1080">1080 × 1080 (정사각형)</option>
+              <option value="1920">1920 × 1080 (가로)</option>
+              <option value="720">720 × 720</option>
+            </select>
+
+            <button class="btn-primary full-width" id="make-video-btn" style="margin-top:32px">
+              MP4 만들기
+            </button>
+            <button class="btn-ghost full-width" id="back-to-step2" style="margin-top:8px">← 이미지 다시 선택</button>
+
+            <div id="make-loading" class="spinner-wrap hidden" style="margin-top:16px">
+              <div class="spinner"></div>
+              <span id="make-progress">준비 중...</span>
+            </div>
+            <p id="make-error" class="error-msg hidden"></p>
+          </div>
+        </div>
+      </div>
+
+    </section>
+
+    <!-- ───────────── 탭 2: 영상 자르기 ───────────── -->
+    <section id="tab-trimmer" class="tab-panel hidden">
+      <h2 class="step-title">영상 자르기 &amp; 압축</h2>
+
+      <div class="trimmer-layout">
+        <!-- 왼쪽: 업로드 + 미리보기 -->
+        <div class="trimmer-left">
+          <div id="upload-area" class="upload-area">
+            <input type="file" id="video-file" accept="video/*" />
+            <div class="upload-placeholder">
+              <span class="upload-icon">🎬</span>
+              <p>영상 파일을 끌어다 놓거나<br/>클릭해서 선택하세요</p>
+              <p class="hint">MP4, MOV, AVI, WebM 등</p>
+            </div>
+          </div>
+          <video id="preview-video" class="preview-video hidden" controls muted></video>
+        </div>
+
+        <!-- 오른쪽: 타임라인 + 컨트롤 -->
+        <div class="trimmer-right">
+          <div id="timeline-wrap" class="timeline-wrap hidden">
+            <p class="setting-label">구간 선택</p>
+            <div class="timeline-bar-wrap">
+              <div id="timeline-bar" class="timeline-bar">
+                <div id="timeline-selected" class="timeline-selected"></div>
+                <div id="handle-start" class="timeline-handle handle-start" title="시작점"></div>
+                <div id="handle-end" class="timeline-handle handle-end" title="끝점"></div>
+              </div>
+              <div class="timeline-labels">
+                <span id="time-start-label">0:00</span>
+                <span id="time-end-label">0:00</span>
+              </div>
+            </div>
+            <div class="time-input-row">
+              <div class="time-input-group">
+                <label>시작</label>
+                <input type="number" id="start-time-input" min="0" step="0.1" value="0" />
+                <span>초</span>
+              </div>
+              <div class="time-input-group">
+                <label>끝</label>
+                <input type="number" id="end-time-input" min="0" step="0.1" value="0" />
+                <span>초</span>
+              </div>
+              <div class="duration-badge">
+                구간: <strong id="trim-duration">0.0초</strong>
+              </div>
+            </div>
+
+            <div class="trim-settings" style="margin-top:20px">
+              <label class="setting-label">
+                영상 품질
+              </label>
+              <select id="trim-quality" class="select-box">
+                <option value="high">고품질 (파일 클 수 있음)</option>
+                <option value="medium" selected>중간 품질 (권장)</option>
+                <option value="low">저용량 압축</option>
+              </select>
+            </div>
+
+            <button class="btn-primary full-width" id="trim-btn" style="margin-top:24px">
+              자르기 + 다운로드
+            </button>
+            <div id="trim-loading" class="spinner-wrap hidden" style="margin-top:12px">
+              <div class="spinner"></div>
+              <span id="trim-progress">처리 중...</span>
+            </div>
+            <p id="trim-error" class="error-msg hidden"></p>
+          </div>
+
+          <div id="trimmer-empty" class="trimmer-empty">
+            <p>왼쪽에서 영상 파일을 선택하면<br/>여기에 컨트롤이 나타납니다.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <script src="newtab.js"></script>
+</body>
+</html>

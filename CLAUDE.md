@@ -168,9 +168,15 @@ egomeo/
 │   ├── ProductCard.tsx       # 5층 카드 컴포넌트 (video_url 있으면 영상 표시)
 │   ├── CardShareButton.tsx   # 카드 내 공유 버튼 (클라이언트)
 │   └── ShareButton.tsx       # 상세 페이지 공유 버튼 (클라이언트)
-└── lib/
-    ├── supabase.ts           # Supabase 클라이언트 싱글톤
-    └── r2.ts                 # Cloudflare R2 S3 클라이언트 (endpoint/bucket/publicUrl export)
+├── lib/
+│   ├── supabase.ts           # Supabase 클라이언트 싱글톤
+│   └── r2.ts                 # Cloudflare R2 S3 클라이언트 (endpoint/bucket/publicUrl export)
+└── chrome-extension/         # 크롬 확장 프로그램 "이게머고? 미디어툴" (Manifest V3)
+    ├── manifest.json         # MV3 설정 (host_permissions: aliexpress/alicdn)
+    ├── background.js         # 아이콘 클릭 → 새 탭 열기
+    ├── newtab.html           # 전체 화면 UI (슬라이드쇼 + 영상 자르기 탭)
+    ├── newtab.css            # 스타일 (#FF5A00 포인트)
+    └── newtab.js             # 알리 이미지 fetch, Canvas+MediaRecorder 슬라이드쇼, 영상 자르기
 ```
 
 ---
@@ -206,6 +212,20 @@ egomeo/
   - 이미지 업로드 → R2 저장 (`/api/upload`)
   - 영상 업로드 (선택) → R2 저장, `video_url` 컬럼에 저장
   - 모달: backdrop 클릭 시 닫기, 내부 스크롤(max-height 90vh)
+
+---
+
+## 최근 완료 작업 (2026-05-22 기준)
+
+아래 항목들이 이번 세션에서 완료됨. 상세 내용은 하단 "완료된 작업" 참고.
+
+- Cloudflare R2 연동 (이미지+영상 스토리지, 버킷: `egomeo-media`)
+- 기존 Supabase Storage 이미지 40개 R2 마이그레이션 완료
+- MP4 영상 업로드 기능 (`video_url` 컬럼 추가, Vercel 4.5MB 한계는 청크 분할 업로드로 우회)
+- 스크롤 재생/정지 (VideoPlayer 컴포넌트, Intersection Observer, threshold 0.5)
+- 무한 스크롤 전면 개편 (메인 피드 + 상세 페이지 하단, 12개씩, 하단 400px 전 미리 로드)
+- 공정위 고지 문구 추가 (헤더 아래 비고정, 전 페이지 공통)
+- 크롬 확장 프로그램 "이게머고? 미디어툴" 제작 (`chrome-extension/` 폴더, Manifest V3)
 
 ---
 
@@ -252,7 +272,7 @@ egomeo/
 - [완료] 알리 URL 직접 입력 기능 (`/api/aliexpress/parse` — 상품 ID 추출 후 API 조회)
 - [완료] 입력창 커스텀 클리어(X) 버튼 (키워드/URL 입력창, 텍스트 있을 때만 표시)
 - [완료] URL 파싱 탭 추가 (`UrlParser.tsx` + `/api/parse-url`) — 쿠팡/아마존 URL 파싱 (봇 차단으로 제한적)
-- [완료] Cloudflare R2 연동 (`lib/r2.ts`, `@aws-sdk/client-s3`)
+- [완료] Cloudflare R2 연동 (`lib/r2.ts`, `@aws-sdk/client-s3`, 버킷: `egomeo-media`)
 - [완료] R2 업로드 API (`/api/upload`) — 이미지/영상 모두 처리, admin_auth 쿠키 인증
 - [완료] Supabase Storage → R2 마이그레이션 API (`/api/migrate-to-r2`) + 관리자 버튼
 - [완료] `products` 테이블에 `video_url` 컬럼 추가 (text, nullable)
@@ -261,16 +281,22 @@ egomeo/
 - [완료] 관리자 모달에 영상 업로드 필드 추가 (선택사항)
 - [완료] 무한 스크롤 (`InfiniteProductGrid`) — 메인 피드 + 상세 페이지 하단, 12개씩 추가 로드, 하단 400px 전 미리 로드, 스피너
 - [완료] 상품 페이지네이션 API (`/api/products`) — page, limit, excludeId, category 파라미터
+- [완료] 공정위 고지 문구 추가 — 헤더 바로 아래 비고정(sticky 아님), 전 페이지 공통 적용 (`app/layout.tsx`)
+- [완료] 크롬 확장 프로그램 "이게머고? 미디어툴" 제작 (`chrome-extension/` 폴더, Manifest V3)
+  - 슬라이드쇼 만들기 탭: 알리 URL 입력 → 이미지 선택(체크박스) → 드래그 순서 조정 → 간격 설정(0.5~2초) → Canvas+MediaRecorder로 MP4/WebM 생성 + 다운로드
+  - 영상 자르기 탭: 영상 파일 업로드 → 타임라인 핸들로 구간 선택 → 자르기 + 다운로드
+  - host_permissions으로 aliexpress.com/alicdn.com CORS 없이 직접 fetch
 
 ---
 
 ## 다음 할 일 (우선순위순)
 
 1. **AI 드립 제목 생성** — 알리 검색 후 원본 상품명 기반으로 Claude API 호출해 드립형 제목 자동 생성
-2. **쿠팡/아마존 URL 파싱 개선** — 현재 봇 차단으로 제한적. Puppeteer/플레이라이트 서버리스 또는 별도 파싱 서비스 검토 필요
-3. **알리 트래킹 ID 교체** — 포털에서 전용 ID 생성 후 `ALIEXPRESS_TRACKING_ID` 환경변수 교체
-4. **소셜 로그인** — Supabase Auth (구글/카카오/네이버)
-5. **찜하기** — 하트 버튼, 마이페이지
+2. **크롬 확장 슬라이드쇼 이미지 추출 개선** — 알리 페이지가 JS 렌더링 전용이면 정적 HTML에서 이미지 못 찾는 문제 해결 필요 (content script 방식 검토)
+3. **쿠팡/아마존 URL 파싱 개선** — 현재 봇 차단으로 제한적. Puppeteer/플레이라이트 서버리스 또는 별도 파싱 서비스 검토 필요
+4. **알리 트래킹 ID 교체** — 포털에서 전용 ID 생성 후 `ALIEXPRESS_TRACKING_ID` 환경변수 교체
+5. **소셜 로그인** — Supabase Auth (구글/카카오/네이버)
+6. **찜하기** — 하트 버튼, 마이페이지
 
 ---
 
