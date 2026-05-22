@@ -151,11 +151,9 @@ export default function AdminPanel() {
     return body.url;
   }
 
-  // 영상: Presigned URL → 브라우저에서 R2 직접 업로드 (Vercel 4.5MB 제한 우회)
+  // 영상: presigned URL 시도 → CORS 실패 시 청크 멀티파트로 자동 전환
   async function uploadVideoToR2(file: File): Promise<string> {
-    // 1. 서버에서 presigned URL 발급
-    let uploadUrl: string;
-    let publicUrl: string;
+    // ── 방법 A: Presigned URL (브라우저 → R2 직접) ─────────────
     try {
       const presignRes = await fetch("/api/upload", {
         method: "PUT",
@@ -164,14 +162,10 @@ export default function AdminPanel() {
       });
       const presignBody = await presignRes.json().catch(() => ({}));
       if (!presignRes.ok) throw new Error(presignBody.error || `Presign 실패 (${presignRes.status})`);
-      uploadUrl = presignBody.uploadUrl;
-      publicUrl = presignBody.publicUrl;
-    } catch (err) {
-      throw new Error(`[1단계 Presign] ${String(err)}`);
-    }
 
-    // 2. 브라우저에서 R2로 직접 업로드
-    try {
+      const { uploadUrl, publicUrl } = presignBody;
+      console.log("[Video Upload] Presigned URL host:", new URL(uploadUrl).hostname);
+
       const uploadRes = await fetch(uploadUrl, {
         method: "PUT",
         headers: { "Content-Type": file.type },
@@ -179,13 +173,75 @@ export default function AdminPanel() {
       });
       if (!uploadRes.ok) {
         const txt = await uploadRes.text().catch(() => "");
-        throw new Error(`HTTP ${uploadRes.status}: ${txt.slice(0, 300)}`);
+        throw new Error(`R2 직접 업로드 HTTP ${uploadRes.status}: ${txt.slice(0, 200)}`);
       }
-    } catch (err) {
-      throw new Error(`[2단계 R2 직접 업로드] ${String(err)}`);
+      console.log("[Video Upload] Presigned URL 방식 성공");
+      return publicUrl;
+    } catch (presignErr) {
+      console.warn("[Video Upload] Presigned URL 실패, 청크 업로드로 전환:", presignErr);
     }
 
-    return publicUrl;
+    // ── 방법 B: 청크 멀티파트 (브라우저 → Vercel → R2) ─────────
+    return await uploadVideoInChunks(file);
+  }
+
+  // 청크 3.5MB씩 분할 → Vercel API 경유 → R2 멀티파트 조립
+  async function uploadVideoInChunks(file: File): Promise<string> {
+    const CHUNK_SIZE = 3.5 * 1024 * 1024; // 3.5MB
+
+    // 1. 멀티파트 시작
+    const initRes = await fetch("/api/upload/multipart?action=init", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ filename: file.name, contentType: file.type }),
+    });
+    const initBody = await initRes.json().catch(() => ({}));
+    if (!initRes.ok) throw new Error(initBody.error || "멀티파트 초기화 실패");
+    const { uploadId, key } = initBody as { uploadId: string; key: string };
+    console.log("[Chunked Upload] 시작, uploadId:", uploadId);
+
+    const parts: { PartNumber: number; ETag: string }[] = [];
+    const totalChunks = Math.ceil(file.size / CHUNK_SIZE);
+
+    try {
+      for (let i = 0; i < totalChunks; i++) {
+        const start = i * CHUNK_SIZE;
+        const chunk = file.slice(start, start + CHUNK_SIZE);
+        const fd = new FormData();
+        fd.append("file", chunk, file.name);
+        fd.append("uploadId", uploadId);
+        fd.append("key", key);
+        fd.append("partNumber", String(i + 1));
+
+        const chunkRes = await fetch("/api/upload/multipart?action=chunk", {
+          method: "POST",
+          body: fd,
+        });
+        const chunkBody = await chunkRes.json().catch(() => ({}));
+        if (!chunkRes.ok) throw new Error(chunkBody.error || `청크 ${i + 1} 업로드 실패`);
+        parts.push({ PartNumber: i + 1, ETag: chunkBody.etag });
+        console.log(`[Chunked Upload] 청크 ${i + 1}/${totalChunks} 완료`);
+      }
+
+      // 3. 조립 완료
+      const finishRes = await fetch("/api/upload/multipart?action=finish", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ uploadId, key, parts }),
+      });
+      const finishBody = await finishRes.json().catch(() => ({}));
+      if (!finishRes.ok) throw new Error(finishBody.error || "멀티파트 완료 실패");
+      console.log("[Chunked Upload] 완료:", finishBody.url);
+      return finishBody.url;
+    } catch (err) {
+      // 실패 시 중단
+      fetch("/api/upload/multipart?action=abort", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ uploadId, key }),
+      }).catch(() => {});
+      throw err;
+    }
   }
 
   async function handleImageUpload(e: React.ChangeEvent<HTMLInputElement>) {

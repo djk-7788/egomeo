@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { PutObjectCommand } from "@aws-sdk/client-s3";
+import { PutObjectCommand, PutBucketCorsCommand } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { cookies } from "next/headers";
 import { r2Client, R2_BUCKET, R2_PUBLIC_URL } from "@/lib/r2";
@@ -72,6 +72,30 @@ export async function PUT(req: NextRequest) {
   const ext = filename.split(".").pop()?.toLowerCase() || "bin";
   const key = `${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
 
+  // CORS를 프로그래밍으로 주입 (대시보드 설정과 무관하게 확실하게 적용)
+  try {
+    await r2Client.send(
+      new PutBucketCorsCommand({
+        Bucket: R2_BUCKET,
+        CORSConfiguration: {
+          CORSRules: [
+            {
+              AllowedOrigins: ["*"],
+              AllowedMethods: ["GET", "PUT", "HEAD"],
+              AllowedHeaders: ["*"],
+              ExposeHeaders: ["ETag"],
+              MaxAgeSeconds: 3600,
+            },
+          ],
+        },
+      })
+    );
+    console.log("[R2 CORS 설정 완료]");
+  } catch (corsErr) {
+    // 권한 부족 시 기존 설정으로 계속 진행
+    console.warn("[R2 CORS 설정 실패 — 기존 설정 유지]", corsErr);
+  }
+
   try {
     const uploadUrl = await getSignedUrl(
       r2Client,
@@ -84,7 +108,8 @@ export async function PUT(req: NextRequest) {
     );
 
     const publicUrl = `${R2_PUBLIC_URL.replace(/\/$/, "")}/${key}`;
-    console.log("[R2 Presign OK] key:", key, "uploadUrl host:", new URL(uploadUrl).hostname);
+    const parsedUploadUrl = new URL(uploadUrl);
+    console.log("[R2 Presign OK] uploadUrl:", parsedUploadUrl.origin + parsedUploadUrl.pathname.slice(0, 40));
     return NextResponse.json({ uploadUrl, publicUrl });
   } catch (err) {
     console.error("[R2 Presign 실패]", err);
