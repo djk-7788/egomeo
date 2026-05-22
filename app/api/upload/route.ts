@@ -84,6 +84,7 @@ export async function PUT(req: NextRequest) {
     );
 
     const publicUrl = `${R2_PUBLIC_URL.replace(/\/$/, "")}/${key}`;
+    console.log("[R2 Presign OK] key:", key, "uploadUrl host:", new URL(uploadUrl).hostname);
     return NextResponse.json({ uploadUrl, publicUrl });
   } catch (err) {
     console.error("[R2 Presign 실패]", err);

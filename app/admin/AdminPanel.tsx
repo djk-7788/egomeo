@@ -154,25 +154,35 @@ export default function AdminPanel() {
   // 영상: Presigned URL → 브라우저에서 R2 직접 업로드 (Vercel 4.5MB 제한 우회)
   async function uploadVideoToR2(file: File): Promise<string> {
     // 1. 서버에서 presigned URL 발급
-    const presignRes = await fetch("/api/upload", {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ filename: file.name, contentType: file.type }),
-    });
-    const presignBody = await presignRes.json().catch(() => ({}));
-    if (!presignRes.ok) throw new Error(presignBody.error || `Presign 실패 (${presignRes.status})`);
-
-    const { uploadUrl, publicUrl } = presignBody;
+    let uploadUrl: string;
+    let publicUrl: string;
+    try {
+      const presignRes = await fetch("/api/upload", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ filename: file.name, contentType: file.type }),
+      });
+      const presignBody = await presignRes.json().catch(() => ({}));
+      if (!presignRes.ok) throw new Error(presignBody.error || `Presign 실패 (${presignRes.status})`);
+      uploadUrl = presignBody.uploadUrl;
+      publicUrl = presignBody.publicUrl;
+    } catch (err) {
+      throw new Error(`[1단계 Presign] ${String(err)}`);
+    }
 
     // 2. 브라우저에서 R2로 직접 업로드
-    const uploadRes = await fetch(uploadUrl, {
-      method: "PUT",
-      headers: { "Content-Type": file.type },
-      body: file,
-    });
-    if (!uploadRes.ok) {
-      const txt = await uploadRes.text().catch(() => "");
-      throw new Error(`R2 직접 업로드 실패 (${uploadRes.status}): ${txt.slice(0, 200)}`);
+    try {
+      const uploadRes = await fetch(uploadUrl, {
+        method: "PUT",
+        headers: { "Content-Type": file.type },
+        body: file,
+      });
+      if (!uploadRes.ok) {
+        const txt = await uploadRes.text().catch(() => "");
+        throw new Error(`HTTP ${uploadRes.status}: ${txt.slice(0, 300)}`);
+      }
+    } catch (err) {
+      throw new Error(`[2단계 R2 직접 업로드] ${String(err)}`);
     }
 
     return publicUrl;
