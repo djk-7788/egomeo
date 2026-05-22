@@ -1,8 +1,9 @@
 import { supabase } from "@/lib/supabase";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
-import ProductCard from "@/components/ProductCard";
+import VideoPlayer from "@/components/VideoPlayer";
 import ShareButton from "@/components/ShareButton";
+import InfiniteProductGrid from "@/components/InfiniteProductGrid";
 
 type Props = { params: Promise<{ id: string }> };
 
@@ -11,6 +12,8 @@ const categoryLabel: Record<string, string> = {
   medium: "이게? 머고???",
   hot: "이게??? 머고???????",
 };
+
+const PAGE_SIZE = 12;
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { id } = await params;
@@ -36,34 +39,33 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 export default async function ProductPage({ params }: Props) {
   const { id } = await params;
 
-  const [{ data: product }, { data: others }] = await Promise.all([
+  const [{ data: product }, { data: related, count }] = await Promise.all([
     supabase.from("products").select("*").eq("id", id).single(),
     supabase
       .from("products")
-      .select("*")
+      .select("id, title, category, image_url, video_url, price, affiliate_link", {
+        count: "exact",
+      })
       .eq("is_active", true)
       .neq("id", id)
       .order("created_at", { ascending: false })
-      .limit(8),
+      .range(0, PAGE_SIZE - 1),
   ]);
 
   if (!product) notFound();
+
+  const initialHasMore = (count ?? 0) > PAGE_SIZE;
 
   return (
     <div>
       {/* 상단: 상품 상세 */}
       <div className="max-w-3xl mx-auto mb-16">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-start">
-          {/* 이미지 또는 영상 */}
+          {/* 영상 또는 이미지 */}
           <div className="aspect-square w-full overflow-hidden rounded-2xl border border-gray-100 bg-black">
             {product.video_url ? (
-              <video
+              <VideoPlayer
                 src={product.video_url}
-                autoPlay
-                muted
-                loop
-                playsInline
-                controls
                 className="w-full h-full object-cover"
               />
             ) : (
@@ -97,25 +99,14 @@ export default async function ProductPage({ params }: Props) {
         </div>
       </div>
 
-      {/* 하단: 다른 상품 */}
-      {others && others.length > 0 && (
-        <div>
-          <h2 className="text-lg font-black text-[#111111] mb-4">이건 또 머고?</h2>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-            {others.map((p) => (
-              <ProductCard
-                key={p.id}
-                id={p.id}
-                category={p.category}
-                imageUrl={p.image_url}
-                videoUrl={p.video_url}
-                title={p.title}
-                price={p.price}
-                link={p.affiliate_link}
-              />
-            ))}
-          </div>
-        </div>
+      {/* 하단: 무한 스크롤 피드 */}
+      {(related && related.length > 0) && (
+        <InfiniteProductGrid
+          initialProducts={related}
+          initialHasMore={initialHasMore}
+          excludeId={id}
+          heading="이건 또 머고?"
+        />
       )}
     </div>
   );

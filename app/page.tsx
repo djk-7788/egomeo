@@ -1,9 +1,10 @@
 import { supabase } from "@/lib/supabase";
-import ProductCard from "@/components/ProductCard";
+import InfiniteProductGrid from "@/components/InfiniteProductGrid";
 
 export const dynamic = "force-dynamic";
 
 const VALID_CATEGORIES = ["mild", "medium", "hot"];
+const PAGE_SIZE = 12;
 
 type Props = {
   searchParams: Promise<{ category?: string }>;
@@ -15,15 +16,18 @@ export default async function Home({ searchParams }: Props) {
 
   let query = supabase
     .from("products")
-    .select("id, title, category, image_url, video_url, price, affiliate_link")
+    .select("id, title, category, image_url, video_url, price, affiliate_link", {
+      count: "exact",
+    })
     .eq("is_active", true)
-    .order("created_at", { ascending: false });
+    .order("created_at", { ascending: false })
+    .range(0, PAGE_SIZE - 1);
 
   if (activeCategory) {
     query = query.eq("category", activeCategory);
   }
 
-  const { data: products, error } = await query;
+  const { data: products, error, count } = await query;
 
   if (error) {
     console.error("[Supabase 에러]", error);
@@ -34,28 +38,13 @@ export default async function Home({ searchParams }: Props) {
     );
   }
 
-  if (!products || products.length === 0) {
-    return (
-      <p className="text-center text-gray-400 py-20">
-        등록된 상품이 없습니다.
-      </p>
-    );
-  }
+  const initialHasMore = (count ?? 0) > PAGE_SIZE;
 
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-      {products.map((product) => (
-        <ProductCard
-          key={product.id}
-          id={product.id}
-          category={product.category}
-          imageUrl={product.image_url}
-          videoUrl={product.video_url}
-          title={product.title}
-          price={product.price}
-          link={product.affiliate_link}
-        />
-      ))}
-    </div>
+    <InfiniteProductGrid
+      initialProducts={products ?? []}
+      initialHasMore={initialHasMore}
+      category={activeCategory}
+    />
   );
 }
