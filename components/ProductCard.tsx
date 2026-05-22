@@ -6,6 +6,7 @@ type ProductCardProps = {
   id: string;
   category: Category;
   imageUrl: string;
+  videoUrl?: string | null;
   title: string;
   price: string;
   link: string;
@@ -21,6 +22,7 @@ export default function ProductCard({
   id,
   category,
   imageUrl,
+  videoUrl,
   title,
   price,
   link,
@@ -34,18 +36,29 @@ export default function ProductCard({
         </span>
       </div>
 
-      {/* 2층: 1:1 이미지 — 클릭 시 쿠팡 링크 */}
+      {/* 2층: 영상 또는 이미지 — 클릭 시 제휴 링크 */}
       <a
         href={link}
         target="_blank"
         rel="noopener noreferrer"
-        className="relative w-full aspect-square mt-2 overflow-hidden block"
+        className="relative w-full aspect-square mt-2 overflow-hidden block bg-black"
       >
-        <img
-          src={imageUrl}
-          alt={title}
-          className="w-full h-full object-cover hover:scale-105 transition-transform duration-300"
-        />
+        {videoUrl ? (
+          <video
+            src={videoUrl}
+            autoPlay
+            muted
+            loop
+            playsInline
+            className="w-full h-full object-cover"
+          />
+        ) : (
+          <img
+            src={imageUrl}
+            alt={title}
+            className="w-full h-full object-cover hover:scale-105 transition-transform duration-300"
+          />
+        )}
       </a>
 
       {/* 3층: 드립형 제목 */}

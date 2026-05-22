@@ -11,6 +11,7 @@ type Product = {
   title: string;
   category: "mild" | "medium" | "hot";
   image_url: string;
+  video_url: string | null;
   price: string;
   affiliate_link: string;
   is_active: boolean;
@@ -20,6 +21,7 @@ type FormState = {
   title: string;
   category: "mild" | "medium" | "hot";
   image_url: string;
+  video_url: string;
   price: string;
   affiliate_link: string;
   is_active: boolean;
@@ -29,6 +31,7 @@ const emptyForm: FormState = {
   title: "",
   category: "mild",
   image_url: "",
+  video_url: "",
   price: "",
   affiliate_link: "",
   is_active: true,
@@ -49,7 +52,10 @@ export default function AdminPanel() {
   const [form, setForm] = useState<FormState>(emptyForm);
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [uploadingVideo, setUploadingVideo] = useState(false);
   const [aliHint, setAliHint] = useState("");
+  const [migrating, setMigrating] = useState(false);
+  const [migrateResult, setMigrateResult] = useState<string>("");
 
   useEffect(() => {
     fetchProducts();
@@ -103,6 +109,7 @@ export default function AdminPanel() {
       title: product.title,
       category: product.category,
       image_url: product.image_url,
+      video_url: product.video_url || "",
       price: product.price,
       affiliate_link: product.affiliate_link,
       is_active: product.is_active,
@@ -114,9 +121,14 @@ export default function AdminPanel() {
     e.preventDefault();
     setSaving(true);
 
+    const payload = {
+      ...form,
+      video_url: form.video_url || null,
+    };
+
     const { error } = editing
-      ? await supabase.from("products").update(form).eq("id", editing.id)
-      : await supabase.from("products").insert(form);
+      ? await supabase.from("products").update(payload).eq("id", editing.id)
+      : await supabase.from("products").insert(payload);
 
     setSaving(false);
 
@@ -129,30 +141,44 @@ export default function AdminPanel() {
     fetchProducts();
   }
 
+  async function uploadToR2(file: File): Promise<string> {
+    const fd = new FormData();
+    fd.append("file", file);
+    const res = await fetch("/api/upload", { method: "POST", body: fd });
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({}));
+      throw new Error(body.error || "업로드 실패");
+    }
+    const { url } = await res.json();
+    return url;
+  }
+
   async function handleImageUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
-
     setUploading(true);
-    const ext = file.name.split(".").pop();
-    const fileName = `${Date.now()}.${ext}`;
-
-    const { error } = await supabase.storage
-      .from("product-images")
-      .upload(fileName, file);
-
-    if (error) {
-      alert("업로드 실패: " + error.message);
+    try {
+      const url = await uploadToR2(file);
+      setForm((prev) => ({ ...prev, image_url: url }));
+    } catch (err) {
+      alert("이미지 업로드 실패: " + String(err));
+    } finally {
       setUploading(false);
-      return;
     }
+  }
 
-    const { data: { publicUrl } } = supabase.storage
-      .from("product-images")
-      .getPublicUrl(fileName);
-
-    setForm((prev) => ({ ...prev, image_url: publicUrl }));
-    setUploading(false);
+  async function handleVideoUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploadingVideo(true);
+    try {
+      const url = await uploadToR2(file);
+      setForm((prev) => ({ ...prev, video_url: url }));
+    } catch (err) {
+      alert("영상 업로드 실패: " + String(err));
+    } finally {
+      setUploadingVideo(false);
+    }
   }
 
   async function handleToggleActive(id: string, current: boolean) {
@@ -164,6 +190,23 @@ export default function AdminPanel() {
     if (!confirm("정말 삭제할까요?")) return;
     await supabase.from("products").delete().eq("id", id);
     fetchProducts();
+  }
+
+  async function handleMigrateToR2() {
+    if (!confirm("Supabase Storage에 저장된 이미지 40개를 R2로 이전합니다. 계속할까요?")) return;
+    setMigrating(true);
+    setMigrateResult("");
+    try {
+      const res = await fetch("/api/migrate-to-r2", { method: "POST" });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+      setMigrateResult(`완료: ${data.migrated}개 성공, ${data.failed}개 실패 (전체 ${data.total}개)`);
+      if (data.migrated > 0) fetchProducts();
+    } catch (err) {
+      setMigrateResult("오류: " + String(err));
+    } finally {
+      setMigrating(false);
+    }
   }
 
   return (
@@ -236,6 +279,20 @@ export default function AdminPanel() {
       {/* 상품 목록 탭 */}
       {activeTab === "list" && (
       <div className="max-w-5xl mx-auto px-6 py-8">
+        {/* 마이그레이션 버튼 */}
+        <div className="mb-4 flex items-center gap-3">
+          <button
+            onClick={handleMigrateToR2}
+            disabled={migrating}
+            className="text-xs font-semibold px-3 py-2 bg-blue-50 text-blue-600 border border-blue-200 rounded-lg hover:bg-blue-100 transition-colors disabled:opacity-50"
+          >
+            {migrating ? "마이그레이션 중..." : "☁️ Supabase → R2 마이그레이션"}
+          </button>
+          {migrateResult && (
+            <span className="text-xs text-gray-500">{migrateResult}</span>
+          )}
+        </div>
+
         {loading ? (
           <p className="text-center text-gray-400 py-20">불러오는 중...</p>
         ) : products.length === 0 ? (
@@ -250,6 +307,7 @@ export default function AdminPanel() {
                   <th className="text-left px-4 py-3 font-semibold text-gray-500">제목</th>
                   <th className="text-left px-4 py-3 font-semibold text-gray-500">카테고리</th>
                   <th className="text-left px-4 py-3 font-semibold text-gray-500">가격</th>
+                  <th className="text-left px-4 py-3 font-semibold text-gray-500">미디어</th>
                   <th className="text-left px-4 py-3 font-semibold text-gray-500">노출</th>
                   <th className="px-4 py-3"></th>
                 </tr>
@@ -265,6 +323,9 @@ export default function AdminPanel() {
                     </td>
                     <td className="px-4 py-3 text-[#FF5A00] font-bold">
                       {product.price}
+                    </td>
+                    <td className="px-4 py-3 text-gray-400 text-xs">
+                      {product.video_url ? "🎥 영상+이미지" : "🖼️ 이미지"}
                     </td>
                     <td className="px-4 py-3">
                       <button
@@ -375,6 +436,8 @@ export default function AdminPanel() {
                   <option value="hot">매운맛 — 이게??? 머고???????</option>
                 </select>
               </div>
+
+              {/* 이미지 업로드 */}
               <div>
                 <label className="text-xs font-semibold text-gray-500 block mb-1">
                   상품 이미지
@@ -402,7 +465,7 @@ export default function AdminPanel() {
                       <>
                         <span className="text-2xl mb-1">📷</span>
                         <span className="text-sm text-gray-400">클릭하여 이미지 선택</span>
-                        <span className="text-xs text-gray-300 mt-1">JPG, PNG, WEBP</span>
+                        <span className="text-xs text-gray-300 mt-1">JPG, PNG, WEBP → R2 저장</span>
                       </>
                     )}
                     <input
@@ -415,6 +478,49 @@ export default function AdminPanel() {
                   </label>
                 )}
               </div>
+
+              {/* 동영상 업로드 (선택) */}
+              <div>
+                <label className="text-xs font-semibold text-gray-500 block mb-1">
+                  상품 영상 <span className="font-normal text-gray-400">(선택 — 있으면 카드에서 영상으로 표시)</span>
+                </label>
+                {form.video_url ? (
+                  <div className="relative w-full rounded-lg overflow-hidden border border-gray-200 bg-black">
+                    <video
+                      src={form.video_url}
+                      className="w-full max-h-40 object-contain"
+                      controls
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setForm({ ...form, video_url: "" })}
+                      className="absolute top-2 right-2 bg-white/90 text-gray-600 rounded-full w-7 h-7 flex items-center justify-center text-xs hover:bg-white shadow"
+                    >
+                      ✕
+                    </button>
+                  </div>
+                ) : (
+                  <label className="flex flex-col items-center justify-center w-full h-24 border-2 border-dashed border-gray-200 rounded-lg cursor-pointer hover:border-[#FF5A00] transition-colors">
+                    {uploadingVideo ? (
+                      <span className="text-sm text-gray-400">업로드 중...</span>
+                    ) : (
+                      <>
+                        <span className="text-2xl mb-1">🎥</span>
+                        <span className="text-sm text-gray-400">클릭하여 영상 선택</span>
+                        <span className="text-xs text-gray-300 mt-1">MP4, MOV, WEBM → R2 저장</span>
+                      </>
+                    )}
+                    <input
+                      type="file"
+                      accept="video/*"
+                      className="hidden"
+                      onChange={handleVideoUpload}
+                      disabled={uploadingVideo}
+                    />
+                  </label>
+                )}
+              </div>
+
               <div>
                 <label className="text-xs font-semibold text-gray-500 block mb-1">
                   가격
@@ -463,10 +569,10 @@ export default function AdminPanel() {
                 </button>
                 <button
                   type="submit"
-                  disabled={saving || uploading}
+                  disabled={saving || uploading || uploadingVideo}
                   className="flex-1 bg-[#FF5A00] text-white text-sm font-bold py-2.5 rounded-lg hover:bg-[#e04e00] transition-colors disabled:opacity-50"
                 >
-                  {uploading ? "이미지 업로드 중..." : saving ? "저장 중..." : editing ? "수정 완료" : "추가 완료"}
+                  {uploading ? "이미지 업로드 중..." : uploadingVideo ? "영상 업로드 중..." : saving ? "저장 중..." : editing ? "수정 완료" : "추가 완료"}
                 </button>
               </div>
             </form>

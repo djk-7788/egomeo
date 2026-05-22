@@ -15,7 +15,7 @@ export default async function Home({ searchParams }: Props) {
 
   let query = supabase
     .from("products")
-    .select("id, title, category, image_url, price, affiliate_link")
+    .select("id, title, category, image_url, video_url, price, affiliate_link")
     .eq("is_active", true)
     .order("created_at", { ascending: false });
 
@@ -50,6 +50,7 @@ export default async function Home({ searchParams }: Props) {
           id={product.id}
           category={product.category}
           imageUrl={product.image_url}
+          videoUrl={product.video_url}
           title={product.title}
           price={product.price}
           link={product.affiliate_link}

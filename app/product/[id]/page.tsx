@@ -54,13 +54,25 @@ export default async function ProductPage({ params }: Props) {
       {/* 상단: 상품 상세 */}
       <div className="max-w-3xl mx-auto mb-16">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-start">
-          {/* 이미지 */}
-          <div className="aspect-square w-full overflow-hidden rounded-2xl border border-gray-100">
-            <img
-              src={product.image_url}
-              alt={product.title}
-              className="w-full h-full object-cover"
-            />
+          {/* 이미지 또는 영상 */}
+          <div className="aspect-square w-full overflow-hidden rounded-2xl border border-gray-100 bg-black">
+            {product.video_url ? (
+              <video
+                src={product.video_url}
+                autoPlay
+                muted
+                loop
+                playsInline
+                controls
+                className="w-full h-full object-cover"
+              />
+            ) : (
+              <img
+                src={product.image_url}
+                alt={product.title}
+                className="w-full h-full object-cover"
+              />
+            )}
           </div>
 
           {/* 정보 */}
@@ -96,6 +108,7 @@ export default async function ProductPage({ params }: Props) {
                 id={p.id}
                 category={p.category}
                 imageUrl={p.image_url}
+                videoUrl={p.video_url}
                 title={p.title}
                 price={p.price}
                 link={p.affiliate_link}
