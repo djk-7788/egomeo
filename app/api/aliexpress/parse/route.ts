@@ -63,7 +63,8 @@ async function callAffiliateApi(
   method: string,
   extraParams: Record<string, string>,
   appKey: string,
-  appSecret: string
+  appSecret: string,
+  extraFixed?: Record<string, string>
 ) {
   const params: Record<string, string> = {
     app_key: appKey,
@@ -83,6 +84,7 @@ async function callAffiliateApi(
       "target_sale_price_currency",
       "promotion_link",
     ].join(","),
+    ...extraFixed,
     ...extraParams,
   };
   params.sign = calcSign(params, appSecret);
@@ -93,6 +95,47 @@ async function callAffiliateApi(
     body: new URLSearchParams(params).toString(),
   });
   return res.json();
+}
+
+// 원본 URL → 어필리에이트 링크 직접 변환 (상품 ID 보존 보장)
+async function generateAffiliateLinkFromUrl(
+  sourceUrl: string,
+  trackingId: string,
+  appKey: string,
+  appSecret: string
+): Promise<string | null> {
+  try {
+    const params: Record<string, string> = {
+      app_key: appKey,
+      timestamp: getTimestamp(),
+      format: "json",
+      v: "2.0",
+      sign_method: "md5",
+      method: "aliexpress.affiliate.link.generate",
+      promotion_link_type: "0",
+      source_values: sourceUrl,
+      tracking_id: trackingId,
+    };
+    params.sign = calcSign(params, appSecret);
+
+    const res = await fetch("https://api-sg.aliexpress.com/sync", {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded;charset=utf-8" },
+      body: new URLSearchParams(params).toString(),
+    });
+    const data = await res.json();
+    const respResult = data?.aliexpress_affiliate_link_generate_response?.resp_result;
+    console.log("[ali-parse] link.generate:", JSON.stringify(respResult).slice(0, 300));
+
+    if (respResult?.resp_code === 200) {
+      const links: { promotion_link?: string }[] =
+        respResult.result?.promotion_links?.promotion_link ?? [];
+      return links[0]?.promotion_link ?? null;
+    }
+  } catch (e) {
+    console.error("[ali-parse] link.generate error:", e);
+  }
+  return null;
 }
 
 export async function GET(req: NextRequest) {
@@ -113,11 +156,18 @@ export async function GET(req: NextRequest) {
 
   const appKey = process.env.ALIEXPRESS_APP_KEY;
   const appSecret = process.env.ALIEXPRESS_APP_SECRET;
+  const trackingId = process.env.ALIEXPRESS_TRACKING_ID ?? "default";
   if (!appKey || !appSecret) {
     return NextResponse.json({ error: "API 키가 설정되지 않았습니다." }, { status: 500 });
   }
 
-  // ── 1차: aliexpress.affiliate.productdetail.get ───────────────
+  // ── 1단계: link.generate로 원본 URL → 어필리에이트 링크 (상품 ID 보존) ──
+  // 가장 신뢰할 수 있는 방법. 원본 URL의 상품 ID가 그대로 affiliate URL에 유지됨.
+  const affiliateLink = await generateAffiliateLinkFromUrl(url, trackingId, appKey, appSecret);
+
+  // ── 2단계: productdetail.get으로 상품 정보 조회 (ID 검증 필수) ─────────
+  let productInfo: ReturnType<typeof parseProduct> | null = null;
+
   try {
     const data = await callAffiliateApi(
       "aliexpress.affiliate.productdetail.get",
@@ -131,36 +181,60 @@ export async function GET(req: NextRequest) {
     if (respResult?.resp_code === 200) {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const raw: any[] = respResult.result?.products?.product ?? [];
-      if (raw.length > 0) return NextResponse.json(parseProduct(raw[0]));
+      // 반드시 요청한 product_id와 일치하는 상품만 사용
+      const matched = raw.find((p) => String(p.product_id) === productId);
+      if (matched) productInfo = parseProduct(matched);
     }
   } catch (e) {
     console.error("[ali-parse] productdetail.get error:", e);
   }
 
-  // ── 2차: aliexpress.affiliate.product.query (product_ids 필터) ─
-  try {
-    const data = await callAffiliateApi(
-      "aliexpress.affiliate.product.query",
-      { product_ids: productId, page_no: "1", page_size: "1" },
-      appKey,
-      appSecret
-    );
-    const respResult = data?.aliexpress_affiliate_product_query_response?.resp_result;
-    console.log("[ali-parse] product.query:", JSON.stringify(respResult).slice(0, 300));
+  // productdetail에서 못 찾으면 product.query로 재시도 (ID 검증 포함)
+  if (!productInfo) {
+    try {
+      const data = await callAffiliateApi(
+        "aliexpress.affiliate.product.query",
+        { product_ids: productId, page_no: "1", page_size: "1" },
+        appKey,
+        appSecret
+      );
+      const respResult = data?.aliexpress_affiliate_product_query_response?.resp_result;
+      console.log("[ali-parse] product.query:", JSON.stringify(respResult).slice(0, 300));
 
-    if (respResult?.resp_code === 200) {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const raw: any[] = respResult.result?.products?.product ?? [];
-      if (raw.length > 0) return NextResponse.json(parseProduct(raw[0]));
+      if (respResult?.resp_code === 200) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const raw: any[] = respResult.result?.products?.product ?? [];
+        const matched = raw.find((p) => String(p.product_id) === productId);
+        if (matched) productInfo = parseProduct(matched);
+      }
+    } catch (e) {
+      console.error("[ali-parse] product.query error:", e);
     }
+  }
 
-    const apiMsg = respResult?.resp_msg ?? "API에서 상품을 찾지 못했습니다.";
+  // ── 결과 조합 ────────────────────────────────────────────────────────────
+  if (!affiliateLink && !productInfo) {
     return NextResponse.json(
-      { error: `상품 조회 실패: ${apiMsg} (ID: ${productId})` },
+      { error: `상품 조회 실패. 어필리에이트 프로그램에 등록된 상품인지 확인하세요. (ID: ${productId})` },
       { status: 400 }
     );
-  } catch (e) {
-    console.error("[ali-parse] product.query error:", e);
-    return NextResponse.json({ error: "API 호출 중 오류가 발생했습니다." }, { status: 500 });
   }
+
+  // link.generate가 실패한 경우 productdetail의 promotion_link를 사용하되
+  // 그마저 없으면 에러
+  const finalAffiliateLink = affiliateLink ?? productInfo?.affiliate_link ?? "";
+  if (!finalAffiliateLink) {
+    return NextResponse.json(
+      { error: `어필리에이트 링크 생성 실패. 해당 상품이 프로모션 대상인지 확인하세요. (ID: ${productId})` },
+      { status: 400 }
+    );
+  }
+
+  return NextResponse.json({
+    product_id: productId,
+    title: productInfo?.title ?? "",
+    images: productInfo?.images ?? [],
+    price: productInfo?.price ?? "",
+    affiliate_link: finalAffiliateLink,
+  });
 }
