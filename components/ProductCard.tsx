@@ -55,7 +55,7 @@ export default function ProductCard({
 
       {/* 3층: 드립형 제목 */}
       <div className="px-3 pt-3">
-        <h2 className="text-sm font-bold text-[#111111] leading-snug line-clamp-2">
+        <h2 className="text-sm font-bold text-[#111111] leading-snug line-clamp-3">
           {title}
         </h2>
       </div>

@@ -33,14 +33,13 @@ function getSelectedImages() {
 function renderImageGrid() {
   const grid = document.getElementById('imageGrid');
   const selCountEl = document.getElementById('imgSelCount');
-  if (!grid || !selCountEl) return; // DOM 준비 전 호출 방어
+  if (!grid || !selCountEl) return;
 
   revokeBlobUrls();
   grid.innerHTML = '';
 
   const selected = getSelectedImages();
-  const firstSelected = selected[0];
-  selCountEl.textContent = `${selected.length}개 선택`;
+  selCountEl.textContent = selected.length > 0 ? '✓ 대표 선택됨' : '클릭해서 선택';
 
   if (imageState.length === 0) {
     grid.innerHTML = '<div class="img-empty">이미지 없음 — 아래에서 직접 추가하세요</div>';
@@ -49,14 +48,12 @@ function renderImageGrid() {
 
   imageState.forEach((img) => {
     const isSelected = img.selected;
-    const isMain = isSelected && firstSelected?.id === img.id;
     const displaySrc = getDisplaySrc(img);
 
     const cell = document.createElement('div');
     cell.className = `img-cell${isSelected ? ' selected' : ' unselected'}`;
     cell.dataset.id = img.id;
 
-    // 이미지 — innerHTML 대신 DOM 직접 생성 (URL 특수문자로 인한 파싱 오류 방지)
     if (displaySrc) {
       const imgEl = document.createElement('img');
       imgEl.src = displaySrc;
@@ -64,41 +61,36 @@ function renderImageGrid() {
       cell.appendChild(imgEl);
     }
 
-    // 제거 버튼 — 직접 참조 보관
+    // 제거 버튼
     const removeBtn = document.createElement('button');
     removeBtn.className = 'img-remove';
     removeBtn.title = '제거';
     removeBtn.textContent = '✕';
     cell.appendChild(removeBtn);
 
-    // 선택 체크 표시
+    // 대표 배지 — 선택된 이미지에만
     if (isSelected) {
-      const check = document.createElement('div');
-      check.className = 'img-check';
-      check.textContent = '✓';
-      cell.appendChild(check);
-    }
-
-    // 대표 배지
-    if (isMain) {
       const badge = document.createElement('div');
       badge.className = 'img-badge-main';
       badge.textContent = '대표';
       cell.appendChild(badge);
     }
 
-    // 클릭 → 선택/해제 토글
+    // 클릭 → 단일 선택 (이 이미지만 선택, 나머지 해제)
     cell.addEventListener('click', (e) => {
       if (e.target === removeBtn) return;
+      imageState.forEach((i) => { i.selected = false; });
       const target = imageState.find((i) => i.id === img.id);
-      if (target) target.selected = !target.selected;
+      if (target) target.selected = true;
       renderImageGrid();
     });
 
-    // 제거 버튼 — querySelector 없이 직접 참조
+    // 제거 버튼 — 선택된 이미지 제거 시 첫 번째 이미지 자동 선택
     removeBtn.addEventListener('click', (e) => {
       e.stopPropagation();
+      const wasSelected = img.selected;
       imageState = imageState.filter((i) => i.id !== img.id);
+      if (wasSelected && imageState.length > 0) imageState[0].selected = true;
       renderImageGrid();
     });
 
@@ -108,28 +100,30 @@ function renderImageGrid() {
 
 // ─── 이미지 직접 추가 ────────────────────────────────────
 
-// 파일 추가
+// 파일 추가 — 추가된 첫 번째 파일만 선택 (기존 선택 해제)
 function addFiles(files) {
-  Array.from(files).forEach((file) => {
-    if (!file.type.startsWith('image/')) return;
+  const arr = Array.from(files).filter((f) => f.type.startsWith('image/'));
+  if (arr.length === 0) return;
+  imageState.forEach((i) => { i.selected = false; });
+  arr.forEach((file, idx) => {
     imageState.push({
       id: makeImageId(),
       type: 'file',
       src: null,
       file,
       name: file.name,
-      selected: true,
+      selected: idx === 0,
     });
   });
   renderImageGrid();
 }
 
-// URL 추가
+// URL 추가 — 추가된 이미지만 선택 (기존 선택 해제)
 function addUrlImage(url) {
   url = url.trim();
   if (!url) return;
-  // 간단 중복 체크
   if (imageState.some((i) => i.src === url)) return;
+  imageState.forEach((i) => { i.selected = false; });
   imageState.push({
     id: makeImageId(),
     type: 'url',
@@ -259,15 +253,15 @@ async function loadProduct() {
   document.getElementById('inpTitle').value = data.title || '';
   document.getElementById('inpProductUrl').value = data.productUrl || '';
 
-  // 이미지 상태 초기화 — 파싱된 이미지 모두 선택 상태로
+  // 이미지 상태 초기화 — 첫 번째 이미지만 선택
   const parsedUrls = Array.isArray(data.images) ? data.images : (data.imageUrl ? [data.imageUrl] : []);
-  imageState = parsedUrls.map((src) => ({
+  imageState = parsedUrls.map((src, idx) => ({
     id: makeImageId(),
     type: 'url',
     src,
     file: null,
     name: null,
-    selected: true,
+    selected: idx === 0,
   }));
   renderImageGrid();
 
