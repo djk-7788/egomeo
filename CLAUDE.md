@@ -178,11 +178,12 @@ egomeo/
 │   ├── newtab.css            # 스타일 (#FF5A00 포인트)
 │   └── newtab.js             # 알리 이미지 fetch, Canvas+MediaRecorder 슬라이드쇼, 영상 자르기
 └── sourcing-extension/       # 크롬 확장 프로그램 "이게머고 소싱툴" (Manifest V3)
-    ├── manifest.json         # MV3 설정 (content_scripts: aliexpress/coupang)
+    ├── manifest.json         # MV3 설정 (side_panel, content_scripts: aliexpress/coupang)
+    ├── background.js         # 아이콘 클릭 → 사이드패널 열기 (setPanelBehavior)
     ├── config.js             # 사용자 설정 (SITE_URL, ADMIN_KEY, Supabase 키)
     ├── db.js                 # IndexedDB 헬퍼 (dbGetAll/dbAdd/dbPut/dbDelete/dbReorder)
     ├── content.js            # 상품 페이지 자동 파싱 (제목/가격/이미지/URL)
-    ├── popup.html/css/js     # 팝업 UI — 파싱 미리보기 + 큐에 추가
+    ├── sidepanel.html/css/js # 사이드패널 UI — 탭 이동 시 자동 파싱, 이미지 멀티셀렉트, 직접 추가
     └── queue.html/css/js     # 큐 관리 페이지 — 드래그 정렬, 인라인 수정, 업로드
 ```
 
@@ -222,28 +223,25 @@ egomeo/
 
 ---
 
-## 최근 완료 작업 (2026-05-22 기준)
+## 최근 완료 작업 (2026-05-23 기준)
 
 아래 항목들이 이번 세션에서 완료됨. 상세 내용은 하단 "완료된 작업" 참고.
 
-- Cloudflare R2 연동 (이미지+영상 스토리지, 버킷: `egomeo-media`)
-- 기존 Supabase Storage 이미지 40개 R2 마이그레이션 완료
-- MP4 영상 업로드 기능 (`video_url` 컬럼 추가, Vercel 4.5MB 한계는 청크 분할 업로드로 우회)
-- 스크롤 재생/정지 (VideoPlayer 컴포넌트, Intersection Observer, threshold 0.5)
-- 무한 스크롤 전면 개편 (메인 피드 + 상세 페이지 하단, 12개씩, 하단 400px 전 미리 로드)
-- 공정위 고지 문구 추가 (헤더 아래 비고정, 전 페이지 공통)
-- 크롬 확장 프로그램 "이게머고? 미디어툴" 제작 (`chrome-extension/` 폴더, Manifest V3)
 - 크롬 확장 프로그램 "이게머고 소싱툴" 제작 (`sourcing-extension/` 폴더, Manifest V3)
+  - Chrome Side Panel 방식 (탭 이동해도 닫히지 않음, 자동 재파싱)
+  - IndexedDB 큐 관리 (드래그 정렬, 인라인 수정, R2 업로드, Supabase 등록)
+  - 알리 이미지 멀티셀렉트 그리드 + 파일/URL 직접 추가
+  - 알리 어필리에이트 링크 자동 변환 (`link.generate` 방식, 상품 ID 보존 보장)
 
 ---
 
-## 어필리에이트 현황 (2026-05-22 기준)
+## 어필리에이트 현황 (2026-05-23 기준)
 
 | 플랫폼 | 상태 | 비고 |
 |---|---|---|
-| 쿠팡파트너스 | 가입 신청 중 / 예정 | 링크 발급 후 즉시 적용 가능 |
-| 알리익스프레스 | **API 연동 완료** | APP_KEY/SECRET/TRACKING_ID Vercel 등록 완료. 검색 → 폼 자동입력 동작 중 |
-| 아마존 어소시에이트 | 가입 신청 중 / 예정 | 해외 상품 대응용, 달러 수익 |
+| 쿠팡파트너스 | 가입 신청 중 / 예정 | 링크 발급 후 즉시 적용 가능. 소싱툴에서는 수동 입력 방식으로 처리 예정 |
+| 알리익스프레스 | **API 연동 완료** | APP_KEY/SECRET/TRACKING_ID Vercel 등록 완료. 소싱툴 큐 추가 시 `link.generate`로 자동 변환 |
+| 아마존 어소시에이트 | **보류** | 현재 계획 없음 |
 
 ---
 
@@ -294,16 +292,24 @@ egomeo/
   - 슬라이드쇼 만들기 탭: 알리 URL 입력 → 이미지 선택(체크박스) → 드래그 순서 조정 → 간격 설정(0.5~2초) → Canvas+MediaRecorder로 MP4/WebM 생성 + 다운로드
   - 영상 자르기 탭: 영상 파일 업로드 → 타임라인 핸들로 구간 선택 → 자르기 + 다운로드
   - host_permissions으로 aliexpress.com/alicdn.com CORS 없이 직접 fetch
+- [완료] 크롬 확장 프로그램 "이게머고 소싱툴" 제작 (`sourcing-extension/` 폴더, Manifest V3)
+  - Chrome Side Panel 방식: 탭 이동해도 닫히지 않음, `chrome.tabs.onActivated/onUpdated`로 자동 재파싱
+  - content.js: 알리/쿠팡 상품 페이지 자동 파싱 (제목/가격/이미지 최대 12장/URL)
+  - 이미지 멀티셀렉트 그리드 (선택/해제 토글, 대표 배지, 파일 드롭존/URL 직접 추가)
+  - IndexedDB 큐: 드래그 정렬, 인라인 수정, 체크박스 선택 일괄 업로드/삭제
+  - 큐 업로드: 이미지 → `/api/extension/proxy-image` → R2, 영상 → presigned URL → R2, Supabase insert
+  - 알리 어필리에이트 링크 자동 변환: `link.generate` API 사용 (상품 ID 보존 보장, `product_id` 검증 추가)
+  - `/api/upload` + `/api/extension/proxy-image` 모두 `X-Admin-Key` 헤더 인증 지원
 
 ---
 
 ## 다음 할 일 (우선순위순)
 
-1. **소싱툴 config.js 설정** — `sourcing-extension/config.js`의 `SUPABASE_ANON_KEY`를 `.env.local`에서 복사해 채워야 동작함
-2. **AI 드립 제목 생성** — 알리 검색 후 원본 상품명 기반으로 Claude API 호출해 드립형 제목 자동 생성
+1. **AI 드립 제목 생성** — 알리 검색 후 원본 상품명 기반으로 Claude API 호출해 드립형 제목 자동 생성
+2. **소싱툴 쿠팡 링크 처리** — 쿠팡파트너스 가입 완료 후, 소싱툴에서 쿠팡 상품 URL을 파트너스 링크로 수동 입력하는 UI 추가
 3. **크롬 확장 슬라이드쇼 이미지 추출 개선** — 알리 페이지가 JS 렌더링 전용이면 정적 HTML에서 이미지 못 찾는 문제 해결 필요 (content script 방식 검토)
-4. **쿠팡/아마존 URL 파싱 개선** — 현재 봇 차단으로 제한적. Puppeteer/플레이라이트 서버리스 또는 별도 파싱 서비스 검토 필요
-5. **알리 트래킹 ID 교체** — 포털에서 전용 ID 생성 후 `ALIEXPRESS_TRACKING_ID` 환경변수 교체
+4. **쿠팡 URL 파싱 개선** — 현재 봇 차단으로 제한적. Puppeteer/플레이라이트 서버리스 또는 별도 파싱 서비스 검토 필요 (아마존은 보류)
+5. **알리 트래킹 ID 교체** — 포털에서 전용 ID 생성 후 `ALIEXPRESS_TRACKING_ID` 환경변수 교체 + `sourcing-extension/config.js`도 동일하게 업데이트
 6. **소셜 로그인** — Supabase Auth (구글/카카오/네이버)
 7. **찜하기** — 하트 버튼, 마이페이지
 
@@ -320,6 +326,9 @@ egomeo/
 | 이미지/영상을 Cloudflare R2에 저장 | Supabase Storage 대비 대용량 파일 비용 유리, 글로벌 CDN, 영상 스트리밍 적합 |
 | R2 업로드를 서버 API 경유 | 브라우저에서 직접 R2에 올리면 시크릿 키 노출 위험. `/api/upload`가 admin 쿠키 검증 후 처리 |
 | 서버 컴포넌트로 데이터 fetch | SEO와 초기 로딩 속도 최적화 |
+| 소싱툴을 팝업 대신 Side Panel로 | 팝업은 외부 클릭 시 닫힘. 사이드패널은 고정되어 탭 이동하면서 계속 쓸 수 있음 |
+| 어필리에이트 변환에 `link.generate` 사용 | `product.query` 등 검색 계열 API는 다른 상품을 반환할 수 있음. `link.generate`는 원본 URL을 그대로 변환해 product_id가 절대 바뀌지 않음 |
+| 소싱툴 확장에서 X-Admin-Key 헤더 인증 | 확장에서는 HttpOnly 쿠키 접근 불가. X-Admin-Key 헤더로 동일한 ADMIN_PASSWORD 값 검증 |
 
 ---
 
