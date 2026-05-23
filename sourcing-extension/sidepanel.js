@@ -264,17 +264,52 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo) => {
   }
 });
 
+// ─── 알리익스프레스 어필리에이트 링크 변환 ───────────────
+
+async function convertToAffiliateLink(productUrl) {
+  const res = await fetch(
+    `${CONFIG.SITE_URL}/api/aliexpress/parse?url=${encodeURIComponent(productUrl)}`
+  );
+  if (!res.ok) {
+    const json = await res.json().catch(() => ({}));
+    throw new Error(json.error || `API 오류 ${res.status}`);
+  }
+  return res.json(); // { product_id, title, images, price, affiliate_link }
+}
+
 // ─── 큐에 추가 ──────────────────────────────────────────
 
 document.getElementById('btnAdd').addEventListener('click', async () => {
   const btn = document.getElementById('btnAdd');
   btn.disabled = true;
+
+  const rawProductUrl = document.getElementById('inpProductUrl').value.trim();
+  const isAliExpress = rawProductUrl.includes('aliexpress.com');
+  let finalProductUrl = rawProductUrl;
+  let affiliateConverted = false;
+
+  // 알리익스프레스 URL → 어필리에이트 링크 자동 변환
+  if (isAliExpress) {
+    btn.textContent = '링크 변환 중...';
+    try {
+      const result = await convertToAffiliateLink(rawProductUrl);
+      if (result.affiliate_link) {
+        finalProductUrl = result.affiliate_link;
+        affiliateConverted = true;
+        // 폼 URL 필드도 업데이트
+        document.getElementById('inpProductUrl').value = finalProductUrl;
+      }
+    } catch (err) {
+      console.warn('[어필리에이트 변환 실패]', err.message);
+      // 실패해도 원본 URL로 계속 진행
+    }
+  }
+
   btn.textContent = '저장 중...';
 
   try {
     const count = await dbCount();
 
-    // 이미지 직렬화 (File 객체는 IndexedDB에 그대로 저장 가능, blob URL은 제외)
     const imagesToSave = imageState.map((img) => ({
       id: img.id,
       type: img.type,
@@ -291,10 +326,11 @@ document.getElementById('btnAdd').addEventListener('click', async () => {
       id: Date.now(),
       title: document.getElementById('inpTitle').value.trim() || '(제목 없음)',
       price: document.getElementById('inpPrice').value.trim(),
-      productUrl: document.getElementById('inpProductUrl').value.trim(),
+      productUrl: finalProductUrl,
+      affiliateConverted,   // 변환 여부 기록
       category: document.getElementById('selCategory').value,
       images: imagesToSave,
-      imageUrl: mainImageUrl, // 하위 호환
+      imageUrl: mainImageUrl,
       videoFile: null,
       videoName: null,
       order: count,
@@ -303,6 +339,17 @@ document.getElementById('btnAdd').addEventListener('click', async () => {
 
     await dbAdd(item);
     await refreshBadge();
+
+    // 성공 화면에 변환 결과 표시
+    const sub = document.querySelector('#stateSuccess .success-sub');
+    if (sub) {
+      sub.innerHTML = isAliExpress
+        ? (affiliateConverted
+            ? '✅ 어필리에이트 링크로 자동 변환됐어요.<br>다음 상품으로 이동하면 자동 파싱됩니다.'
+            : '⚠️ 링크 변환 실패 — 원본 URL로 저장됐어요.<br>큐에서 직접 수정하세요.')
+        : '다음 상품 페이지로 이동하면<br>자동으로 파싱됩니다.';
+    }
+
     showState('stateSuccess');
   } catch (err) {
     alert('저장 실패: ' + err.message);
