@@ -1,7 +1,98 @@
 (function () {
-  // AliExpress 파싱
+
+  // ─── 이미지 URL 고해상도로 업그레이드 (알리 전용) ─────────────
+  function upgradeAliRes(src) {
+    return src
+      .replace(/_\d+x\d+(\.\w+)$/, '_960x960$1')
+      .replace(/_\d+x\d+\.jpg/, '_960x960.jpg');
+  }
+
+  // ─── 알리익스프레스 — 갤러리 이미지 전체 파싱 ─────────────────
+  function parseAliExpressImages() {
+    const seen = new Map(); // dedup key → hq URL
+
+    // 방법 1: 썸네일 리스트 컨테이너 (class에 "images--item" 포함)
+    const gallerySelectors = [
+      '[class*="images--item"]',
+      '[class*="slider--item"]',
+      '[class*="image--item"]',
+      '.pdp-mod-common-image',
+    ];
+
+    for (const sel of gallerySelectors) {
+      const containers = document.querySelectorAll(sel);
+      if (containers.length < 2) continue; // 1개면 썸네일 영역 아닐 가능성
+
+      containers.forEach((el) => {
+        const img = el.querySelector('img') || (el.tagName === 'IMG' ? el : null);
+        if (!img) return;
+        let src = img.getAttribute('src') || img.getAttribute('data-src') || img.getAttribute('data-lazy') || '';
+        if (src.startsWith('//')) src = 'https:' + src;
+        if (!src || src.includes('1x1') || src.includes('placeholder') || src.includes('gif')) return;
+        const key = src.replace(/_\d+x\d+(\.\w+)$/, '$1'); // 사이즈 제거한 dedup 키
+        if (!seen.has(key)) seen.set(key, upgradeAliRes(src));
+      });
+
+      if (seen.size > 1) break; // 여러 장 있으면 OK
+    }
+
+    // 방법 2: 메인 슬라이더 단일 이미지
+    if (seen.size === 0) {
+      const mainSelectors = [
+        '[class*="slider--img"]',
+        '[class*="main-image"] img',
+        '[class*="image--wrap"] img',
+      ];
+      for (const sel of mainSelectors) {
+        const img = document.querySelector(sel);
+        let src = img?.getAttribute('src') || img?.getAttribute('data-src') || '';
+        if (src.startsWith('//')) src = 'https:' + src;
+        if (src && !src.includes('1x1')) {
+          seen.set(src, upgradeAliRes(src));
+          break;
+        }
+      }
+    }
+
+    // OG 이미지 폴백
+    if (seen.size === 0) {
+      const og = document.querySelector('meta[property="og:image"]')?.getAttribute('content');
+      if (og) seen.set(og, og);
+    }
+
+    return Array.from(seen.values()).slice(0, 12);
+  }
+
+  // ─── 쿠팡 — 갤러리 이미지 전체 파싱 ──────────────────────────
+  function parseCoupangImages() {
+    const found = new Set();
+
+    const selectors = [
+      '#carousel_vertical_target img',
+      '#repImageContainer img',
+      '.prod-image__detail img',
+      '[class*="prod-img"] img',
+    ];
+
+    for (const sel of selectors) {
+      document.querySelectorAll(sel).forEach((img) => {
+        const src = img.getAttribute('src') || img.getAttribute('data-src') || '';
+        if (src && src.startsWith('http') && !src.includes('1x1')) found.add(src);
+      });
+      if (found.size > 0) break;
+    }
+
+    // OG 폴백
+    if (found.size === 0) {
+      const og = document.querySelector('meta[property="og:image"]')?.getAttribute('content');
+      if (og) found.add(og);
+    }
+
+    return Array.from(found).slice(0, 12);
+  }
+
+  // ─── 알리익스프레스 상품 정보 파싱 ────────────────────────────
   function parseAliExpress() {
-    // 제목: OG 태그 → DOM 순으로 시도
     const ogTitle =
       document.querySelector('meta[property="og:title"]')?.getAttribute('content') || '';
     const title =
@@ -11,7 +102,6 @@
       document.querySelector('h1')?.textContent?.trim() ||
       ogTitle;
 
-    // 가격: 여러 셀렉터 시도
     let price = '';
     const priceSelectors = [
       '[class*="currentPriceText"]',
@@ -21,40 +111,18 @@
       '.product-price-value',
     ];
     for (const sel of priceSelectors) {
-      const el = document.querySelector(sel);
-      const t = el?.textContent?.trim();
+      const t = document.querySelector(sel)?.textContent?.trim();
       if (t) { price = t; break; }
     }
 
-    // 이미지: 슬라이더 첫 이미지 → OG
-    const ogImage =
-      document.querySelector('meta[property="og:image"]')?.getAttribute('content') || '';
-    let imageUrl = '';
-    const imgSelectors = [
-      '[class*="slider--img"]',
-      '[class*="images--item"] img',
-      '[class*="image--wrap"] img',
-      '.pdp-mod-common-image img',
-    ];
-    for (const sel of imgSelectors) {
-      const el = document.querySelector(sel);
-      const src = el?.getAttribute('src') || el?.getAttribute('data-src') || '';
-      if (src && !src.includes('placeholder') && !src.includes('1x1')) {
-        imageUrl = src.startsWith('//') ? 'https:' + src : src;
-        break;
-      }
-    }
-    if (!imageUrl) imageUrl = ogImage;
-
-    return { title: title.trim(), price, imageUrl };
+    const images = parseAliExpressImages();
+    return { title: title.trim(), price, images, imageUrl: images[0] || '' };
   }
 
-  // 쿠팡 파싱
+  // ─── 쿠팡 상품 정보 파싱 ──────────────────────────────────────
   function parseCoupang() {
     const ogTitle =
       document.querySelector('meta[property="og:title"]')?.getAttribute('content') || '';
-    const ogImage =
-      document.querySelector('meta[property="og:image"]')?.getAttribute('content') || '';
 
     const title =
       document.querySelector('h2.prod-buy-header__title')?.textContent?.trim() ||
@@ -70,27 +138,15 @@
       '[class*="price-area"] strong',
     ];
     for (const sel of priceSelectors) {
-      const el = document.querySelector(sel);
-      const t = el?.textContent?.trim();
+      const t = document.querySelector(sel)?.textContent?.trim();
       if (t) { price = '₩' + t.replace(/[^0-9,]/g, ''); break; }
     }
 
-    let imageUrl = ogImage;
-    const imgSelectors = [
-      '#repImageContainer img',
-      '.prod-image__detail img',
-      '[class*="prod-image"] img',
-    ];
-    for (const sel of imgSelectors) {
-      const el = document.querySelector(sel);
-      const src = el?.getAttribute('src') || el?.getAttribute('data-src') || '';
-      if (src) { imageUrl = src; break; }
-    }
-
-    return { title: title.trim(), price, imageUrl };
+    const images = parseCoupangImages();
+    return { title: title.trim(), price, images, imageUrl: images[0] || '' };
   }
 
-  // 메시지 수신 — popup에서 호출
+  // ─── 메시지 수신 ──────────────────────────────────────────────
   chrome.runtime.onMessage.addListener((request, _sender, sendResponse) => {
     if (request.action !== 'parseProduct') return;
 
@@ -101,7 +157,7 @@
     } else if (url.includes('coupang.com')) {
       data = parseCoupang();
     } else {
-      data = { title: '', price: '', imageUrl: '' };
+      data = { title: '', price: '', images: [], imageUrl: '' };
     }
 
     sendResponse({ ...data, productUrl: url });

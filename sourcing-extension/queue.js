@@ -3,6 +3,63 @@
 let allItems = [];
 let dragSrcId = null;
 
+// ─── 이미지 헬퍼 ─────────────────────────────────────────
+
+// 카드에 표시할 대표 이미지 URL (blob URL 포함)
+function getCardImageSrc(item) {
+  if (Array.isArray(item.images) && item.images.length > 0) {
+    const sel = item.images.filter((i) => i.selected);
+    const main = sel[0] || item.images[0];
+    if (main.type === 'url' && main.src) return main.src;
+    if (main.type === 'file' && main.file) return URL.createObjectURL(main.file);
+  }
+  return item.imageUrl || '';
+}
+
+// 업로드 시 첫 번째 선택 이미지를 R2에 올리고 URL 반환
+async function getMainR2Url(item) {
+  // 새 구조: item.images 배열
+  if (Array.isArray(item.images) && item.images.length > 0) {
+    const sel = item.images.filter((i) => i.selected);
+    const main = sel[0] || item.images[0];
+
+    if (main.type === 'url' && main.src) {
+      const res = await fetch(`${CONFIG.SITE_URL}/api/extension/proxy-image`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-Admin-Key': CONFIG.ADMIN_KEY },
+        body: JSON.stringify({ imageUrl: main.src }),
+      });
+      if (!res.ok) throw new Error(`이미지 업로드 실패: ${res.status}`);
+      return (await res.json()).r2Url;
+    }
+
+    if (main.type === 'file' && main.file) {
+      const fd = new FormData();
+      fd.append('file', main.file, main.name || 'image.jpg');
+      const res = await fetch(`${CONFIG.SITE_URL}/api/upload`, {
+        method: 'POST',
+        headers: { 'X-Admin-Key': CONFIG.ADMIN_KEY },
+        body: fd,
+      });
+      if (!res.ok) throw new Error(`이미지 파일 업로드 실패: ${res.status}`);
+      return (await res.json()).url;
+    }
+  }
+
+  // 하위 호환: 구버전 item.imageUrl
+  if (item.imageUrl) {
+    const res = await fetch(`${CONFIG.SITE_URL}/api/extension/proxy-image`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-Admin-Key': CONFIG.ADMIN_KEY },
+      body: JSON.stringify({ imageUrl: item.imageUrl }),
+    });
+    if (!res.ok) throw new Error(`이미지 업로드 실패: ${res.status}`);
+    return (await res.json()).r2Url;
+  }
+
+  return '';
+}
+
 // ─── 초기화 ─────────────────────────────────────────────
 
 async function init() {
@@ -41,13 +98,16 @@ function makeCard(item) {
   card.draggable = true;
 
   // 이미지 영역
+  const mainSrc = getCardImageSrc(item);
+  const imgCount = Array.isArray(item.images) ? item.images.filter((i) => i.selected).length : 0;
   const imgArea = `
     <div class="card-image">
-      ${item.imageUrl
-        ? `<img src="${escHtml(item.imageUrl)}" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">`
+      ${mainSrc
+        ? `<img src="${escHtml(mainSrc)}" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">`
         : ''}
-      <div class="no-image" style="${item.imageUrl ? 'display:none' : ''}">🖼️</div>
-      ${item.videoFile ? '<div class="video-badge">🎬 영상</div>' : ''}
+      <div class="no-image" style="${mainSrc ? 'display:none' : ''}">🖼️</div>
+      ${imgCount > 1 ? `<div class="video-badge">🖼️ ${imgCount}장</div>` : ''}
+      ${item.videoFile ? '<div class="video-badge" style="bottom:26px">🎬 영상</div>' : ''}
     </div>`;
 
   // 카테고리 옵션
@@ -248,21 +308,8 @@ document.getElementById('btnUpload').addEventListener('click', async () => {
     setProgress(done / selectedItems.length);
 
     try {
-      // 1. 이미지 R2 업로드
-      let r2ImageUrl = item.imageUrl || '';
-      if (item.imageUrl) {
-        const res = await fetch(`${CONFIG.SITE_URL}/api/extension/proxy-image`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'X-Admin-Key': CONFIG.ADMIN_KEY,
-          },
-          body: JSON.stringify({ imageUrl: item.imageUrl }),
-        });
-        if (!res.ok) throw new Error(`이미지 업로드 실패: ${res.status}`);
-        const json = await res.json();
-        r2ImageUrl = json.r2Url;
-      }
+      // 1. 대표 이미지 R2 업로드
+      const r2ImageUrl = await getMainR2Url(item);
 
       // 2. 영상 R2 업로드 (있을 경우)
       let r2VideoUrl = null;

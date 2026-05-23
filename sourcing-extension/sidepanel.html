@@ -32,11 +32,8 @@
 
     <!-- 미리보기 & 추가 폼 -->
     <div id="statePreview" style="display:none">
-      <div class="img-wrap">
-        <img id="previewImg" src="" alt="">
-        <div id="imgPlaceholder" class="img-placeholder" style="display:none">🖼️</div>
-      </div>
 
+      <!-- ① 상품 정보 -->
       <div class="form">
         <label>제목</label>
         <textarea id="inpTitle" rows="3" placeholder="드립형 제목으로 수정하세요"></textarea>
@@ -51,13 +48,47 @@
           <option value="hot">🤯 이게??? 머고??????? — 매운맛</option>
         </select>
 
-        <label>이미지 URL <span class="muted">수정 가능</span></label>
-        <input id="inpImageUrl" type="text" placeholder="https://...">
-
         <label>상품 링크</label>
         <input id="inpProductUrl" type="text" readonly class="readonly">
       </div>
 
+      <div class="divider"></div>
+
+      <!-- ② 이미지 선택 -->
+      <div class="img-section">
+        <div class="img-section-header">
+          <span class="section-label">이미지 선택</span>
+          <span id="imgSelCount" class="img-sel-count">0개 선택</span>
+        </div>
+
+        <!-- 파싱된 이미지 그리드 -->
+        <div id="imageGrid" class="img-grid"></div>
+
+        <!-- 직접 추가 토글 버튼 -->
+        <button id="btnDirectAdd" class="direct-add-toggle">＋ 이미지 직접 추가</button>
+
+        <!-- 직접 추가 패널 -->
+        <div id="directAddPanel" class="direct-add-panel" style="display:none">
+          <div class="direct-tabs">
+            <button class="dtab active" data-tab="file">📁 파일 업로드</button>
+            <button class="dtab" data-tab="url">🔗 URL 입력</button>
+          </div>
+          <div id="dtabFile">
+            <label class="file-drop-zone" id="fileDropZone">
+              <span>클릭하거나 파일을 여기에 드래그</span>
+              <input type="file" id="directFile" accept="image/*" multiple style="display:none">
+            </label>
+          </div>
+          <div id="dtabUrl" style="display:none">
+            <div class="url-row">
+              <input type="text" id="directUrl" placeholder="https://...">
+              <button id="btnAddUrl">추가</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ③ 큐에 추가 버튼 (sticky) -->
       <div class="action-bar">
         <button id="btnAdd" class="primary-btn">큐에 추가</button>
       </div>

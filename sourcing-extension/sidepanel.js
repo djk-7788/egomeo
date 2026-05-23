@@ -1,4 +1,176 @@
-// sidepanel.js — 사이드 패널 UI 로직
+// sidepanel.js
+
+// ─── 이미지 상태 ─────────────────────────────────────────
+// { id, type: 'url'|'file', src: string|null, file: File|null, name: string|null, selected: boolean }
+let imageState = [];
+let blobUrls = []; // 페이지 언로드 시 정리용
+
+function makeImageId() {
+  return `img_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
+}
+
+function revokeBlobUrls() {
+  blobUrls.forEach((u) => URL.revokeObjectURL(u));
+  blobUrls = [];
+}
+
+function getDisplaySrc(img) {
+  if (img.type === 'url') return img.src;
+  if (img.type === 'file' && img.file) {
+    const u = URL.createObjectURL(img.file);
+    blobUrls.push(u);
+    return u;
+  }
+  return '';
+}
+
+function getSelectedImages() {
+  return imageState.filter((i) => i.selected);
+}
+
+// ─── 이미지 그리드 렌더링 ────────────────────────────────
+
+function renderImageGrid() {
+  const grid = document.getElementById('imageGrid');
+  revokeBlobUrls();
+  grid.innerHTML = '';
+
+  const selected = getSelectedImages();
+  const firstSelected = selected[0];
+  document.getElementById('imgSelCount').textContent = `${selected.length}개 선택`;
+
+  if (imageState.length === 0) {
+    grid.innerHTML = '<div class="img-empty">이미지 없음 — 아래에서 직접 추가하세요</div>';
+    return;
+  }
+
+  imageState.forEach((img) => {
+    const isSelected = img.selected;
+    const isMain = isSelected && firstSelected?.id === img.id;
+    const src = getDisplaySrc(img);
+
+    const cell = document.createElement('div');
+    cell.className = `img-cell${isSelected ? ' selected' : ' unselected'}`;
+    cell.dataset.id = img.id;
+
+    cell.innerHTML = `
+      ${src ? `<img src="${src}" onerror="this.style.visibility='hidden'">` : ''}
+      <button class="img-remove" title="제거">✕</button>
+      ${isSelected ? '<div class="img-check">✓</div>' : ''}
+      ${isMain ? '<div class="img-badge-main">대표</div>' : ''}`;
+
+    // 클릭 → 선택/해제 토글
+    cell.addEventListener('click', (e) => {
+      if (e.target.classList.contains('img-remove')) return;
+      const target = imageState.find((i) => i.id === img.id);
+      if (target) target.selected = !target.selected;
+      renderImageGrid();
+    });
+
+    // 제거 버튼
+    cell.querySelector('.img-remove').addEventListener('click', (e) => {
+      e.stopPropagation();
+      imageState = imageState.filter((i) => i.id !== img.id);
+      renderImageGrid();
+    });
+
+    grid.appendChild(cell);
+  });
+}
+
+// ─── 이미지 직접 추가 ────────────────────────────────────
+
+// 파일 추가
+function addFiles(files) {
+  Array.from(files).forEach((file) => {
+    if (!file.type.startsWith('image/')) return;
+    imageState.push({
+      id: makeImageId(),
+      type: 'file',
+      src: null,
+      file,
+      name: file.name,
+      selected: true,
+    });
+  });
+  renderImageGrid();
+}
+
+// URL 추가
+function addUrlImage(url) {
+  url = url.trim();
+  if (!url) return;
+  // 간단 중복 체크
+  if (imageState.some((i) => i.src === url)) return;
+  imageState.push({
+    id: makeImageId(),
+    type: 'url',
+    src: url,
+    file: null,
+    name: null,
+    selected: true,
+  });
+  renderImageGrid();
+}
+
+// ─── 직접 추가 패널 UI ───────────────────────────────────
+
+document.getElementById('btnDirectAdd').addEventListener('click', () => {
+  const panel = document.getElementById('directAddPanel');
+  const btn = document.getElementById('btnDirectAdd');
+  const isOpen = panel.style.display !== 'none';
+  panel.style.display = isOpen ? 'none' : '';
+  btn.classList.toggle('open', !isOpen);
+  btn.textContent = isOpen ? '＋ 이미지 직접 추가' : '✕ 닫기';
+});
+
+// 탭 전환
+document.querySelectorAll('.dtab').forEach((tab) => {
+  tab.addEventListener('click', () => {
+    document.querySelectorAll('.dtab').forEach((t) => t.classList.remove('active'));
+    tab.classList.add('active');
+    const which = tab.dataset.tab;
+    document.getElementById('dtabFile').style.display = which === 'file' ? '' : 'none';
+    document.getElementById('dtabUrl').style.display = which === 'url' ? '' : 'none';
+  });
+});
+
+// 파일 드롭존 클릭
+document.getElementById('fileDropZone').addEventListener('click', () => {
+  document.getElementById('directFile').click();
+});
+document.getElementById('directFile').addEventListener('change', (e) => {
+  addFiles(e.target.files);
+  e.target.value = '';
+});
+
+// 드래그 앤 드롭
+const dropZone = document.getElementById('fileDropZone');
+dropZone.addEventListener('dragover', (e) => {
+  e.preventDefault();
+  dropZone.style.background = '#fff8f5';
+});
+dropZone.addEventListener('dragleave', () => {
+  dropZone.style.background = '';
+});
+dropZone.addEventListener('drop', (e) => {
+  e.preventDefault();
+  dropZone.style.background = '';
+  addFiles(e.dataTransfer.files);
+});
+
+// URL 추가 버튼
+document.getElementById('btnAddUrl').addEventListener('click', () => {
+  const input = document.getElementById('directUrl');
+  addUrlImage(input.value);
+  input.value = '';
+});
+document.getElementById('directUrl').addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') {
+    addUrlImage(e.target.value);
+    e.target.value = '';
+  }
+});
 
 // ─── 상태 헬퍼 ──────────────────────────────────────────
 
@@ -38,16 +210,12 @@ async function loadProduct() {
     url.includes('aliexpress.us/item') ||
     url.includes('coupang.com/vp/products');
 
-  if (!isSupported) {
-    showState('stateNotProduct');
-    return;
-  }
+  if (!isSupported) { showState('stateNotProduct'); return; }
 
   let data;
   try {
     data = await chrome.tabs.sendMessage(tab.id, { action: 'parseProduct' });
   } catch {
-    // content script 아직 주입 안 된 경우 잠시 후 재시도
     await new Promise((r) => setTimeout(r, 800));
     try {
       data = await chrome.tabs.sendMessage(tab.id, { action: 'parseProduct' });
@@ -59,41 +227,35 @@ async function loadProduct() {
 
   if (!data) { showState('stateNotProduct'); return; }
 
-  fillForm(data);
+  // 폼 채우기
+  document.getElementById('inpTitle').value = data.title || '';
+  document.getElementById('inpPrice').value = data.price || '';
+  document.getElementById('inpProductUrl').value = data.productUrl || '';
+
+  // 이미지 상태 초기화 — 파싱된 이미지 모두 선택 상태로
+  const parsedUrls = Array.isArray(data.images) ? data.images : (data.imageUrl ? [data.imageUrl] : []);
+  imageState = parsedUrls.map((src) => ({
+    id: makeImageId(),
+    type: 'url',
+    src,
+    file: null,
+    name: null,
+    selected: true,
+  }));
+  renderImageGrid();
+
+  // 직접 추가 패널 닫기
+  document.getElementById('directAddPanel').style.display = 'none';
+  document.getElementById('btnDirectAdd').classList.remove('open');
+  document.getElementById('btnDirectAdd').textContent = '＋ 이미지 직접 추가';
+
   showState('statePreview');
 }
 
-function fillForm(data) {
-  const img = document.getElementById('previewImg');
-  const placeholder = document.getElementById('imgPlaceholder');
+// ─── 탭 전환 감지 ────────────────────────────────────────
 
-  if (data.imageUrl) {
-    img.src = data.imageUrl;
-    img.style.display = 'block';
-    placeholder.style.display = 'none';
-    img.onerror = () => {
-      img.style.display = 'none';
-      placeholder.style.display = 'flex';
-    };
-  } else {
-    img.style.display = 'none';
-    placeholder.style.display = 'flex';
-  }
+chrome.tabs.onActivated.addListener(() => { loadProduct(); });
 
-  document.getElementById('inpTitle').value = data.title || '';
-  document.getElementById('inpPrice').value = data.price || '';
-  document.getElementById('inpImageUrl').value = data.imageUrl || '';
-  document.getElementById('inpProductUrl').value = data.productUrl || '';
-}
-
-// ─── 탭 전환 감지 — 자동으로 새 상품 파싱 ───────────────
-
-chrome.tabs.onActivated.addListener(() => {
-  // 성공 상태에서 탭 이동 시에도 즉시 파싱
-  loadProduct();
-});
-
-// 같은 탭에서 URL 바뀔 때 (SPA 내비게이션 등)
 chrome.tabs.onUpdated.addListener((tabId, changeInfo) => {
   if (changeInfo.status === 'complete') {
     chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
@@ -111,13 +273,28 @@ document.getElementById('btnAdd').addEventListener('click', async () => {
 
   try {
     const count = await dbCount();
+
+    // 이미지 직렬화 (File 객체는 IndexedDB에 그대로 저장 가능, blob URL은 제외)
+    const imagesToSave = imageState.map((img) => ({
+      id: img.id,
+      type: img.type,
+      src: img.type === 'url' ? img.src : null,
+      file: img.type === 'file' ? img.file : null,
+      name: img.name,
+      selected: img.selected,
+    }));
+
+    const selectedImages = imagesToSave.filter((i) => i.selected);
+    const mainImageUrl = selectedImages.find((i) => i.type === 'url')?.src || '';
+
     const item = {
       id: Date.now(),
       title: document.getElementById('inpTitle').value.trim() || '(제목 없음)',
       price: document.getElementById('inpPrice').value.trim(),
-      imageUrl: document.getElementById('inpImageUrl').value.trim(),
       productUrl: document.getElementById('inpProductUrl').value.trim(),
       category: document.getElementById('selCategory').value,
+      images: imagesToSave,
+      imageUrl: mainImageUrl, // 하위 호환
       videoFile: null,
       videoName: null,
       order: count,
@@ -143,15 +320,12 @@ function openQueue() {
 
 document.getElementById('btnQueue').addEventListener('click', openQueue);
 document.getElementById('btnGoQueue').addEventListener('click', openQueue);
-
-// 새로고침 버튼 — 현재 탭 다시 파싱
 document.getElementById('btnRefresh').addEventListener('click', loadProduct);
-
-// 성공 후 다시 파싱 버튼
 document.getElementById('btnAddMore').addEventListener('click', loadProduct);
 
-// ─── 초기화 ─────────────────────────────────────────────
+window.addEventListener('unload', revokeBlobUrls);
 
+// ─── 초기화 ─────────────────────────────────────────────
 (async () => {
   await refreshBadge();
   await loadProduct();
