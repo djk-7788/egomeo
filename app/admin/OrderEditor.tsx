@@ -139,6 +139,11 @@ export default function OrderEditor() {
             <div className="absolute top-1.5 left-1.5 z-10 bg-black/60 text-white text-[10px] font-bold w-5 h-5 rounded-full flex items-center justify-center">
               {index + 1}
             </div>
+            {item.video_url && (
+              <div className="absolute top-1.5 right-1.5 z-10 bg-[#FF5A00] text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full">
+                🎬
+              </div>
+            )}
             <div className="aspect-square bg-gray-50">
               {item.video_url ? (
                 <video
