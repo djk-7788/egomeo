@@ -47,28 +47,53 @@ function renderImageGrid() {
   imageState.forEach((img) => {
     const isSelected = img.selected;
     const isMain = isSelected && firstSelected?.id === img.id;
-    const src = getDisplaySrc(img);
+    const displaySrc = getDisplaySrc(img);
 
     const cell = document.createElement('div');
     cell.className = `img-cell${isSelected ? ' selected' : ' unselected'}`;
     cell.dataset.id = img.id;
 
-    cell.innerHTML = `
-      ${src ? `<img src="${src}" onerror="this.style.visibility='hidden'">` : ''}
-      <button class="img-remove" title="제거">✕</button>
-      ${isSelected ? '<div class="img-check">✓</div>' : ''}
-      ${isMain ? '<div class="img-badge-main">대표</div>' : ''}`;
+    // 이미지 — innerHTML 대신 DOM 직접 생성 (URL 특수문자로 인한 파싱 오류 방지)
+    if (displaySrc) {
+      const imgEl = document.createElement('img');
+      imgEl.src = displaySrc;
+      imgEl.onerror = () => { imgEl.style.visibility = 'hidden'; };
+      cell.appendChild(imgEl);
+    }
+
+    // 제거 버튼 — 직접 참조 보관
+    const removeBtn = document.createElement('button');
+    removeBtn.className = 'img-remove';
+    removeBtn.title = '제거';
+    removeBtn.textContent = '✕';
+    cell.appendChild(removeBtn);
+
+    // 선택 체크 표시
+    if (isSelected) {
+      const check = document.createElement('div');
+      check.className = 'img-check';
+      check.textContent = '✓';
+      cell.appendChild(check);
+    }
+
+    // 대표 배지
+    if (isMain) {
+      const badge = document.createElement('div');
+      badge.className = 'img-badge-main';
+      badge.textContent = '대표';
+      cell.appendChild(badge);
+    }
 
     // 클릭 → 선택/해제 토글
     cell.addEventListener('click', (e) => {
-      if (e.target.classList.contains('img-remove')) return;
+      if (e.target === removeBtn) return;
       const target = imageState.find((i) => i.id === img.id);
       if (target) target.selected = !target.selected;
       renderImageGrid();
     });
 
-    // 제거 버튼
-    cell.querySelector('.img-remove').addEventListener('click', (e) => {
+    // 제거 버튼 — querySelector 없이 직접 참조
+    removeBtn.addEventListener('click', (e) => {
       e.stopPropagation();
       imageState = imageState.filter((i) => i.id !== img.id);
       renderImageGrid();
