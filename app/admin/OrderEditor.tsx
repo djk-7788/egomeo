@@ -139,18 +139,24 @@ export default function OrderEditor() {
             <div className="absolute top-1.5 left-1.5 z-10 bg-black/60 text-white text-[10px] font-bold w-5 h-5 rounded-full flex items-center justify-center">
               {index + 1}
             </div>
-            {item.video_url && (
-              <div className="absolute top-1.5 right-1.5 z-10 text-[10px] bg-black/60 text-white px-1 py-0.5 rounded">
-                🎥
-              </div>
-            )}
             <div className="aspect-square bg-gray-50">
-              <img
-                src={item.image_url}
-                alt={item.title}
-                className="w-full h-full object-cover"
-                draggable={false}
-              />
+              {item.video_url ? (
+                <video
+                  src={item.video_url}
+                  className="w-full h-full object-cover"
+                  preload="metadata"
+                  muted
+                  playsInline
+                  draggable={false}
+                />
+              ) : (
+                <img
+                  src={item.image_url}
+                  alt={item.title}
+                  className="w-full h-full object-cover"
+                  draggable={false}
+                />
+              )}
             </div>
             <div className="p-2">
               <p className="text-[10px] font-semibold text-[#111111] line-clamp-2 leading-tight">
