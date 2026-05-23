@@ -171,12 +171,19 @@ egomeo/
 ├── lib/
 │   ├── supabase.ts           # Supabase 클라이언트 싱글톤
 │   └── r2.ts                 # Cloudflare R2 S3 클라이언트 (endpoint/bucket/publicUrl export)
-└── chrome-extension/         # 크롬 확장 프로그램 "이게머고? 미디어툴" (Manifest V3)
-    ├── manifest.json         # MV3 설정 (host_permissions: aliexpress/alicdn)
-    ├── background.js         # 아이콘 클릭 → 새 탭 열기
-    ├── newtab.html           # 전체 화면 UI (슬라이드쇼 + 영상 자르기 탭)
-    ├── newtab.css            # 스타일 (#FF5A00 포인트)
-    └── newtab.js             # 알리 이미지 fetch, Canvas+MediaRecorder 슬라이드쇼, 영상 자르기
+├── chrome-extension/         # 크롬 확장 프로그램 "이게머고? 미디어툴" (Manifest V3)
+│   ├── manifest.json         # MV3 설정 (host_permissions: aliexpress/alicdn)
+│   ├── background.js         # 아이콘 클릭 → 새 탭 열기
+│   ├── newtab.html           # 전체 화면 UI (슬라이드쇼 + 영상 자르기 탭)
+│   ├── newtab.css            # 스타일 (#FF5A00 포인트)
+│   └── newtab.js             # 알리 이미지 fetch, Canvas+MediaRecorder 슬라이드쇼, 영상 자르기
+└── sourcing-extension/       # 크롬 확장 프로그램 "이게머고 소싱툴" (Manifest V3)
+    ├── manifest.json         # MV3 설정 (content_scripts: aliexpress/coupang)
+    ├── config.js             # 사용자 설정 (SITE_URL, ADMIN_KEY, Supabase 키)
+    ├── db.js                 # IndexedDB 헬퍼 (dbGetAll/dbAdd/dbPut/dbDelete/dbReorder)
+    ├── content.js            # 상품 페이지 자동 파싱 (제목/가격/이미지/URL)
+    ├── popup.html/css/js     # 팝업 UI — 파싱 미리보기 + 큐에 추가
+    └── queue.html/css/js     # 큐 관리 페이지 — 드래그 정렬, 인라인 수정, 업로드
 ```
 
 ---
@@ -226,6 +233,7 @@ egomeo/
 - 무한 스크롤 전면 개편 (메인 피드 + 상세 페이지 하단, 12개씩, 하단 400px 전 미리 로드)
 - 공정위 고지 문구 추가 (헤더 아래 비고정, 전 페이지 공통)
 - 크롬 확장 프로그램 "이게머고? 미디어툴" 제작 (`chrome-extension/` 폴더, Manifest V3)
+- 크롬 확장 프로그램 "이게머고 소싱툴" 제작 (`sourcing-extension/` 폴더, Manifest V3)
 
 ---
 
@@ -291,12 +299,13 @@ egomeo/
 
 ## 다음 할 일 (우선순위순)
 
-1. **AI 드립 제목 생성** — 알리 검색 후 원본 상품명 기반으로 Claude API 호출해 드립형 제목 자동 생성
-2. **크롬 확장 슬라이드쇼 이미지 추출 개선** — 알리 페이지가 JS 렌더링 전용이면 정적 HTML에서 이미지 못 찾는 문제 해결 필요 (content script 방식 검토)
-3. **쿠팡/아마존 URL 파싱 개선** — 현재 봇 차단으로 제한적. Puppeteer/플레이라이트 서버리스 또는 별도 파싱 서비스 검토 필요
-4. **알리 트래킹 ID 교체** — 포털에서 전용 ID 생성 후 `ALIEXPRESS_TRACKING_ID` 환경변수 교체
-5. **소셜 로그인** — Supabase Auth (구글/카카오/네이버)
-6. **찜하기** — 하트 버튼, 마이페이지
+1. **소싱툴 config.js 설정** — `sourcing-extension/config.js`의 `SUPABASE_ANON_KEY`를 `.env.local`에서 복사해 채워야 동작함
+2. **AI 드립 제목 생성** — 알리 검색 후 원본 상품명 기반으로 Claude API 호출해 드립형 제목 자동 생성
+3. **크롬 확장 슬라이드쇼 이미지 추출 개선** — 알리 페이지가 JS 렌더링 전용이면 정적 HTML에서 이미지 못 찾는 문제 해결 필요 (content script 방식 검토)
+4. **쿠팡/아마존 URL 파싱 개선** — 현재 봇 차단으로 제한적. Puppeteer/플레이라이트 서버리스 또는 별도 파싱 서비스 검토 필요
+5. **알리 트래킹 ID 교체** — 포털에서 전용 ID 생성 후 `ALIEXPRESS_TRACKING_ID` 환경변수 교체
+6. **소셜 로그인** — Supabase Auth (구글/카카오/네이버)
+7. **찜하기** — 하트 버튼, 마이페이지
 
 ---
 
