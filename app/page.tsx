@@ -20,6 +20,7 @@ export default async function Home({ searchParams }: Props) {
       count: "exact",
     })
     .eq("is_active", true)
+    .order("sort_order", { ascending: true, nullsFirst: false })
     .order("created_at", { ascending: false })
     .range(0, PAGE_SIZE - 1);
 

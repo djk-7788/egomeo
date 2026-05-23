@@ -5,6 +5,7 @@ import { supabase } from "@/lib/supabase";
 import { logout } from "./actions";
 import AliexpressSearch, { AliProduct } from "./AliexpressSearch";
 import UrlParser, { ParsedProduct } from "./UrlParser";
+import OrderEditor from "./OrderEditor";
 
 type Product = {
   id: string;
@@ -44,7 +45,7 @@ const categoryLabel = {
 };
 
 export default function AdminPanel() {
-  const [activeTab, setActiveTab] = useState<"list" | "search" | "parse">("list");
+  const [activeTab, setActiveTab] = useState<"list" | "order" | "search" | "parse">("list");
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
@@ -347,6 +348,16 @@ export default function AdminPanel() {
           상품 목록
         </button>
         <button
+          onClick={() => setActiveTab("order")}
+          className={`text-sm font-semibold px-4 py-3 border-b-2 transition-colors ${
+            activeTab === "order"
+              ? "border-[#FF5A00] text-[#FF5A00]"
+              : "border-transparent text-gray-400 hover:text-gray-600"
+          }`}
+        >
+          순서 편집
+        </button>
+        <button
           onClick={() => setActiveTab("search")}
           className={`text-sm font-semibold px-4 py-3 border-b-2 transition-colors ${
             activeTab === "search"
@@ -367,6 +378,9 @@ export default function AdminPanel() {
           🔗 URL 파싱 (쿠팡/아마존)
         </button>
       </div>
+
+      {/* 순서 편집 탭 */}
+      {activeTab === "order" && <OrderEditor />}
 
       {/* 알리익스프레스 검색 탭 */}
       {activeTab === "search" && (

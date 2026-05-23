@@ -18,6 +18,7 @@ export async function GET(req: NextRequest) {
       count: "exact",
     })
     .eq("is_active", true)
+    .order("sort_order", { ascending: true, nullsFirst: false })
     .order("created_at", { ascending: false })
     .range(offset, offset + limit - 1);
 
