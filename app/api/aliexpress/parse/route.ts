@@ -36,6 +36,7 @@ function parseProduct(p: any): {
   title: string;
   images: string[];
   price: string;
+  original_price: string;
   affiliate_link: string;
 } {
   const mainImage: string = p.product_main_image_url ?? "";
@@ -50,11 +51,16 @@ function parseProduct(p: any): {
     ...smallImages.filter((u: string) => u && u !== mainImage),
   ].filter(Boolean);
 
+  const originalPrice = p.target_original_price
+    ? formatPrice(p.target_original_price, p.target_original_price_currency ?? p.target_sale_price_currency)
+    : "";
+
   return {
     product_id: String(p.product_id),
     title: p.product_title ?? "",
     images,
     price: formatPrice(p.target_sale_price, p.target_sale_price_currency),
+    original_price: originalPrice,
     affiliate_link: p.promotion_link ?? "",
   };
 }
@@ -82,6 +88,8 @@ async function callAffiliateApi(
       "product_small_image_urls",
       "target_sale_price",
       "target_sale_price_currency",
+      "target_original_price",
+      "target_original_price_currency",
       "promotion_link",
     ].join(","),
     ...extraFixed,
@@ -235,6 +243,7 @@ export async function GET(req: NextRequest) {
     title: productInfo?.title ?? "",
     images: productInfo?.images ?? [],
     price: productInfo?.price ?? "",
+    original_price: productInfo?.original_price ?? "",
     affiliate_link: finalAffiliateLink,
   });
 }

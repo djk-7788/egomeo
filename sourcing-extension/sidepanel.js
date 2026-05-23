@@ -32,12 +32,15 @@ function getSelectedImages() {
 
 function renderImageGrid() {
   const grid = document.getElementById('imageGrid');
+  const selCountEl = document.getElementById('imgSelCount');
+  if (!grid || !selCountEl) return; // DOM 준비 전 호출 방어
+
   revokeBlobUrls();
   grid.innerHTML = '';
 
   const selected = getSelectedImages();
   const firstSelected = selected[0];
-  document.getElementById('imgSelCount').textContent = `${selected.length}개 선택`;
+  selCountEl.textContent = `${selected.length}개 선택`;
 
   if (imageState.length === 0) {
     grid.innerHTML = '<div class="img-empty">이미지 없음 — 아래에서 직접 추가하세요</div>';
@@ -323,6 +326,11 @@ document.getElementById('btnAdd').addEventListener('click', async () => {
         affiliateConverted = true;
         // 폼 URL 필드도 업데이트
         document.getElementById('inpProductUrl').value = finalProductUrl;
+        // 정상가(할인 전 가격)로 가격 필드 갱신
+        const apiPrice = result.original_price || result.price;
+        if (apiPrice) {
+          document.getElementById('inpPrice').value = apiPrice;
+        }
       }
     } catch (err) {
       console.warn('[어필리에이트 변환 실패]', err.message);
