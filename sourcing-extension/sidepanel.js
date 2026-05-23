@@ -257,7 +257,6 @@ async function loadProduct() {
 
   // 폼 채우기
   document.getElementById('inpTitle').value = data.title || '';
-  document.getElementById('inpPrice').value = data.price || '';
   document.getElementById('inpProductUrl').value = data.productUrl || '';
 
   // 이미지 상태 초기화 — 파싱된 이미지 모두 선택 상태로
@@ -326,11 +325,6 @@ document.getElementById('btnAdd').addEventListener('click', async () => {
         affiliateConverted = true;
         // 폼 URL 필드도 업데이트
         document.getElementById('inpProductUrl').value = finalProductUrl;
-        // 정상가(할인 전 가격)로 가격 필드 갱신
-        const apiPrice = result.original_price || result.price;
-        if (apiPrice) {
-          document.getElementById('inpPrice').value = apiPrice;
-        }
       }
     } catch (err) {
       console.warn('[어필리에이트 변환 실패]', err.message);
@@ -358,7 +352,6 @@ document.getElementById('btnAdd').addEventListener('click', async () => {
     const item = {
       id: Date.now(),
       title: document.getElementById('inpTitle').value.trim() || '(제목 없음)',
-      price: document.getElementById('inpPrice').value.trim(),
       productUrl: finalProductUrl,
       affiliateConverted,   // 변환 여부 기록
       category: document.getElementById('selCategory').value,

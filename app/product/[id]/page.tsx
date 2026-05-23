@@ -19,7 +19,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { id } = await params;
   const { data: product } = await supabase
     .from("products")
-    .select("title, image_url, price")
+    .select("title, image_url")
     .eq("id", id)
     .single();
 
@@ -27,10 +27,10 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
   return {
     title: `${product.title} | 이게머고?`,
-    description: `${product.price} · 이게 대체 머고?`,
+    description: `이게 대체 머고?`,
     openGraph: {
       title: `${product.title} | 이게머고?`,
-      description: `${product.price} · 이게 대체 머고?`,
+      description: `이게 대체 머고?`,
       images: [{ url: product.image_url }],
     },
   };
@@ -43,7 +43,7 @@ export default async function ProductPage({ params }: Props) {
     supabase.from("products").select("*").eq("id", id).single(),
     supabase
       .from("products")
-      .select("id, title, category, image_url, video_url, price, affiliate_link", {
+      .select("id, title, category, image_url, video_url, affiliate_link", {
         count: "exact",
       })
       .eq("is_active", true)
@@ -85,7 +85,6 @@ export default async function ProductPage({ params }: Props) {
             <h1 className="text-2xl font-black text-[#111111] leading-snug">
               {product.title}
             </h1>
-            <p className="text-3xl font-black text-[#FF5A00]">{product.price}</p>
             <a
               href={product.affiliate_link}
               target="_blank"

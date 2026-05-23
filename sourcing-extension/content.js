@@ -102,21 +102,8 @@
       document.querySelector('h1')?.textContent?.trim() ||
       ogTitle;
 
-    let price = '';
-    const priceSelectors = [
-      '[class*="currentPriceText"]',
-      '[class*="price--current"]',
-      '[class*="sale-price"]',
-      '[data-pl="product-price"] [class*="price"]',
-      '.product-price-value',
-    ];
-    for (const sel of priceSelectors) {
-      const t = document.querySelector(sel)?.textContent?.trim();
-      if (t) { price = t; break; }
-    }
-
     const images = parseAliExpressImages();
-    return { title: title.trim(), price, images, imageUrl: images[0] || '' };
+    return { title: title.trim(), images, imageUrl: images[0] || '' };
   }
 
   // ─── 쿠팡 상품 정보 파싱 ──────────────────────────────────────
@@ -130,20 +117,8 @@
       document.querySelector('[class*="prod-title"]')?.textContent?.trim() ||
       ogTitle;
 
-    let price = '';
-    const priceSelectors = [
-      '.total-price strong',
-      '.prod-buy-header__price .price-value',
-      '[class*="prod-price"] [class*="value"]',
-      '[class*="price-area"] strong',
-    ];
-    for (const sel of priceSelectors) {
-      const t = document.querySelector(sel)?.textContent?.trim();
-      if (t) { price = '₩' + t.replace(/[^0-9,]/g, ''); break; }
-    }
-
     const images = parseCoupangImages();
-    return { title: title.trim(), price, images, imageUrl: images[0] || '' };
+    return { title: title.trim(), images, imageUrl: images[0] || '' };
   }
 
   // ─── 메시지 수신 ──────────────────────────────────────────────
@@ -157,7 +132,7 @@
     } else if (url.includes('coupang.com')) {
       data = parseCoupang();
     } else {
-      data = { title: '', price: '', images: [], imageUrl: '' };
+      data = { title: '', images: [], imageUrl: '' };
     }
 
     sendResponse({ ...data, productUrl: url });

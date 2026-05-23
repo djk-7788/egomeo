@@ -11,7 +11,11 @@
       "WebFetch(domain:www.scribd.com)",
       "WebFetch(domain:github.com)",
       "WebFetch(domain:affi.ai)",
-      "WebFetch(domain:raw.githubusercontent.com)"
+      "WebFetch(domain:raw.githubusercontent.com)",
+      "Bash(Get-ChildItem C:\\\\Users\\\\dj\\\\Desktop\\\\egomeo\\\\app\\\\api\\\\aliexpress *)",
+      "Bash(npm install *)",
+      "Bash(npm list *)",
+      "PowerShell(New-Item *)"
     ]
   }
 }

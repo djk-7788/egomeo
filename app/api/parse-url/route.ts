@@ -3,7 +3,6 @@ import { NextRequest, NextResponse } from "next/server";
 type ParseResult = {
   title: string;
   images: string[];
-  price: string;
   source: string;
   productUrl: string;
 };
@@ -42,27 +41,14 @@ function getJsonLdProduct(html: string): Partial<ParseResult> | null {
           : typeof p.image === "string"
           ? [p.image]
           : [];
-        const offer = p.offers as Record<string, unknown> | undefined;
-        const rawPrice = String(offer?.price ?? offer?.lowPrice ?? "");
-        const currency = String(offer?.priceCurrency ?? "");
         return {
           title: String(p.name ?? ""),
           images: imgs.filter(Boolean),
-          price: rawPrice ? fmtPrice(rawPrice, currency) : "",
         };
       }
     } catch {}
   }
   return null;
-}
-
-function fmtPrice(amount: string, currency: string): string {
-  const n = parseFloat(amount.replace(/,/g, ""));
-  if (isNaN(n)) return amount;
-  if (currency === "KRW") return `₩ ${Math.round(n).toLocaleString("ko-KR")}`;
-  if (currency === "USD") return `$${n.toFixed(2)}`;
-  if (currency === "JPY") return `¥ ${Math.round(n).toLocaleString("ja-JP")}`;
-  return amount;
 }
 
 function dedupe(arr: string[]): string[] {
@@ -96,18 +82,10 @@ function parseCoupang(html: string, url: string): ParseResult {
 
   const ogImage = getMeta(html, "og:image");
   const ogTitle = getMeta(html, "og:title");
-  const ogPrice =
-    getMeta(html, "product:price:amount") || getMeta(html, "og:price:amount");
-
-  const priceMatch =
-    html.match(/<strong[^>]+class="[^"]*total-price[^"]*"[^>]*>([\d,]+)/i) ||
-    html.match(/class="price-value"[^>]*>([\d,]+)/i);
-  const rawPrice = priceMatch?.[1]?.replace(/,/g, "") ?? ogPrice;
 
   return {
     title: ld?.title || ogTitle || "",
     images: dedupe([...(ld?.images ?? []), ...extra, ...(ogImage ? [ogImage] : [])]),
-    price: ld?.price || (rawPrice ? `₩ ${Number(rawPrice).toLocaleString("ko-KR")}` : ""),
     source: "coupang",
     productUrl: url,
   };
@@ -142,18 +120,9 @@ function parseAmazon(html: string, url: string): ParseResult {
   const ogTitle = getMeta(html, "og:title");
   const ogImage = getMeta(html, "og:image");
 
-  // price
-  const whole = html.match(/<span[^>]+class="[^"]*a-price-whole[^"]*"[^>]*>([\d,.]+)/);
-  const frac = html.match(/<span[^>]+class="[^"]*a-price-fraction[^"]*"[^>]*>(\d+)/);
-  let price = ld?.price || "";
-  if (!price && whole) {
-    price = `$${whole[1].replace(/[,. ]/g, "")}.${frac?.[1] ?? "00"}`;
-  }
-
   return {
     title: ld?.title || ogTitle || "",
     images: dedupe([...(ld?.images ?? []), ...extra, ...(ogImage ? [ogImage] : [])]),
-    price,
     source: "amazon",
     productUrl: url,
   };

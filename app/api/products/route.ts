@@ -14,7 +14,7 @@ export async function GET(req: NextRequest) {
 
   let query = supabase
     .from("products")
-    .select("id, title, category, image_url, video_url, price, affiliate_link", {
+    .select("id, title, category, image_url, video_url, affiliate_link", {
       count: "exact",
     })
     .eq("is_active", true)

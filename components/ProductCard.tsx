@@ -9,7 +9,6 @@ type ProductCardProps = {
   imageUrl: string;
   videoUrl?: string | null;
   title: string;
-  price: string;
   link: string;
 };
 
@@ -25,7 +24,6 @@ export default function ProductCard({
   imageUrl,
   videoUrl,
   title,
-  price,
   link,
 }: ProductCardProps) {
   return (
@@ -62,9 +60,8 @@ export default function ProductCard({
         </h2>
       </div>
 
-      {/* 4층: 가격 + 공유 버튼 */}
-      <div className="px-3 pt-1 flex items-center justify-between">
-        <span className="text-base font-black text-[#FF5A00]">{price}</span>
+      {/* 4층: 공유 버튼 */}
+      <div className="px-3 pt-1 flex items-center justify-end">
         <CardShareButton id={id} />
       </div>
 

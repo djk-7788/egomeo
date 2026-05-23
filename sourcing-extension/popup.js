@@ -65,7 +65,6 @@ async function init() {
   }
 
   document.getElementById('inpTitle').value = parsedData.title || '';
-  document.getElementById('inpPrice').value = parsedData.price || '';
   document.getElementById('inpImageUrl').value = parsedData.imageUrl || '';
   document.getElementById('inpProductUrl').value = parsedData.productUrl || '';
 
@@ -83,7 +82,6 @@ document.getElementById('btnAdd').addEventListener('click', async () => {
     const item = {
       id: Date.now(),
       title: document.getElementById('inpTitle').value.trim() || '(제목 없음)',
-      price: document.getElementById('inpPrice').value.trim(),
       imageUrl: document.getElementById('inpImageUrl').value.trim(),
       productUrl: document.getElementById('inpProductUrl').value.trim(),
       category: document.getElementById('selCategory').value,

@@ -26,7 +26,6 @@ export type AliProduct = {
   product_id: string;
   title: string;
   images: string[];
-  price: string;
   affiliate_link: string;
 };
 
@@ -296,7 +295,6 @@ export default function AliexpressSearch({ onSelect }: Props) {
                       <p className="text-xs text-[#111111] line-clamp-2 mb-1 leading-snug">
                         {product.title}
                       </p>
-                      <p className="text-sm font-bold text-[#FF5A00]">{product.price}</p>
                       <p className={`text-[10px] mt-1 ${isSelected ? "text-[#FF5A00] font-semibold" : "text-gray-300"}`}>
                         {isSelected ? "✓ 선택됨" : "클릭하여 선택"}
                       </p>
@@ -329,9 +327,6 @@ export default function AliexpressSearch({ onSelect }: Props) {
               <p className="text-sm text-[#111111] line-clamp-3 leading-snug mb-1">
                 {selectedProduct.title}
               </p>
-              {selectedProduct.price && (
-                <p className="text-lg font-black text-[#FF5A00]">{selectedProduct.price}</p>
-              )}
             </div>
 
             {/* 선택된 이미지 (크게) */}

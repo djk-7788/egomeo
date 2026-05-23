@@ -18,13 +18,6 @@ function calcSign(params: Record<string, string>, secret: string): string {
   return crypto.createHash("md5").update(str, "utf8").digest("hex").toUpperCase();
 }
 
-function formatPrice(price: string, currency: string): string {
-  const num = parseFloat(price);
-  if (isNaN(num)) return price || "";
-  if (currency === "KRW") return `₩ ${Math.round(num).toLocaleString("ko-KR")}`;
-  return `$${num.toFixed(2)}`;
-}
-
 export async function GET(req: NextRequest) {
   const keyword = req.nextUrl.searchParams.get("keyword")?.trim();
   const sort = req.nextUrl.searchParams.get("sort")?.trim() || "";
@@ -67,8 +60,6 @@ export async function GET(req: NextRequest) {
       "product_title",
       "product_main_image_url",
       "product_small_image_urls",
-      "target_sale_price",
-      "target_sale_price_currency",
       "promotion_link",
       "commission_rate",
     ].join(","),
@@ -110,7 +101,6 @@ export async function GET(req: NextRequest) {
         product_id: String(p.product_id),
         title: p.product_title ?? "",
         images,
-        price: formatPrice(p.target_sale_price, p.target_sale_price_currency),
         affiliate_link: p.promotion_link ?? "",
       };
     });

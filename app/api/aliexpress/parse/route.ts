@@ -18,13 +18,6 @@ function calcSign(params: Record<string, string>, secret: string): string {
   return crypto.createHash("md5").update(str, "utf8").digest("hex").toUpperCase();
 }
 
-function formatPrice(price: string, currency: string): string {
-  const num = parseFloat(price);
-  if (isNaN(num)) return price || "";
-  if (currency === "KRW") return `₩ ${Math.round(num).toLocaleString("ko-KR")}`;
-  return `$${num.toFixed(2)}`;
-}
-
 function extractProductId(url: string): string | null {
   const m = url.match(/\/item\/(\d+)/);
   return m?.[1] ?? null;
@@ -35,8 +28,6 @@ function parseProduct(p: any): {
   product_id: string;
   title: string;
   images: string[];
-  price: string;
-  original_price: string;
   affiliate_link: string;
 } {
   const mainImage: string = p.product_main_image_url ?? "";
@@ -51,16 +42,10 @@ function parseProduct(p: any): {
     ...smallImages.filter((u: string) => u && u !== mainImage),
   ].filter(Boolean);
 
-  const originalPrice = p.target_original_price
-    ? formatPrice(p.target_original_price, p.target_original_price_currency ?? p.target_sale_price_currency)
-    : "";
-
   return {
     product_id: String(p.product_id),
     title: p.product_title ?? "",
     images,
-    price: formatPrice(p.target_sale_price, p.target_sale_price_currency),
-    original_price: originalPrice,
     affiliate_link: p.promotion_link ?? "",
   };
 }
@@ -86,10 +71,6 @@ async function callAffiliateApi(
       "product_title",
       "product_main_image_url",
       "product_small_image_urls",
-      "target_sale_price",
-      "target_sale_price_currency",
-      "target_original_price",
-      "target_original_price_currency",
       "promotion_link",
     ].join(","),
     ...extraFixed,
@@ -242,8 +223,6 @@ export async function GET(req: NextRequest) {
     product_id: productId,
     title: productInfo?.title ?? "",
     images: productInfo?.images ?? [],
-    price: productInfo?.price ?? "",
-    original_price: productInfo?.original_price ?? "",
     affiliate_link: finalAffiliateLink,
   });
 }

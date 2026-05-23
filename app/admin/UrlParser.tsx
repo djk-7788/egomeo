@@ -5,7 +5,6 @@ import { useState } from "react";
 export type ParsedProduct = {
   title: string;
   images: string[];
-  price: string;
   source: string;
   productUrl: string;
 };
@@ -87,7 +86,7 @@ export default function UrlParser({ onSelect }: Props) {
         <div className="text-center py-16">
           <p className="text-3xl mb-3">🔗</p>
           <p className="text-gray-400 text-sm">쿠팡 또는 아마존 상품 URL을 붙여넣으세요.</p>
-          <p className="text-gray-300 text-xs mt-1">상품명 · 가격 · 이미지를 자동으로 가져옵니다.</p>
+          <p className="text-gray-300 text-xs mt-1">상품명 · 이미지를 자동으로 가져옵니다.</p>
           <div className="mt-5 text-[11px] text-gray-200 space-y-1">
             <p>쿠팡: https://www.coupang.com/vp/products/…</p>
             <p>아마존: https://www.amazon.com/dp/…</p>
@@ -121,10 +120,6 @@ export default function UrlParser({ onSelect }: Props) {
               {result.title || "(상품명 없음)"}
             </p>
           </div>
-          {result.price && (
-            <p className="text-lg font-black text-[#FF5A00] mb-4">{result.price}</p>
-          )}
-
           {/* 이미지 썸네일 선택 */}
           {result.images.length > 0 ? (
             <>

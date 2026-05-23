@@ -13,7 +13,6 @@ type Product = {
   category: "mild" | "medium" | "hot";
   image_url: string;
   video_url: string | null;
-  price: string;
   affiliate_link: string;
   is_active: boolean;
 };
@@ -23,7 +22,6 @@ type FormState = {
   category: "mild" | "medium" | "hot";
   image_url: string;
   video_url: string;
-  price: string;
   affiliate_link: string;
   is_active: boolean;
 };
@@ -33,7 +31,6 @@ const emptyForm: FormState = {
   category: "mild",
   image_url: "",
   video_url: "",
-  price: "",
   affiliate_link: "",
   is_active: true,
 };
@@ -85,7 +82,6 @@ export default function AdminPanel() {
     setForm({
       ...emptyForm,
       image_url: imageUrl,
-      price: product.price,
       affiliate_link: product.productUrl,
     });
     setShowForm(true);
@@ -97,7 +93,6 @@ export default function AdminPanel() {
     setForm({
       ...emptyForm,
       image_url: imageUrl,
-      price: product.price,
       affiliate_link: product.affiliate_link,
     });
     setShowForm(true);
@@ -111,7 +106,6 @@ export default function AdminPanel() {
       category: product.category,
       image_url: product.image_url,
       video_url: product.video_url || "",
-      price: product.price,
       affiliate_link: product.affiliate_link,
       is_active: product.is_active,
     });
@@ -422,7 +416,6 @@ export default function AdminPanel() {
                 <tr>
                   <th className="text-left px-4 py-3 font-semibold text-gray-500">제목</th>
                   <th className="text-left px-4 py-3 font-semibold text-gray-500">카테고리</th>
-                  <th className="text-left px-4 py-3 font-semibold text-gray-500">가격</th>
                   <th className="text-left px-4 py-3 font-semibold text-gray-500">미디어</th>
                   <th className="text-left px-4 py-3 font-semibold text-gray-500">노출</th>
                   <th className="px-4 py-3"></th>
@@ -436,9 +429,6 @@ export default function AdminPanel() {
                     </td>
                     <td className="px-4 py-3 text-gray-500">
                       {categoryLabel[product.category]}
-                    </td>
-                    <td className="px-4 py-3 text-[#FF5A00] font-bold">
-                      {product.price}
                     </td>
                     <td className="px-4 py-3 text-gray-400 text-xs">
                       {product.video_url ? "🎥 영상+이미지" : "🖼️ 이미지"}
@@ -637,19 +627,6 @@ export default function AdminPanel() {
                 )}
               </div>
 
-              <div>
-                <label className="text-xs font-semibold text-gray-500 block mb-1">
-                  가격
-                </label>
-                <input
-                  type="text"
-                  value={form.price}
-                  onChange={(e) => setForm({ ...form, price: e.target.value })}
-                  required
-                  placeholder="₩32,900"
-                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-[#FF5A00] transition-colors"
-                />
-              </div>
               <div>
                 <label className="text-xs font-semibold text-gray-500 block mb-1">
                   제휴 링크 (쿠팡/알리)

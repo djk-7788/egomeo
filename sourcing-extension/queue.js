@@ -128,7 +128,6 @@ function makeCard(item) {
     <div class="drag-handle" title="드래그해서 순서 변경">⣿</div>
     <div class="card-body">
       <textarea class="editable card-title" rows="2" placeholder="제목">${escHtml(item.title)}</textarea>
-      <input type="text" class="editable card-price" placeholder="₩0,000" value="${escHtml(item.price)}">
       <select class="card-category">${catOpts}</select>
     </div>
     <div class="card-footer">
@@ -161,13 +160,6 @@ function makeCard(item) {
   const titleEl = card.querySelector('.card-title');
   titleEl.addEventListener('blur', async () => {
     item.title = titleEl.value.trim() || '(제목 없음)';
-    await dbPut(item);
-  });
-
-  // 가격 인라인 수정
-  const priceEl = card.querySelector('.card-price');
-  priceEl.addEventListener('blur', async () => {
-    item.price = priceEl.value.trim();
     await dbPut(item);
   });
 
@@ -331,7 +323,6 @@ document.getElementById('btnUpload').addEventListener('click', async () => {
           category: item.category,
           image_url: r2ImageUrl,
           video_url: r2VideoUrl,
-          price: item.price,
           affiliate_link: item.productUrl,
           is_active: true,
         }),
@@ -419,7 +410,6 @@ document.getElementById('videoModal').addEventListener('click', (e) => {
 function closeVideoModal() {
   document.getElementById('videoModal').style.display = 'none';
   document.getElementById('vmTitle').value = '';
-  document.getElementById('vmPrice').value = '';
   document.getElementById('vmImageUrl').value = '';
   document.getElementById('vmProductUrl').value = '';
   document.getElementById('videoFile').value = '';
@@ -441,7 +431,6 @@ document.getElementById('vmAdd').addEventListener('click', async () => {
   const item = {
     id: Date.now(),
     title,
-    price: document.getElementById('vmPrice').value.trim(),
     imageUrl: document.getElementById('vmImageUrl').value.trim(),
     productUrl: document.getElementById('vmProductUrl').value.trim(),
     category: document.getElementById('vmCategory').value,

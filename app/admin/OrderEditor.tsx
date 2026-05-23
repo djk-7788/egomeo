@@ -8,7 +8,6 @@ type OrderItem = {
   title: string;
   image_url: string;
   video_url: string | null;
-  price: string;
   sort_order: number;
   created_at: string;
 };
@@ -29,7 +28,7 @@ export default function OrderEditor() {
     setLoading(true);
     const { data } = await supabase
       .from("products")
-      .select("id, title, image_url, video_url, price, sort_order, created_at")
+      .select("id, title, image_url, video_url, sort_order, created_at")
       .eq("is_active", true)
       .order("sort_order", { ascending: true, nullsFirst: false })
       .order("created_at", { ascending: false });
@@ -167,7 +166,6 @@ export default function OrderEditor() {
               <p className="text-[10px] font-semibold text-[#111111] line-clamp-2 leading-tight">
                 {item.title}
               </p>
-              <p className="text-[10px] text-[#FF5A00] font-bold mt-0.5">{item.price}</p>
             </div>
           </div>
         ))}
