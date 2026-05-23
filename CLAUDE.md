@@ -68,10 +68,12 @@ title         text          -- 드립형 제목
 category      text          -- 'mild' | 'medium' | 'hot'
 image_url     text          -- Cloudflare R2 퍼블릭 URL (기존 Supabase Storage에서 마이그레이션 완료)
 video_url     text          -- Cloudflare R2 영상 URL (선택, null 가능)
-price         text          -- 표시용 (예: ₩32,900)
 affiliate_link text         -- 쿠팡/알리 링크
 is_active     boolean       -- false면 메인페이지에 안 보임
+sort_order    integer       -- 노출 순서 (낮을수록 앞에 표시, null이면 맨 뒤)
 ```
+
+> **가격(price) 컬럼은 제거됨** — 2026-05-23 `ALTER TABLE products DROP COLUMN price;` 실행 완료
 
 **RLS**: 비활성화됨 (`alter table products disable row level security`)
 → 나중에 Supabase Auth 연동 시 RLS 정책 재설정 필요
@@ -86,12 +88,11 @@ is_active     boolean       -- false면 메인페이지에 안 보임
 
 - **배경**: `#FFFFFF`
 - **텍스트**: `#111111`
-- **포인트 컬러**: `#FF5A00` — 가격, 버튼, 호버에만 제한적 사용
-- **레이아웃**: 풀와이드 그리드, 사이드바 없음
-  - 모바일: 1열
-  - 태블릿: 2열
-  - 데스크톱: 3열
-  - 와이드: 4열
+- **포인트 컬러**: `#FF5A00` — 버튼, 호버에만 제한적 사용
+- **레이아웃**: 풀와이드 그리드, 사이드바 없음, 최대 3열
+  - 모바일 (< 640px): 1열
+  - 태블릿 (640px ~): 2열
+  - 데스크톱 (768px ~): 3열
 - **헤더**: sticky, 흰 배경, 하단 border
 
 ---
@@ -102,11 +103,13 @@ is_active     boolean       -- false면 메인페이지에 안 보임
 ┌─────────────────────────┐
 │ 1층: 카테고리 뱃지        │
 │ 2층: 1:1 영상 또는 이미지  │  ← 클릭 시 쿠팡/알리 링크 새 창 (video_url 있으면 autoplay 영상)
-│ 3층: 드립형 제목          │
-│ 4층: 가격 ₩00,000  [🔗]  │  ← 🔗 클릭 시 상세페이지 URL 복사
+│ 3층: 드립형 제목 (3줄)    │
+│ 4층: [🔗]               │  ← 🔗 클릭 시 상세페이지 URL 복사
 │ 5층: [구경하러 가기]       │  ← 쿠팡/알리 링크 새 창
 └─────────────────────────┘
 ```
+
+> **가격 표시 제거됨** — 2026-05-23 가격 기능 완전 삭제 (DB 컬럼 포함)
 
 ---
 
@@ -144,9 +147,10 @@ egomeo/
 │   │   ├── page.tsx          # 쿠키 확인 → LoginForm or AdminPanel
 │   │   ├── actions.ts        # 로그인/로그아웃 서버 액션
 │   │   ├── LoginForm.tsx     # 비밀번호 입력 화면 (클라이언트)
-│   │   ├── AdminPanel.tsx    # 상품 CRUD 관리 패널 — 3개 탭 + R2 업로드 + 마이그레이션 버튼
+│   │   ├── AdminPanel.tsx    # 상품 CRUD 관리 패널 — 4개 탭 (상품목록/알리검색/URL파싱/순서편집) + R2 업로드
 │   │   ├── AliexpressSearch.tsx  # 알리 검색 탭 (좌우 분할, URL 직접 입력, 클리어 버튼)
-│   │   └── UrlParser.tsx     # URL 파싱 탭 (쿠팡/아마존 URL → 이미지/가격 추출)
+│   │   ├── UrlParser.tsx     # URL 파싱 탭 (쿠팡/아마존 URL → 이미지/상품명 추출, 봇 차단으로 제한적)
+│   │   └── OrderEditor.tsx   # 순서 편집 탭 (drag & drop, sort_order 저장, 🎬 영상 배지)
 │   ├── api/
 │   │   ├── upload/
 │   │   │   └── route.ts      # R2 파일 업로드 (이미지/영상, admin_auth 쿠키 필요)
@@ -182,9 +186,9 @@ egomeo/
     ├── background.js         # 아이콘 클릭 → 사이드패널 열기 (setPanelBehavior)
     ├── config.js             # 사용자 설정 (SITE_URL, ADMIN_KEY, Supabase 키)
     ├── db.js                 # IndexedDB 헬퍼 (dbGetAll/dbAdd/dbPut/dbDelete/dbReorder)
-    ├── content.js            # 상품 페이지 자동 파싱 (제목/가격/이미지/URL)
-    ├── sidepanel.html/css/js # 사이드패널 UI — 탭 이동 시 자동 파싱, 이미지 멀티셀렉트, 직접 추가
-    └── queue.html/css/js     # 큐 관리 페이지 — 드래그 정렬, 인라인 수정, 업로드
+    ├── content.js            # 상품 페이지 자동 파싱 (제목/이미지 최대 12장/URL, 가격 없음)
+    ├── sidepanel.html/css/js # 사이드패널 UI — 탭 이동 시 자동 파싱, 이미지 단일 선택, 직접 추가
+    └── queue.html/css/js     # 큐 관리 페이지 — 드래그 정렬, 링크/이미지 인라인 편집, 공개/비공개 토글, 업로드
 ```
 
 ---
@@ -197,7 +201,7 @@ egomeo/
 
 ### 상품 상세 페이지 (`/product/[id]`)
 - **공유 링크 전용** — 카드에서 직접 진입 불가, 공유 버튼으로만 접근
-- 상단: 해당 상품 크게 표시 (영상 또는 이미지 + 카테고리 + 제목 + 가격 + 구경하러가기 버튼 + 공유 버튼)
+- 상단: 해당 상품 크게 표시 (영상 또는 이미지 + 카테고리 + 제목 + 구경하러가기 버튼 + 공유 버튼)
 - 하단: 다른 상품 그리드 ("이건 또 머고?" 섹션)
 - OG 태그 포함 → 카톡/SNS 공유 시 미리보기 표시
 
@@ -214,8 +218,12 @@ egomeo/
   - 썸네일 hover 시 280px 확대 팝업, 원본 보기 버튼
   - 입력창 클리어(X) 버튼 (키워드/URL 모두)
 - **탭 3 — URL 파싱**:
-  - 쿠팡/아마존 상품 URL 붙여넣기 → 이미지/가격/상품명 자동 추출
+  - 쿠팡/아마존 상품 URL 붙여넣기 → 이미지/상품명 자동 추출 (가격 제거됨)
   - **주의**: 쿠팡/아마존 모두 봇 차단(403/Cloudflare)으로 현재 제한적으로만 동작
+- **탭 4 — 순서 편집**:
+  - 드래그 앤 드롭으로 메인 피드 노출 순서 조정
+  - `sort_order` 컬럼에 저장, 메인 피드는 sort_order ASC 정렬
+  - 영상 상품은 썸네일 우상단에 🎬 배지 표시
 - **상품 등록/수정 모달**:
   - 이미지 업로드 → R2 저장 (`/api/upload`)
   - 영상 업로드 (선택) → R2 저장, `video_url` 컬럼에 저장
@@ -227,11 +235,11 @@ egomeo/
 
 아래 항목들이 이번 세션에서 완료됨. 상세 내용은 하단 "완료된 작업" 참고.
 
-- 크롬 확장 프로그램 "이게머고 소싱툴" 제작 (`sourcing-extension/` 폴더, Manifest V3)
-  - Chrome Side Panel 방식 (탭 이동해도 닫히지 않음, 자동 재파싱)
-  - IndexedDB 큐 관리 (드래그 정렬, 인라인 수정, R2 업로드, Supabase 등록)
-  - 알리 이미지 멀티셀렉트 그리드 + 파일/URL 직접 추가
-  - 알리 어필리에이트 링크 자동 변환 (`link.generate` 방식, 상품 ID 보존 보장)
+- 관리자 순서 편집 탭 (`OrderEditor.tsx`) — 드래그 정렬, 🎬 영상 배지
+- 가격(price) 기능 완전 제거 — DB 컬럼 삭제 포함, 전 파일에서 제거
+- 소싱툴 이미지 단일 선택 방식으로 변경 (기존 멀티셀렉트 → 1장만 선택)
+- 소싱툴 큐 카드 링크/이미지 인라인 편집 + 공개/비공개 토글
+- 메인 피드 반응형 3열 레이아웃 (모바일 1열, 태블릿 2열, PC 3열)
 
 ---
 
@@ -294,12 +302,20 @@ egomeo/
   - host_permissions으로 aliexpress.com/alicdn.com CORS 없이 직접 fetch
 - [완료] 크롬 확장 프로그램 "이게머고 소싱툴" 제작 (`sourcing-extension/` 폴더, Manifest V3)
   - Chrome Side Panel 방식: 탭 이동해도 닫히지 않음, `chrome.tabs.onActivated/onUpdated`로 자동 재파싱
-  - content.js: 알리/쿠팡 상품 페이지 자동 파싱 (제목/가격/이미지 최대 12장/URL)
-  - 이미지 멀티셀렉트 그리드 (선택/해제 토글, 대표 배지, 파일 드롭존/URL 직접 추가)
+  - content.js: 알리/쿠팡 상품 페이지 자동 파싱 (제목/이미지 최대 12장/URL)
+  - 이미지 단일 선택 그리드 (클릭 시 1장만 선택, 주황 테두리+대표 배지, 파일 드롭존/URL 직접 추가)
   - IndexedDB 큐: 드래그 정렬, 인라인 수정, 체크박스 선택 일괄 업로드/삭제
   - 큐 업로드: 이미지 → `/api/extension/proxy-image` → R2, 영상 → presigned URL → R2, Supabase insert
   - 알리 어필리에이트 링크 자동 변환: `link.generate` API 사용 (상품 ID 보존 보장, `product_id` 검증 추가)
   - `/api/upload` + `/api/extension/proxy-image` 모두 `X-Admin-Key` 헤더 인증 지원
+- [완료] 관리자 순서 편집 탭 (`OrderEditor.tsx`) — 드래그 앤 드롭으로 메인 피드 순서 조정, `sort_order` 저장, 🎬 영상 배지
+- [완료] 가격(price) 기능 완전 제거 — `ALTER TABLE products DROP COLUMN price` 실행, 전체 코드에서 제거
+- [완료] 소싱툴 이미지 단일 선택으로 변경 — 어차피 1장만 R2에 저장되므로 UI 단순화
+- [완료] 소싱툴 큐 카드 링크 인라인 편집 (클릭 시 수정 가능, blur 시 자동 저장)
+- [완료] 소싱툴 큐 카드 이미지 변경 (URL 입력 or 파일 업로드, 모달 방식)
+- [완료] 소싱툴 큐 공개/비공개 토글 — 업로드 시 `is_active` 컬럼에 반영 (기본값: 공개)
+- [완료] 메인 피드 반응형 3열 레이아웃 (`grid-cols-1 sm:grid-cols-2 md:grid-cols-3`)
+- [완료] `products` 테이블에 `sort_order` 컬럼 추가 (integer, nullable, 낮을수록 앞에 표시)
 
 ---
 
@@ -320,7 +336,9 @@ egomeo/
 | 결정 | 이유 |
 |---|---|
 | 상세페이지는 공유 링크로만 접근 | 카드에서 상세페이지로 직접 이동하면 SEO 낭비, 공유 바이럴에 집중 |
-| 가격을 text 타입으로 저장 | `₩32,900` 형태 그대로 표시, 정렬/계산 기능 없음 |
+| 가격 기능 제거 | 플랫폼마다 가격 형식이 달라 통일 불가, 실시간성도 없어 오히려 오해 유발. 링크로 직접 확인하는 게 나음 |
+| 이미지 단일 선택 (소싱툴) | R2에는 실제로 1장만 업로드됨. UI를 실제 동작과 일치시켜 혼란 방지 |
+| sort_order로 메인 피드 순서 관리 | created_at 역순 대신 수동 정렬 지원. null이면 맨 뒤에 위치 |
 | RLS 비활성화 | 소셜 로그인 미구현 상태에서 임시 조치. Auth 붙이면 재설정 필요 |
 | 관리자 인증을 쿠키+환경변수로 | Supabase Auth 없이 빠르게 구현. 나중에 Supabase Admin 역할로 교체 가능 |
 | 이미지/영상을 Cloudflare R2에 저장 | Supabase Storage 대비 대용량 파일 비용 유리, 글로벌 CDN, 영상 스트리밍 적합 |
