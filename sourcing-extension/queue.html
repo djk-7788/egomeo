@@ -17,6 +17,7 @@
       <button id="btnAddVideo" class="btn-ghost">🎬 영상으로 추가</button>
       <button id="btnSelectAll" class="btn-ghost">전체 선택</button>
       <button id="btnDeleteSelected" class="btn-danger" disabled>선택 삭제</button>
+      <button id="btnToggleVisibility" class="btn-ghost visibility-toggle">🌐 공개</button>
       <button id="btnUpload" class="btn-primary" disabled>선택 업로드 (<span id="selectedCount">0</span>)</button>
     </div>
   </header>
@@ -62,6 +63,23 @@
       <div class="modal-actions">
         <button id="vmCancel" class="btn-ghost">취소</button>
         <button id="vmAdd" class="btn-primary">큐에 추가</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 이미지 변경 모달 -->
+  <div id="imgEditModal" class="modal-backdrop" style="display:none">
+    <div class="modal">
+      <h2>🖼️ 이미지 변경</h2>
+      <div class="modal-form">
+        <label>이미지 URL 입력</label>
+        <input type="text" id="imgEditUrl" placeholder="https://...">
+        <label>또는 파일 업로드</label>
+        <input type="file" id="imgEditFile" accept="image/*">
+      </div>
+      <div class="modal-actions">
+        <button id="imgEditCancel" class="btn-ghost">취소</button>
+        <button id="imgEditConfirm" class="btn-primary">변경 완료</button>
       </div>
     </div>
   </div>

@@ -220,11 +220,25 @@ button {
   line-height: 1.4;
   min-height: 36px;
 }
-.card-price {
-  font-size: 14px;
-  font-weight: 700;
-  color: #FF5A00;
+/* 링크 편집 필드 */
+.card-link {
+  font-size: 11px;
+  color: #aaa;
+  border: 1px solid transparent;
+  border-radius: 5px;
+  padding: 3px 6px;
+  width: 100%;
+  background: transparent;
+  outline: none;
+  cursor: text;
+  transition: border-color 0.15s, background 0.15s, color 0.15s;
+  font-family: inherit;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
+.card-link:hover { border-color: #ddd; background: #fafafa; color: #888; }
+.card-link:focus { border-color: #FF5A00; background: #fff; color: #111; white-space: normal; }
 
 /* 카테고리 셀렉트 */
 .card-category {
@@ -282,6 +296,33 @@ button {
   user-select: none;
 }
 .drag-handle:hover { color: #999; }
+
+/* 이미지 편집 오버레이 버튼 */
+.img-edit-btn {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  background: rgba(255,255,255,0.92);
+  border: none;
+  border-radius: 6px;
+  width: 28px;
+  height: 28px;
+  font-size: 13px;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  padding: 0;
+  z-index: 5;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.15);
+  line-height: 1;
+}
+.card-image:hover .img-edit-btn { display: flex; }
+.img-edit-btn:hover { background: #fff; }
+
+/* 공개/비공개 토글 */
+.visibility-toggle { min-width: 78px; font-size: 12px; }
+.visibility-toggle.is-private { background: #f0f0f0; color: #999; border-color: #ddd; }
 
 /* 모달 */
 .modal-backdrop {

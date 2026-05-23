@@ -2,6 +2,8 @@
 
 let allItems = [];
 let dragSrcId = null;
+let isPublic = true;          // 공개/비공개 토글 상태
+let imgEditTarget = null;     // { item, card } — 이미지 편집 대상
 
 // ─── 이미지 헬퍼 ─────────────────────────────────────────
 
@@ -108,6 +110,7 @@ function makeCard(item) {
       <div class="no-image" style="${mainSrc ? 'display:none' : ''}">🖼️</div>
       ${imgCount > 1 ? `<div class="video-badge">🖼️ ${imgCount}장</div>` : ''}
       ${item.videoFile ? '<div class="video-badge" style="bottom:26px">🎬 영상</div>' : ''}
+      <button class="img-edit-btn" title="이미지 변경">✏️</button>
     </div>`;
 
   // 카테고리 옵션
@@ -129,6 +132,7 @@ function makeCard(item) {
     <div class="card-body">
       <textarea class="editable card-title" rows="2" placeholder="제목">${escHtml(item.title)}</textarea>
       <select class="card-category">${catOpts}</select>
+      <input type="text" class="card-link" value="${escHtml(item.productUrl || '')}" placeholder="상품 링크 (클릭해서 수정)" title="${escHtml(item.productUrl || '')}">
     </div>
     <div class="card-footer">
       <button class="card-video-btn ${item.videoFile ? 'has-video' : ''}">
@@ -168,6 +172,25 @@ function makeCard(item) {
   catEl.addEventListener('change', async () => {
     item.category = catEl.value;
     await dbPut(item);
+  });
+
+  // 링크 인라인 수정
+  const linkEl = card.querySelector('.card-link');
+  linkEl.addEventListener('focus', () => { linkEl.select(); });
+  linkEl.addEventListener('blur', async () => {
+    const newUrl = linkEl.value.trim();
+    if (newUrl !== item.productUrl) {
+      item.productUrl = newUrl;
+      linkEl.title = newUrl;
+      await dbPut(item);
+    }
+  });
+  linkEl.addEventListener('keydown', (e) => { if (e.key === 'Enter') linkEl.blur(); });
+
+  // 이미지 편집 버튼
+  card.querySelector('.img-edit-btn').addEventListener('click', (e) => {
+    e.stopPropagation();
+    openImgEdit(item, card);
   });
 
   // 영상 추가 버튼
@@ -324,7 +347,7 @@ document.getElementById('btnUpload').addEventListener('click', async () => {
           image_url: r2ImageUrl,
           video_url: r2VideoUrl,
           affiliate_link: item.productUrl,
-          is_active: true,
+          is_active: isPublic,
         }),
       });
       if (!supaRes.ok) {
@@ -449,6 +472,82 @@ document.getElementById('vmAdd').addEventListener('click', async () => {
 
   updateTopbar();
   closeVideoModal();
+});
+
+// ─── 공개/비공개 토글 ────────────────────────────────────
+
+document.getElementById('btnToggleVisibility').addEventListener('click', () => {
+  isPublic = !isPublic;
+  const btn = document.getElementById('btnToggleVisibility');
+  btn.textContent = isPublic ? '🌐 공개' : '🔒 비공개';
+  btn.classList.toggle('is-private', !isPublic);
+});
+
+// ─── 이미지 편집 모달 ────────────────────────────────────
+
+function openImgEdit(item, card) {
+  imgEditTarget = { item, card };
+  document.getElementById('imgEditUrl').value = '';
+  document.getElementById('imgEditFile').value = '';
+  document.getElementById('imgEditModal').style.display = 'flex';
+}
+
+function closeImgEdit() {
+  document.getElementById('imgEditModal').style.display = 'none';
+  imgEditTarget = null;
+}
+
+document.getElementById('imgEditCancel').addEventListener('click', closeImgEdit);
+document.getElementById('imgEditModal').addEventListener('click', (e) => {
+  if (e.target === document.getElementById('imgEditModal')) closeImgEdit();
+});
+
+document.getElementById('imgEditConfirm').addEventListener('click', async () => {
+  const url = document.getElementById('imgEditUrl').value.trim();
+  const file = document.getElementById('imgEditFile').files[0];
+
+  if (!url && !file) { alert('URL을 입력하거나 파일을 선택해주세요.'); return; }
+
+  const { item, card } = imgEditTarget;
+
+  if (url) {
+    // URL 방식: images 배열 맨 앞에 추가 (기존 선택 해제)
+    if (!Array.isArray(item.images)) item.images = [];
+    item.images.forEach((i) => { i.selected = false; });
+    item.images.unshift({ id: `img_${Date.now()}`, type: 'url', src: url, file: null, name: null, selected: true });
+    item.imageUrl = url;
+
+    // 카드 이미지 즉시 갱신
+    const imgEl = card.querySelector('.card-image img');
+    if (imgEl) { imgEl.style.display = ''; imgEl.src = url; }
+    else {
+      const noImg = card.querySelector('.no-image');
+      if (noImg) noImg.style.display = 'none';
+      const newImg = document.createElement('img');
+      newImg.src = url;
+      newImg.onerror = () => { newImg.style.display = 'none'; };
+      card.querySelector('.card-image').insertBefore(newImg, card.querySelector('.img-edit-btn'));
+    }
+  } else {
+    // 파일 방식: images 배열 맨 앞에 추가
+    if (!Array.isArray(item.images)) item.images = [];
+    item.images.forEach((i) => { i.selected = false; });
+    item.images.unshift({ id: `img_${Date.now()}`, type: 'file', src: null, file, name: file.name, selected: true });
+
+    const blobUrl = URL.createObjectURL(file);
+    const imgEl = card.querySelector('.card-image img');
+    if (imgEl) { imgEl.style.display = ''; imgEl.src = blobUrl; }
+    else {
+      const noImg = card.querySelector('.no-image');
+      if (noImg) noImg.style.display = 'none';
+      const newImg = document.createElement('img');
+      newImg.src = blobUrl;
+      card.querySelector('.card-image').insertBefore(newImg, card.querySelector('.img-edit-btn'));
+    }
+  }
+
+  await dbPut(item);
+  closeImgEdit();
 });
 
 // ─── 유틸 ───────────────────────────────────────────────
