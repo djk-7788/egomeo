@@ -6,10 +6,18 @@ import { r2Client, R2_BUCKET, R2_PUBLIC_URL } from "@/lib/r2";
 
 export const runtime = "nodejs";
 
+async function isAuthorized(req: NextRequest): Promise<boolean> {
+  // 확장 프로그램: X-Admin-Key 헤더
+  const key = req.headers.get("x-admin-key");
+  if (key && key === process.env.ADMIN_PASSWORD) return true;
+  // 관리자 페이지: admin_auth 쿠키
+  const cookieStore = await cookies();
+  return cookieStore.get("admin_auth")?.value === "true";
+}
+
 // 이미지 직접 업로드 (4.5MB 이하 — Vercel 서버리스 제한)
 export async function POST(req: NextRequest) {
-  const cookieStore = await cookies();
-  if (cookieStore.get("admin_auth")?.value !== "true") {
+  if (!(await isAuthorized(req))) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
@@ -50,8 +58,7 @@ export async function POST(req: NextRequest) {
 
 // 영상 등 대용량 파일: Presigned URL 발급 → 브라우저에서 R2에 직접 업로드
 export async function PUT(req: NextRequest) {
-  const cookieStore = await cookies();
-  if (cookieStore.get("admin_auth")?.value !== "true") {
+  if (!(await isAuthorized(req))) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 

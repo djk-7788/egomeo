@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <title>이게머고 소싱툴 — 큐 관리</title>
+  <link rel="stylesheet" href="queue.css">
+</head>
+<body>
+
+  <!-- 상단 바 -->
+  <header class="topbar">
+    <div class="topbar-left">
+      <span class="logo">🛒 이게머고 소싱툴</span>
+      <span id="totalCount" class="total-count">0개</span>
+    </div>
+    <div class="topbar-right">
+      <button id="btnAddVideo" class="btn-ghost">🎬 영상으로 추가</button>
+      <button id="btnSelectAll" class="btn-ghost">전체 선택</button>
+      <button id="btnDeleteSelected" class="btn-danger" disabled>선택 삭제</button>
+      <button id="btnUpload" class="btn-primary" disabled>선택 업로드 (<span id="selectedCount">0</span>)</button>
+    </div>
+  </header>
+
+  <!-- 업로드 진행 바 -->
+  <div id="progressBar" class="progress-bar" style="display:none">
+    <div id="progressFill" class="progress-fill"></div>
+  </div>
+  <div id="statusMsg" class="status-msg"></div>
+
+  <!-- 카드 그리드 -->
+  <main id="grid" class="grid">
+    <div id="emptyState" class="empty-state">
+      <p>큐가 비어있어요.</p>
+      <p class="hint">알리익스프레스/쿠팡 상품 페이지에서<br>확장 아이콘을 클릭해 추가하세요.</p>
+    </div>
+  </main>
+
+  <!-- 영상으로 추가 모달 -->
+  <div id="videoModal" class="modal-backdrop" style="display:none">
+    <div class="modal">
+      <h2>🎬 영상으로 상품 추가</h2>
+      <div class="modal-form">
+        <label>MP4 파일 선택</label>
+        <input type="file" id="videoFile" accept="video/mp4,video/*">
+
+        <label>상품 제목</label>
+        <input type="text" id="vmTitle" placeholder="드립형 제목 입력">
+
+        <label>가격</label>
+        <input type="text" id="vmPrice" placeholder="₩0,000">
+
+        <label>카테고리</label>
+        <select id="vmCategory">
+          <option value="mild">이게 머고? — 순한맛</option>
+          <option value="medium">이게? 머고??? — 보통맛</option>
+          <option value="hot">이게??? 머고??????? — 매운맛</option>
+        </select>
+
+        <label>대표 이미지 URL <span class="muted">(없으면 빈칸)</span></label>
+        <input type="text" id="vmImageUrl" placeholder="https://...">
+
+        <label>상품 링크 (쿠팡/알리)</label>
+        <input type="text" id="vmProductUrl" placeholder="https://...">
+      </div>
+      <div class="modal-actions">
+        <button id="vmCancel" class="btn-ghost">취소</button>
+        <button id="vmAdd" class="btn-primary">큐에 추가</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="config.js"></script>
+  <script src="db.js"></script>
+  <script src="queue.js"></script>
+</body>
+</html>
