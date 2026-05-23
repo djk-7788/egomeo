@@ -13,6 +13,5 @@ const CONFIG = {
   // Supabase 설정 (.env.local의 NEXT_PUBLIC_ 값과 동일)
   SUPABASE_URL: 'https://akcpwirzkjdmdrajntum.supabase.co',
 
-  // .env.local의 NEXT_PUBLIC_SUPABASE_ANON_KEY 전체 값으로 교체하세요
-  SUPABASE_ANON_KEY: 'YOUR_SUPABASE_ANON_KEY',
+  SUPABASE_ANON_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFrY3B3aXJ6a2pkbWRyYWpudHVtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzkyNTc4MzcsImV4cCI6MjA5NDgzMzgzN30.MW2An2PQClvsnEeTndL3jz2VV70fmywNVb2m-Y3wh0k',
 };
