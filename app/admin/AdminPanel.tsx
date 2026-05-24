@@ -83,12 +83,6 @@ export default function AdminPanel() {
     setShowForm(true);
   }
 
-  function stripAmazonImageParams(url: string): string {
-    if (!url.includes("m.media-amazon.com")) return url;
-    // ._AC_SL1500_._SX300_.jpg → .jpg
-    return url.replace(/(\._[A-Z0-9_,]+)+(\.[^.?#]+)(\?.*)?$/i, "$2");
-  }
-
   function detectPlatformFromUrl(url: string): Platform {
     if (url.includes("amazon.co.jp")) return "amazon_jp";
     if (url.includes("amazon.com") || url.includes("amzn.to")) return "amazon_us";
@@ -615,7 +609,7 @@ export default function AdminPanel() {
                     <input
                       type="text"
                       value={form.image_url}
-                      onChange={(e) => setForm({ ...form, image_url: stripAmazonImageParams(e.target.value) })}
+                      onChange={(e) => setForm({ ...form, image_url: e.target.value })}
                       placeholder="https://example.com/image.jpg"
                       className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-[#FF5A00] transition-colors"
                     />
