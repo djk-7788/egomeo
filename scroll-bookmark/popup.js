@@ -107,15 +107,63 @@ async function getPageInfo(tabId) {
   }
 }
 
+// 'done' | 'stuck' | 'error' 반환
 async function doScrollTo(tabId, y) {
   try {
-    await chrome.scripting.executeScript({
+    const [{ result }] = await chrome.scripting.executeScript({
       target: { tabId },
-      func: pos => window.scrollTo({ top: pos, behavior: 'smooth' }),
+      func: (targetY) => new Promise((resolve) => {
+        const POLL_MS = 200;
+        const TOLERANCE = 5;
+        const MAX_SAME = 3;
+        const MAX_ITER = 40; // 최대 8초
+
+        let sameCount = 0;
+        let lastY = Math.round(window.scrollY);
+        let iterations = 0;
+
+        window.scrollTo({ top: targetY, behavior: 'smooth' });
+
+        const timer = setInterval(() => {
+          const currentY = Math.round(window.scrollY);
+          iterations++;
+
+          // 목표 도달
+          if (Math.abs(currentY - targetY) <= TOLERANCE) {
+            clearInterval(timer);
+            resolve('done');
+            return;
+          }
+
+          // 안전 타임아웃
+          if (iterations >= MAX_ITER) {
+            clearInterval(timer);
+            resolve('stuck');
+            return;
+          }
+
+          // 위치 변화 없음 체크
+          if (Math.abs(currentY - lastY) <= 1) {
+            sameCount++;
+            if (sameCount >= MAX_SAME) {
+              clearInterval(timer);
+              resolve('stuck');
+              return;
+            }
+            // 멈췄지만 목표 미달 → 재시도
+            window.scrollTo({ top: targetY, behavior: 'smooth' });
+          } else {
+            sameCount = 0;
+          }
+
+          lastY = currentY;
+        }, POLL_MS);
+      }),
       args: [y],
     });
+    return result; // 'done' | 'stuck'
   } catch {
-    // 스크롤 실패 시 조용히 무시
+    return 'error';
   }
 }
 
@@ -183,8 +231,21 @@ async function renderCurrentSection() {
 
   // 이동 버튼 (북마크 있을 때만)
   document.getElementById('btn-goto')?.addEventListener('click', async () => {
-    await doScrollTo(tabId, currentBookmark.scrollY);
-    window.close();
+    const gotoBtn = document.getElementById('btn-goto');
+    if (gotoBtn) {
+      gotoBtn.textContent = '이동 중...';
+      gotoBtn.disabled = true;
+    }
+    const result = await doScrollTo(tabId, currentBookmark.scrollY);
+    if (result === 'stuck' || result === 'error') {
+      if (gotoBtn) {
+        gotoBtn.textContent = '여기까지가 최대 위치예요';
+        gotoBtn.className = 'btn btn-secondary';
+        gotoBtn.disabled = true;
+      }
+    } else {
+      window.close();
+    }
   });
 }
 
