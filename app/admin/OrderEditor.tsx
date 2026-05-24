@@ -15,7 +15,7 @@ type OrderItem = {
 
 function getPlatformBadge(url: string): string | null {
   if (url.includes("amazon.co.jp")) return "🇯🇵 아마존JP";
-  if (url.includes("amazon.com")) return "🇺🇸 아마존";
+  if (url.includes("amazon.com") || url.includes("amzn.to")) return "🇺🇸 아마존";
   if (url.includes("aliexpress.com")) return "알리";
   if (url.includes("coupang.com")) return "쿠팡";
   return null;
