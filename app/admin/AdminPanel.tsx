@@ -719,34 +719,57 @@ export default function AdminPanel() {
 
               <div>
                 <label className="text-xs font-semibold text-gray-500 block mb-1">
-                  제휴 링크 (쿠팡/알리)
+                  제휴 링크 (쿠팡/알리/아마존)
                 </label>
                 <input
                   type="url"
                   value={form.affiliate_link}
-                  onChange={(e) => setForm({ ...form, affiliate_link: e.target.value })}
+                  onChange={(e) => {
+                    const url = e.target.value;
+                    const isAmazon = url.includes("amazon.com") || url.includes("amzn.to") || url.includes("amazon.co.jp");
+                    let newPlatform: Platform;
+                    if (isAmazon) {
+                      newPlatform = (form.platform === "amazon_us" || form.platform === "amazon_jp")
+                        ? form.platform
+                        : (url.includes("amazon.co.jp") ? "amazon_jp" : "amazon_us");
+                    } else if (url.includes("aliexpress.com")) {
+                      newPlatform = "aliexpress";
+                    } else if (url.includes("coupang.com")) {
+                      newPlatform = "coupang";
+                    } else {
+                      newPlatform = null;
+                    }
+                    setForm({ ...form, affiliate_link: url, platform: newPlatform });
+                  }}
                   required
                   placeholder="https://..."
                   className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-[#FF5A00] transition-colors"
                 />
-              </div>
-              <div>
-                <label className="text-xs font-semibold text-gray-500 block mb-1">
-                  플랫폼
-                </label>
-                <select
-                  value={form.platform ?? ""}
-                  onChange={(e) =>
-                    setForm({ ...form, platform: (e.target.value || null) as Platform })
-                  }
-                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-[#FF5A00] transition-colors"
-                >
-                  <option value="">선택 안 함</option>
-                  <option value="amazon_us">🇺🇸 아마존 US</option>
-                  <option value="amazon_jp">🇯🇵 아마존 JP</option>
-                  <option value="aliexpress">알리익스프레스</option>
-                  <option value="coupang">쿠팡</option>
-                </select>
+                {(form.affiliate_link.includes("amazon.com") || form.affiliate_link.includes("amzn.to") || form.affiliate_link.includes("amazon.co.jp")) && (
+                  <div className="mt-2 flex items-center gap-4 bg-blue-50 border border-blue-100 rounded-lg px-3 py-2">
+                    <span className="text-xs font-semibold text-blue-600">아마존 지역</span>
+                    <label className="flex items-center gap-1.5 text-sm cursor-pointer">
+                      <input
+                        type="radio"
+                        name="amazon_region"
+                        checked={form.platform === "amazon_us"}
+                        onChange={() => setForm({ ...form, platform: "amazon_us" })}
+                        className="accent-[#FF5A00]"
+                      />
+                      🇺🇸 미국
+                    </label>
+                    <label className="flex items-center gap-1.5 text-sm cursor-pointer">
+                      <input
+                        type="radio"
+                        name="amazon_region"
+                        checked={form.platform === "amazon_jp"}
+                        onChange={() => setForm({ ...form, platform: "amazon_jp" })}
+                        className="accent-[#FF5A00]"
+                      />
+                      🇯🇵 일본
+                    </label>
+                  </div>
+                )}
               </div>
               <div className="flex items-center gap-2">
                 <input
