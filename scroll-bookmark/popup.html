@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <title>스크롤 북마크</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <div class="header">
+    <span class="header-icon">📌</span>
+    <span class="header-title">스크롤 북마크</span>
+  </div>
+
+  <div id="current-section" class="current-section">
+    <div id="current-content">
+      <div class="loading-text">로딩 중...</div>
+    </div>
+  </div>
+
+  <div class="list-section">
+    <div class="section-header">
+      <span>저장된 북마크</span>
+      <span id="bookmark-count" class="count-badge">0</span>
+    </div>
+    <div id="bookmark-list">
+      <div class="empty-text">저장된 북마크가 없습니다.</div>
+    </div>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>

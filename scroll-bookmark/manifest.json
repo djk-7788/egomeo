@@ -1,0 +1,11 @@
+{
+  "manifest_version": 3,
+  "name": "스크롤 북마크",
+  "version": "1.0",
+  "description": "지금 보던 위치를 저장하고 나중에 바로 이동",
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "스크롤 북마크"
+  },
+  "permissions": ["activeTab", "scripting"]
+}
