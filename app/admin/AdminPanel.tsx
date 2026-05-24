@@ -394,6 +394,13 @@ export default function AdminPanel() {
       {/* 상품 목록 탭 */}
       {activeTab === "list" && (
       <div className="max-w-5xl mx-auto px-6 py-8">
+        {/* 상단 정보 바 */}
+        <div className="mb-4 flex items-center justify-between">
+          <span className="text-sm font-semibold text-gray-500">
+            총 <span className="text-[#111111]">{products.length}</span>개 등록됨
+          </span>
+        </div>
+
         {/* 마이그레이션 버튼 */}
         <div className="mb-4 flex items-center gap-3">
           <button

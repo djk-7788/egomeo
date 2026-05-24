@@ -10,7 +10,16 @@ type OrderItem = {
   video_url: string | null;
   sort_order: number;
   created_at: string;
+  affiliate_link: string;
 };
+
+function getPlatformBadge(url: string): string | null {
+  if (url.includes("amazon.co.jp")) return "🇯🇵 아마존JP";
+  if (url.includes("amazon.com")) return "🇺🇸 아마존";
+  if (url.includes("aliexpress.com")) return "알리";
+  if (url.includes("coupang.com")) return "쿠팡";
+  return null;
+}
 
 export default function OrderEditor() {
   const [items, setItems] = useState<OrderItem[]>([]);
@@ -28,7 +37,7 @@ export default function OrderEditor() {
     setLoading(true);
     const { data } = await supabase
       .from("products")
-      .select("id, title, image_url, video_url, sort_order, created_at")
+      .select("id, title, image_url, video_url, sort_order, created_at, affiliate_link")
       .eq("is_active", true)
       .order("sort_order", { ascending: true, nullsFirst: false })
       .order("created_at", { ascending: false });
@@ -102,7 +111,12 @@ export default function OrderEditor() {
     <div className="max-w-6xl mx-auto px-6 py-8">
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h2 className="text-base font-black text-[#111111]">노출 순서 편집</h2>
+          <div className="flex items-center gap-2">
+            <h2 className="text-base font-black text-[#111111]">노출 순서 편집</h2>
+            <span className="text-xs font-semibold text-gray-400 bg-gray-100 px-2 py-0.5 rounded-full">
+              총 {items.length}개
+            </span>
+          </div>
           <p className="text-xs text-gray-400 mt-1">
             카드를 드래그해서 순서를 바꾸고 저장하세요. 저장하면 메인 피드에 바로 반영됩니다.
           </p>
@@ -138,6 +152,11 @@ export default function OrderEditor() {
             <div className="absolute top-1.5 left-1.5 z-10 bg-black/60 text-white text-[10px] font-bold w-5 h-5 rounded-full flex items-center justify-center">
               {index + 1}
             </div>
+            {getPlatformBadge(item.affiliate_link) && (
+              <div className="absolute top-7 left-1.5 z-10 bg-black/60 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full whitespace-nowrap leading-tight">
+                {getPlatformBadge(item.affiliate_link)}
+              </div>
+            )}
             {item.video_url && (
               <div className="absolute top-1.5 right-1.5 z-10 bg-[#FF5A00] text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full">
                 🎬
