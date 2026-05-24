@@ -40,7 +40,7 @@ export default function ProductCard({
         href={link}
         target="_blank"
         rel="noopener noreferrer"
-        className="relative w-full aspect-square mt-2 overflow-hidden block bg-black"
+        className="relative w-full aspect-square max-h-[220px] mt-2 overflow-hidden block bg-black"
       >
         {videoUrl ? (
           <VideoPlayer src={videoUrl} className="w-full h-full object-cover" />
