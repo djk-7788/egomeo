@@ -7,6 +7,8 @@ import AliexpressSearch, { AliProduct } from "./AliexpressSearch";
 import UrlParser, { ParsedProduct } from "./UrlParser";
 import OrderEditor from "./OrderEditor";
 
+type Platform = "amazon_us" | "amazon_jp" | "aliexpress" | "coupang" | null;
+
 type Product = {
   id: string;
   title: string;
@@ -15,6 +17,7 @@ type Product = {
   video_url: string | null;
   affiliate_link: string;
   is_active: boolean;
+  platform: Platform;
 };
 
 type FormState = {
@@ -24,6 +27,7 @@ type FormState = {
   video_url: string;
   affiliate_link: string;
   is_active: boolean;
+  platform: Platform;
 };
 
 const emptyForm: FormState = {
@@ -33,6 +37,7 @@ const emptyForm: FormState = {
   video_url: "",
   affiliate_link: "",
   is_active: true,
+  platform: null,
 };
 
 const categoryLabel = {
@@ -78,6 +83,14 @@ export default function AdminPanel() {
     setShowForm(true);
   }
 
+  function detectPlatformFromUrl(url: string): Platform {
+    if (url.includes("amazon.co.jp")) return "amazon_jp";
+    if (url.includes("amazon.com") || url.includes("amzn.to")) return "amazon_us";
+    if (url.includes("aliexpress.com")) return "aliexpress";
+    if (url.includes("coupang.com")) return "coupang";
+    return null;
+  }
+
   function handleUrlSelect(product: ParsedProduct, imageUrl: string) {
     setEditing(null);
     setAliHint(product.title);
@@ -85,6 +98,7 @@ export default function AdminPanel() {
       ...emptyForm,
       image_url: imageUrl,
       affiliate_link: product.productUrl,
+      platform: detectPlatformFromUrl(product.productUrl),
     });
     setImageInputMode("upload");
     setShowForm(true);
@@ -97,6 +111,7 @@ export default function AdminPanel() {
       ...emptyForm,
       image_url: imageUrl,
       affiliate_link: product.affiliate_link,
+      platform: "aliexpress",
     });
     setImageInputMode("upload");
     setShowForm(true);
@@ -112,6 +127,7 @@ export default function AdminPanel() {
       video_url: product.video_url || "",
       affiliate_link: product.affiliate_link,
       is_active: product.is_active,
+      platform: product.platform,
     });
     setImageInputMode("upload");
     setShowForm(true);
@@ -124,6 +140,7 @@ export default function AdminPanel() {
     const payload = {
       ...form,
       video_url: form.video_url || null,
+      platform: form.platform || null,
     };
 
     const { error } = editing
@@ -712,6 +729,24 @@ export default function AdminPanel() {
                   placeholder="https://..."
                   className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-[#FF5A00] transition-colors"
                 />
+              </div>
+              <div>
+                <label className="text-xs font-semibold text-gray-500 block mb-1">
+                  플랫폼
+                </label>
+                <select
+                  value={form.platform ?? ""}
+                  onChange={(e) =>
+                    setForm({ ...form, platform: (e.target.value || null) as Platform })
+                  }
+                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-[#FF5A00] transition-colors"
+                >
+                  <option value="">선택 안 함</option>
+                  <option value="amazon_us">🇺🇸 아마존 US</option>
+                  <option value="amazon_jp">🇯🇵 아마존 JP</option>
+                  <option value="aliexpress">알리익스프레스</option>
+                  <option value="coupang">쿠팡</option>
+                </select>
               </div>
               <div className="flex items-center gap-2">
                 <input

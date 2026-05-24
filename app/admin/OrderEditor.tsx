@@ -11,13 +11,14 @@ type OrderItem = {
   sort_order: number;
   created_at: string;
   affiliate_link: string;
+  platform: string | null;
 };
 
-function getPlatformBadge(url: string): string | null {
-  if (url.includes("amazon.co.jp")) return "🇯🇵 아마존JP";
-  if (url.includes("amazon.com") || url.includes("amzn.to")) return "🇺🇸 아마존";
-  if (url.includes("aliexpress.com")) return "알리";
-  if (url.includes("coupang.com")) return "쿠팡";
+function getPlatformBadge(platform: string | null): string | null {
+  if (platform === "amazon_us") return "🇺🇸 아마존";
+  if (platform === "amazon_jp") return "🇯🇵 아마존JP";
+  if (platform === "aliexpress") return "알리";
+  if (platform === "coupang") return "쿠팡";
   return null;
 }
 
@@ -37,7 +38,7 @@ export default function OrderEditor() {
     setLoading(true);
     const { data } = await supabase
       .from("products")
-      .select("id, title, image_url, video_url, sort_order, created_at, affiliate_link")
+      .select("id, title, image_url, video_url, sort_order, created_at, affiliate_link, platform")
       .eq("is_active", true)
       .order("sort_order", { ascending: true, nullsFirst: false })
       .order("created_at", { ascending: false });
@@ -152,9 +153,9 @@ export default function OrderEditor() {
             <div className="absolute top-1.5 left-1.5 z-10 bg-black/60 text-white text-[10px] font-bold w-5 h-5 rounded-full flex items-center justify-center">
               {index + 1}
             </div>
-            {getPlatformBadge(item.affiliate_link) && (
+            {getPlatformBadge(item.platform) && (
               <div className="absolute top-7 left-1.5 z-10 bg-black/60 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full whitespace-nowrap leading-tight">
-                {getPlatformBadge(item.affiliate_link)}
+                {getPlatformBadge(item.platform)}
               </div>
             )}
             {item.video_url && (
