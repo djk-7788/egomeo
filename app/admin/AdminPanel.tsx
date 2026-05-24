@@ -54,6 +54,7 @@ export default function AdminPanel() {
   const [aliHint, setAliHint] = useState("");
   const [migrating, setMigrating] = useState(false);
   const [migrateResult, setMigrateResult] = useState<string>("");
+  const [imageInputMode, setImageInputMode] = useState<"upload" | "url">("upload");
 
   useEffect(() => {
     fetchProducts();
@@ -73,6 +74,7 @@ export default function AdminPanel() {
     setEditing(null);
     setAliHint("");
     setForm(emptyForm);
+    setImageInputMode("upload");
     setShowForm(true);
   }
 
@@ -84,6 +86,7 @@ export default function AdminPanel() {
       image_url: imageUrl,
       affiliate_link: product.productUrl,
     });
+    setImageInputMode("upload");
     setShowForm(true);
   }
 
@@ -95,6 +98,7 @@ export default function AdminPanel() {
       image_url: imageUrl,
       affiliate_link: product.affiliate_link,
     });
+    setImageInputMode("upload");
     setShowForm(true);
   }
 
@@ -109,6 +113,7 @@ export default function AdminPanel() {
       affiliate_link: product.affiliate_link,
       is_active: product.is_active,
     });
+    setImageInputMode("upload");
     setShowForm(true);
   }
 
@@ -545,43 +550,104 @@ export default function AdminPanel() {
 
               {/* 이미지 업로드 */}
               <div>
-                <label className="text-xs font-semibold text-gray-500 block mb-1">
-                  상품 이미지
-                </label>
-                {form.image_url ? (
-                  <div className="relative w-full aspect-square rounded-lg overflow-hidden border border-gray-200">
-                    <img
-                      src={form.image_url}
-                      alt="미리보기"
-                      className="w-full h-full object-cover"
-                    />
+                <div className="flex items-center justify-between mb-2">
+                  <label className="text-xs font-semibold text-gray-500">
+                    상품 이미지
+                  </label>
+                  <div className="flex gap-1">
                     <button
                       type="button"
-                      onClick={() => setForm({ ...form, image_url: "" })}
-                      className="absolute top-2 right-2 bg-white/90 text-gray-600 rounded-full w-7 h-7 flex items-center justify-center text-xs hover:bg-white shadow"
+                      onClick={() => setImageInputMode("upload")}
+                      className={`text-xs px-2.5 py-1 rounded-md font-semibold transition-colors ${
+                        imageInputMode === "upload"
+                          ? "bg-[#FF5A00] text-white"
+                          : "bg-gray-100 text-gray-500 hover:bg-gray-200"
+                      }`}
                     >
-                      ✕
+                      파일 업로드
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setImageInputMode("url")}
+                      className={`text-xs px-2.5 py-1 rounded-md font-semibold transition-colors ${
+                        imageInputMode === "url"
+                          ? "bg-[#FF5A00] text-white"
+                          : "bg-gray-100 text-gray-500 hover:bg-gray-200"
+                      }`}
+                    >
+                      URL 입력
                     </button>
                   </div>
-                ) : (
-                  <label className="flex flex-col items-center justify-center w-full h-36 border-2 border-dashed border-gray-200 rounded-lg cursor-pointer hover:border-[#FF5A00] transition-colors">
-                    {uploading ? (
-                      <span className="text-sm text-gray-400">업로드 중...</span>
-                    ) : (
-                      <>
-                        <span className="text-2xl mb-1">📷</span>
-                        <span className="text-sm text-gray-400">클릭하여 이미지 선택</span>
-                        <span className="text-xs text-gray-300 mt-1">JPG, PNG, WEBP → R2 저장</span>
-                      </>
-                    )}
+                </div>
+
+                {imageInputMode === "url" ? (
+                  <div className="flex flex-col gap-2">
                     <input
-                      type="file"
-                      accept="image/*"
-                      className="hidden"
-                      onChange={handleImageUpload}
-                      disabled={uploading}
+                      type="text"
+                      value={form.image_url}
+                      onChange={(e) => setForm({ ...form, image_url: e.target.value })}
+                      placeholder="https://example.com/image.jpg"
+                      className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-[#FF5A00] transition-colors"
                     />
-                  </label>
+                    {form.image_url && (
+                      <div className="relative w-full aspect-square rounded-lg overflow-hidden border border-gray-200">
+                        <img
+                          src={form.image_url}
+                          alt="미리보기"
+                          className="w-full h-full object-cover"
+                          onError={(e) => {
+                            (e.target as HTMLImageElement).style.display = "none";
+                          }}
+                          onLoad={(e) => {
+                            (e.target as HTMLImageElement).style.display = "";
+                          }}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setForm({ ...form, image_url: "" })}
+                          className="absolute top-2 right-2 bg-white/90 text-gray-600 rounded-full w-7 h-7 flex items-center justify-center text-xs hover:bg-white shadow"
+                        >
+                          ✕
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  form.image_url ? (
+                    <div className="relative w-full aspect-square rounded-lg overflow-hidden border border-gray-200">
+                      <img
+                        src={form.image_url}
+                        alt="미리보기"
+                        className="w-full h-full object-cover"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setForm({ ...form, image_url: "" })}
+                        className="absolute top-2 right-2 bg-white/90 text-gray-600 rounded-full w-7 h-7 flex items-center justify-center text-xs hover:bg-white shadow"
+                      >
+                        ✕
+                      </button>
+                    </div>
+                  ) : (
+                    <label className="flex flex-col items-center justify-center w-full h-36 border-2 border-dashed border-gray-200 rounded-lg cursor-pointer hover:border-[#FF5A00] transition-colors">
+                      {uploading ? (
+                        <span className="text-sm text-gray-400">업로드 중...</span>
+                      ) : (
+                        <>
+                          <span className="text-2xl mb-1">📷</span>
+                          <span className="text-sm text-gray-400">클릭하여 이미지 선택</span>
+                          <span className="text-xs text-gray-300 mt-1">JPG, PNG, WEBP → R2 저장</span>
+                        </>
+                      )}
+                      <input
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        onChange={handleImageUpload}
+                        disabled={uploading}
+                      />
+                    </label>
+                  )
                 )}
               </div>
 
