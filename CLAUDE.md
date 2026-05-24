@@ -68,12 +68,14 @@ title         text          -- 드립형 제목
 category      text          -- 'mild' | 'medium' | 'hot'
 image_url     text          -- Cloudflare R2 퍼블릭 URL (기존 Supabase Storage에서 마이그레이션 완료)
 video_url     text          -- Cloudflare R2 영상 URL (선택, null 가능)
-affiliate_link text         -- 쿠팡/알리 링크
+affiliate_link text         -- 쿠팡/알리/아마존 링크
 is_active     boolean       -- false면 메인페이지에 안 보임
 sort_order    integer       -- 노출 순서 (낮을수록 앞에 표시, null이면 맨 뒤)
+platform      text          -- 'amazon_us' | 'amazon_jp' | 'aliexpress' | 'coupang' | null
 ```
 
-> **가격(price) 컬럼은 제거됨** — 2026-05-23 `ALTER TABLE products DROP COLUMN price;` 실행 완료
+> **가격(price) 컬럼은 제거됨** — 2026-05-23 `ALTER TABLE products DROP COLUMN price;` 실행 완료  
+> **platform 컬럼 추가** — 2026-05-24 `ALTER TABLE products ADD COLUMN IF NOT EXISTS platform text;` 실행 완료
 
 **RLS**: 비활성화됨 (`alter table products disable row level security`)
 → 나중에 Supabase Auth 연동 시 RLS 정책 재설정 필요
@@ -224,22 +226,23 @@ egomeo/
   - 드래그 앤 드롭으로 메인 피드 노출 순서 조정
   - `sort_order` 컬럼에 저장, 메인 피드는 sort_order ASC 정렬
   - 영상 상품은 썸네일 우상단에 🎬 배지 표시
+  - 플랫폼 뱃지: `platform` 컬럼 값 기반 (amazon_us → 🇺🇸 아마존, amazon_jp → 🇯🇵 아마존JP, aliexpress → 알리, coupang → 쿠팡, null → 표시 안 함)
 - **상품 등록/수정 모달**:
   - 이미지 업로드 → R2 저장 (`/api/upload`)
   - 영상 업로드 (선택) → R2 저장, `video_url` 컬럼에 저장
+  - 제휴 링크 입력 시 platform 자동 감지: 알리/쿠팡은 URL로 자동, 아마존(amazon.com/amzn.to/amazon.co.jp)은 지역 라디오 버튼 표시 (🇺🇸 미국 기본 / 🇯🇵 일본)
+  - 알리 검색 탭에서 불러오면 platform = aliexpress 자동 설정
   - 모달: backdrop 클릭 시 닫기, 내부 스크롤(max-height 90vh)
 
 ---
 
-## 최근 완료 작업 (2026-05-23 기준)
+## 최근 완료 작업 (2026-05-24 기준)
 
 아래 항목들이 이번 세션에서 완료됨. 상세 내용은 하단 "완료된 작업" 참고.
 
-- 관리자 순서 편집 탭 (`OrderEditor.tsx`) — 드래그 정렬, 🎬 영상 배지
-- 가격(price) 기능 완전 제거 — DB 컬럼 삭제 포함, 전 파일에서 제거
-- 소싱툴 이미지 단일 선택 방식으로 변경 (기존 멀티셀렉트 → 1장만 선택)
-- 소싱툴 큐 카드 링크/이미지 인라인 편집 + 공개/비공개 토글
-- 메인 피드 반응형 3열 레이아웃 (모바일 1열, 태블릿 2열, PC 3열)
+- `products` 테이블에 `platform` 컬럼 추가 (text, nullable)
+- 관리자 모달에 플랫폼 자동 감지 — 아마존 URL 시 지역 라디오(🇺🇸/🇯🇵), 알리/쿠팡 URL 자동판별
+- 순서 편집 탭 플랫폼 뱃지: URL 자동판별 → platform 컬럼 값 기반으로 변경
 
 ---
 
@@ -316,6 +319,9 @@ egomeo/
 - [완료] 소싱툴 큐 공개/비공개 토글 — 업로드 시 `is_active` 컬럼에 반영 (기본값: 공개)
 - [완료] 메인 피드 반응형 3열 레이아웃 (`grid-cols-1 sm:grid-cols-2 md:grid-cols-3`)
 - [완료] `products` 테이블에 `sort_order` 컬럼 추가 (integer, nullable, 낮을수록 앞에 표시)
+- [완료] `products` 테이블에 `platform` 컬럼 추가 (text, nullable — 'amazon_us'|'amazon_jp'|'aliexpress'|'coupang'|null)
+- [완료] 순서 편집 탭 플랫폼 뱃지: URL 자동판별 → platform 컬럼 값 기반으로 변경
+- [완료] 관리자 모달 플랫폼 처리: 아마존 URL 감지 시 지역 라디오(🇺🇸 미국/🇯🇵 일본), 알리/쿠팡은 URL 자동판별로 platform 저장
 
 ---
 
@@ -347,6 +353,7 @@ egomeo/
 | 소싱툴을 팝업 대신 Side Panel로 | 팝업은 외부 클릭 시 닫힘. 사이드패널은 고정되어 탭 이동하면서 계속 쓸 수 있음 |
 | 어필리에이트 변환에 `link.generate` 사용 | `product.query` 등 검색 계열 API는 다른 상품을 반환할 수 있음. `link.generate`는 원본 URL을 그대로 변환해 product_id가 절대 바뀌지 않음 |
 | 소싱툴 확장에서 X-Admin-Key 헤더 인증 | 확장에서는 HttpOnly 쿠키 접근 불가. X-Admin-Key 헤더로 동일한 ADMIN_PASSWORD 값 검증 |
+| 아마존 지역만 수동 선택, 나머지는 URL 자동판별 | 알리/쿠팡은 URL 패턴이 명확해 자동 감지 가능. 아마존만 amzn.to 단축 URL 사용 시 JP/US 구분 불가능해 라디오로 명시 선택 |
 
 ---
 
