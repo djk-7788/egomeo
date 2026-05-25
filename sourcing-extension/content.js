@@ -1,12 +1,17 @@
 (function () {
 
   // ─── 이미지 URL 원본 해상도로 변환 (알리 전용) ──────────────
-  // 패턴 1: "file.jpg_50x50.jpg"  → "file.jpg"  (확장자 중복형)
-  // 패턴 2: "file_50x50.jpg"      → "file.jpg"  (단순 크기 접미사형)
-  // 패턴 3: "file_960x960q80.jpg" → "file.jpg"  (품질 접미사 포함형)
+  // 알리 CDN URL 구조 예시:
+  //   file.jpg_220x220q75.jpg_.avif  (포맷 변환 + 크기 + 확장자 중복)
+  //   file.jpg_50x50.jpg             (크기 + 확장자 중복)
+  //   file_220x220q75.jpg            (단순 크기/품질 접미사)
   function upgradeAliRes(src) {
-    src = src.replace(/(\.\w+)_\d+x\d+[a-z0-9]*\.\w+$/, '$1'); // 패턴 1
-    src = src.replace(/_\d+x\d+[a-z0-9]*(\.\w+)$/, '$1');       // 패턴 2·3
+    // Step 1: 포맷 변환 접미사 제거: "....jpg_.avif" → "....jpg"
+    src = src.replace(/_\.\w+$/, '');
+    // Step 2: 확장자 중복형: "file.jpg_220x220q75.jpg" → "file.jpg"
+    src = src.replace(/(\.\w+)_\d+x\d+[a-z0-9]*\.\w+$/, '$1');
+    // Step 3: 단순 크기/품질형: "file_220x220q75.jpg" → "file.jpg"
+    src = src.replace(/_\d+x\d+[a-z0-9]*(\.\w+)$/, '$1');
     return src;
   }
 
