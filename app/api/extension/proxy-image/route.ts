@@ -53,11 +53,17 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const contentType = imgResponse.headers.get("content-type") || "image/jpeg";
+  const rawContentType = imgResponse.headers.get("content-type") || "image/jpeg";
+  // content-type에 charset 등 파라미터가 붙을 수 있으므로 앞부분만 추출
+  const contentType = rawContentType.split(";")[0].trim();
   const ext = contentType.includes("png")
     ? "png"
     : contentType.includes("webp")
     ? "webp"
+    : contentType.includes("avif")
+    ? "avif"
+    : contentType.includes("gif")
+    ? "gif"
     : "jpg";
   const key = `${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
 
