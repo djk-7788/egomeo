@@ -12,6 +12,9 @@ const geistSans = Geist({
 export const metadata: Metadata = {
   title: "이게머고?",
   description: "이게 대체 머고? 신기하고 별난 물건들을 모아봤습니다.",
+  verification: {
+    yandex: "0f0bdf1351e0e1ac",
+  },
   other: {
     "naver-site-verification": "ed3bbd4ce60a2bd260807f4900ffb9676ed58e6e",
   },
