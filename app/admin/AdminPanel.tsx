@@ -12,7 +12,7 @@ type Platform = "amazon_us" | "amazon_jp" | "aliexpress" | "coupang" | null;
 type Product = {
   id: string;
   title: string;
-  category: "mild" | "medium" | "hot";
+  category: "mild" | "medium" | "hot" | "etc";
   image_url: string;
   video_url: string | null;
   affiliate_link: string;
@@ -22,7 +22,7 @@ type Product = {
 
 type FormState = {
   title: string;
-  category: "mild" | "medium" | "hot";
+  category: "mild" | "medium" | "hot" | "etc";
   image_url: string;
   video_url: string;
   affiliate_link: string;
@@ -44,6 +44,7 @@ const categoryLabel = {
   mild: "순한맛",
   medium: "보통맛",
   hot: "매운맛",
+  etc: "기타",
 };
 
 export default function AdminPanel() {
@@ -559,13 +560,14 @@ export default function AdminPanel() {
                 <select
                   value={form.category}
                   onChange={(e) =>
-                    setForm({ ...form, category: e.target.value as "mild" | "medium" | "hot" })
+                    setForm({ ...form, category: e.target.value as "mild" | "medium" | "hot" | "etc" })
                   }
                   className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-[#FF5A00] transition-colors"
                 >
                   <option value="mild">순한맛 — 이게 머고?</option>
                   <option value="medium">보통맛 — 이게? 머고???</option>
                   <option value="hot">매운맛 — 이게??? 머고???????</option>
+                  <option value="etc">기타 (etc)</option>
                 </select>
               </div>
 

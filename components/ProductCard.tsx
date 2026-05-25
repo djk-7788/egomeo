@@ -1,7 +1,7 @@
 import CardShareButton from "@/components/CardShareButton";
 import VideoPlayer from "@/components/VideoPlayer";
 
-type Category = "mild" | "medium" | "hot";
+type Category = "mild" | "medium" | "hot" | "etc";
 
 type ProductCardProps = {
   id: string;
@@ -16,6 +16,7 @@ const categoryLabel: Record<Category, string> = {
   mild: "이게 머고?",
   medium: "이게? 머고???",
   hot: "이게??? 머고???????",
+  etc: "기타",
 };
 
 export default function ProductCard({

@@ -15,6 +15,7 @@ export default function Header() {
               <span>순한맛</span>
               <span>보통맛</span>
               <span>매운맛</span>
+              <span>기타</span>
             </nav>
           }
         >
