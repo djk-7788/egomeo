@@ -43,6 +43,7 @@ export default async function Home({ searchParams }: Props) {
 
   return (
     <InfiniteProductGrid
+      key={activeCategory ?? "all"}
       initialProducts={products ?? []}
       initialHasMore={initialHasMore}
       category={activeCategory}
