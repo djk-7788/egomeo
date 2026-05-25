@@ -84,11 +84,12 @@ export default function AdminPanel() {
   }
 
   function detectPlatformFromUrl(url: string): Platform {
+    if (!url) return null;
     if (url.includes("amazon.co.jp")) return "amazon_jp";
     if (url.includes("amazon.com") || url.includes("amzn.to")) return "amazon_us";
     if (url.includes("aliexpress.com")) return "aliexpress";
     if (url.includes("coupang.com")) return "coupang";
-    return null;
+    return "etc";
   }
 
   function handleUrlSelect(product: ParsedProduct, imageUrl: string) {
@@ -724,18 +725,9 @@ export default function AdminPanel() {
                   onChange={(e) => {
                     const url = e.target.value;
                     const isAmazon = url.includes("amazon.com") || url.includes("amzn.to") || url.includes("amazon.co.jp");
-                    let newPlatform: Platform;
-                    if (isAmazon) {
-                      newPlatform = (form.platform === "amazon_us" || form.platform === "amazon_jp")
-                        ? form.platform
-                        : (url.includes("amazon.co.jp") ? "amazon_jp" : "amazon_us");
-                    } else if (url.includes("aliexpress.com")) {
-                      newPlatform = "aliexpress";
-                    } else if (url.includes("coupang.com")) {
-                      newPlatform = "coupang";
-                    } else {
-                      newPlatform = null;
-                    }
+                    const newPlatform: Platform = isAmazon
+                      ? ((form.platform === "amazon_us" || form.platform === "amazon_jp") ? form.platform : (url.includes("amazon.co.jp") ? "amazon_jp" : "amazon_us"))
+                      : detectPlatformFromUrl(url);
                     setForm({ ...form, affiliate_link: url, platform: newPlatform });
                   }}
                   required
@@ -764,25 +756,6 @@ export default function AdminPanel() {
                         className="accent-[#FF5A00]"
                       />
                       🇯🇵 일본
-                    </label>
-                  </div>
-                )}
-                {form.affiliate_link &&
-                  !form.affiliate_link.includes("amazon.com") &&
-                  !form.affiliate_link.includes("amzn.to") &&
-                  !form.affiliate_link.includes("amazon.co.jp") &&
-                  !form.affiliate_link.includes("aliexpress.com") &&
-                  !form.affiliate_link.includes("coupang.com") && (
-                  <div className="mt-2 flex items-center gap-3 bg-gray-50 border border-gray-200 rounded-lg px-3 py-2">
-                    <span className="text-xs font-semibold text-gray-500">플랫폼</span>
-                    <label className="flex items-center gap-1.5 text-sm cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={form.platform === "etc"}
-                        onChange={(e) => setForm({ ...form, platform: e.target.checked ? "etc" : null })}
-                        className="accent-[#FF5A00]"
-                      />
-                      🌐 기타
                     </label>
                   </div>
                 )}
