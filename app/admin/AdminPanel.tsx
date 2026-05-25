@@ -510,11 +510,8 @@ export default function AdminPanel() {
       {/* 등록/수정 모달 */}
       {showForm && (
         <>
-          {/* 배경 — 클릭 시 닫기 */}
-          <div
-            className="fixed inset-0 bg-black/40 z-50"
-            onClick={() => setShowForm(false)}
-          />
+          {/* 배경 */}
+          <div className="fixed inset-0 bg-black/40 z-50" />
           {/* 모달 본체 */}
           <div className="fixed z-50 top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-lg px-4">
           <div
