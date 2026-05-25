@@ -59,6 +59,9 @@ export default function AdminPanel() {
   const [aliHint, setAliHint] = useState("");
   const [migrating, setMigrating] = useState(false);
   const [migrateResult, setMigrateResult] = useState<string>("");
+  const [refreshing, setRefreshing] = useState(false);
+  const [refreshLog, setRefreshLog] = useState<string[]>([]);
+  const [refreshDone, setRefreshDone] = useState<{ success: number; failed: number; skipped: number } | null>(null);
   const [imageInputMode, setImageInputMode] = useState<"upload" | "url">("upload");
 
   useEffect(() => {
@@ -312,6 +315,50 @@ export default function AdminPanel() {
     fetchProducts();
   }
 
+  async function handleRefreshAliImages() {
+    if (!confirm("알리 이미지를 AliExpress API에서 고화질로 교체합니다.\n약 2~4분 소요됩니다. 계속할까요?")) return;
+    setRefreshing(true);
+    setRefreshLog([]);
+    setRefreshDone(null);
+    try {
+      const res = await fetch("/api/admin/refresh-ali-images", { method: "POST" });
+      if (!res.ok || !res.body) throw new Error(`HTTP ${res.status}`);
+
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let buf = "";
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buf += decoder.decode(value, { stream: true });
+        const lines = buf.split("\n");
+        buf = lines.pop() ?? "";
+        for (const line of lines) {
+          if (!line.trim()) continue;
+          try {
+            const msg = JSON.parse(line);
+            if (msg.type === "progress") {
+              const icon = msg.status === "ok" ? "✓" : msg.status === "skipped" ? "→" : "✗";
+              const detail = msg.reason ? ` (${msg.reason})` : "";
+              setRefreshLog((prev) => [
+                ...prev.slice(-19),
+                `[${msg.done}/${msg.total}] ${icon} ${msg.title}${detail}`,
+              ]);
+            } else if (msg.type === "done") {
+              setRefreshDone({ success: msg.success, failed: msg.failed, skipped: msg.skipped });
+              fetchProducts();
+            }
+          } catch { /* 파싱 실패 무시 */ }
+        }
+      }
+    } catch (err) {
+      alert("오류: " + String(err));
+    } finally {
+      setRefreshing(false);
+    }
+  }
+
   async function handleMigrateToR2() {
     if (!confirm("Supabase Storage에 저장된 이미지 40개를 R2로 이전합니다. 계속할까요?")) return;
     setMigrating(true);
@@ -419,8 +466,8 @@ export default function AdminPanel() {
           </span>
         </div>
 
-        {/* 마이그레이션 버튼 */}
-        <div className="mb-4 flex items-center gap-3">
+        {/* 유틸 버튼 */}
+        <div className="mb-4 flex flex-wrap items-center gap-3">
           <button
             onClick={handleMigrateToR2}
             disabled={migrating}
@@ -431,7 +478,42 @@ export default function AdminPanel() {
           {migrateResult && (
             <span className="text-xs text-gray-500">{migrateResult}</span>
           )}
+          <button
+            onClick={handleRefreshAliImages}
+            disabled={refreshing}
+            className="text-xs font-semibold px-3 py-2 bg-orange-50 text-orange-600 border border-orange-200 rounded-lg hover:bg-orange-100 transition-colors disabled:opacity-50"
+          >
+            {refreshing ? "교체 중..." : "🖼️ 알리 이미지 고화질 교체"}
+          </button>
         </div>
+
+        {/* 고화질 교체 진행 로그 */}
+        {(refreshing || refreshLog.length > 0) && (
+          <div className="mb-4 bg-gray-950 border border-gray-800 rounded-lg p-3 text-xs font-mono max-h-52 overflow-y-auto">
+            {refreshLog.map((line, i) => (
+              <div
+                key={i}
+                className={
+                  line.includes("✓")
+                    ? "text-green-400"
+                    : line.includes("✗")
+                    ? "text-red-400"
+                    : "text-gray-500"
+                }
+              >
+                {line}
+              </div>
+            ))}
+            {refreshing && !refreshDone && (
+              <div className="text-yellow-400 animate-pulse mt-1">처리 중...</div>
+            )}
+            {refreshDone && (
+              <div className="mt-2 pt-2 border-t border-gray-700 text-white font-semibold">
+                완료 — 성공 {refreshDone.success}개 / 실패 {refreshDone.failed}개 / 스킵 {refreshDone.skipped}개
+              </div>
+            )}
+          </div>
+        )}
 
         {loading ? (
           <p className="text-center text-gray-400 py-20">불러오는 중...</p>
