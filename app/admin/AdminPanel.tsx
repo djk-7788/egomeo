@@ -7,12 +7,12 @@ import AliexpressSearch, { AliProduct } from "./AliexpressSearch";
 import UrlParser, { ParsedProduct } from "./UrlParser";
 import OrderEditor from "./OrderEditor";
 
-type Platform = "amazon_us" | "amazon_jp" | "aliexpress" | "coupang" | null;
+type Platform = "amazon_us" | "amazon_jp" | "aliexpress" | "coupang" | "etc" | null;
 
 type Product = {
   id: string;
   title: string;
-  category: "mild" | "medium" | "hot" | "etc";
+  category: "mild" | "medium" | "hot";
   image_url: string;
   video_url: string | null;
   affiliate_link: string;
@@ -22,7 +22,7 @@ type Product = {
 
 type FormState = {
   title: string;
-  category: "mild" | "medium" | "hot" | "etc";
+  category: "mild" | "medium" | "hot";
   image_url: string;
   video_url: string;
   affiliate_link: string;
@@ -44,7 +44,6 @@ const categoryLabel = {
   mild: "순한맛",
   medium: "보통맛",
   hot: "매운맛",
-  etc: "기타",
 };
 
 export default function AdminPanel() {
@@ -560,14 +559,13 @@ export default function AdminPanel() {
                 <select
                   value={form.category}
                   onChange={(e) =>
-                    setForm({ ...form, category: e.target.value as "mild" | "medium" | "hot" | "etc" })
+                    setForm({ ...form, category: e.target.value as "mild" | "medium" | "hot" })
                   }
                   className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-[#FF5A00] transition-colors"
                 >
                   <option value="mild">순한맛 — 이게 머고?</option>
                   <option value="medium">보통맛 — 이게? 머고???</option>
                   <option value="hot">매운맛 — 이게??? 머고???????</option>
-                  <option value="etc">기타 (etc)</option>
                 </select>
               </div>
 
@@ -766,6 +764,25 @@ export default function AdminPanel() {
                         className="accent-[#FF5A00]"
                       />
                       🇯🇵 일본
+                    </label>
+                  </div>
+                )}
+                {form.affiliate_link &&
+                  !form.affiliate_link.includes("amazon.com") &&
+                  !form.affiliate_link.includes("amzn.to") &&
+                  !form.affiliate_link.includes("amazon.co.jp") &&
+                  !form.affiliate_link.includes("aliexpress.com") &&
+                  !form.affiliate_link.includes("coupang.com") && (
+                  <div className="mt-2 flex items-center gap-3 bg-gray-50 border border-gray-200 rounded-lg px-3 py-2">
+                    <span className="text-xs font-semibold text-gray-500">플랫폼</span>
+                    <label className="flex items-center gap-1.5 text-sm cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={form.platform === "etc"}
+                        onChange={(e) => setForm({ ...form, platform: e.target.checked ? "etc" : null })}
+                        className="accent-[#FF5A00]"
+                      />
+                      🌐 기타
                     </label>
                   </div>
                 )}

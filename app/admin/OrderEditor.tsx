@@ -19,6 +19,7 @@ function getPlatformBadge(platform: string | null): string | null {
   if (platform === "amazon_jp") return "🇯🇵 아마존JP";
   if (platform === "aliexpress") return "알리";
   if (platform === "coupang") return "쿠팡";
+  if (platform === "etc") return "🌐";
   return null;
 }
 

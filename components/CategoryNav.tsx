@@ -8,7 +8,6 @@ const CATEGORIES = [
   { label: "순한맛", value: "mild" },
   { label: "보통맛", value: "medium" },
   { label: "매운맛", value: "hot" },
-  { label: "기타", value: "etc" },
 ];
 
 export default function CategoryNav() {
