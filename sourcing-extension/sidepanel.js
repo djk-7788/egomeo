@@ -68,6 +68,35 @@ function renderImageGrid() {
     removeBtn.textContent = '✕';
     cell.appendChild(removeBtn);
 
+    // URL 복사 버튼 (url 타입만)
+    if (img.type === 'url' && img.src) {
+      const copyBtn = document.createElement('button');
+      copyBtn.className = 'img-copy-url';
+      copyBtn.title = img.src;
+      copyBtn.textContent = 'URL';
+      cell.appendChild(copyBtn);
+
+      copyBtn.addEventListener('click', async (e) => {
+        e.stopPropagation();
+        try {
+          await navigator.clipboard.writeText(img.src);
+        } catch {
+          const ta = document.createElement('textarea');
+          ta.value = img.src;
+          document.body.appendChild(ta);
+          ta.select();
+          document.execCommand('copy');
+          ta.remove();
+        }
+        copyBtn.textContent = '✓';
+        copyBtn.classList.add('copied');
+        setTimeout(() => {
+          copyBtn.textContent = 'URL';
+          copyBtn.classList.remove('copied');
+        }, 1500);
+      });
+    }
+
     // 대표 배지 — 선택된 이미지에만
     if (isSelected) {
       const badge = document.createElement('div');

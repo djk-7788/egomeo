@@ -211,6 +211,7 @@ async function renderCurrentSection() {
 
   // 저장 버튼
   document.getElementById('btn-save').addEventListener('click', async () => {
+    if (!confirm('현재 위치로 덮어쓸까요?')) return;
     const info = await getPageInfo(tabId);
     if (!info) return;
     await dbPut({
@@ -242,6 +243,20 @@ async function renderCurrentSection() {
         gotoBtn.textContent = '여기까지가 최대 위치예요';
         gotoBtn.className = 'btn btn-secondary';
         gotoBtn.disabled = true;
+
+        if (!document.getElementById('btn-goto-reset')) {
+          const resetBtn = document.createElement('button');
+          resetBtn.id = 'btn-goto-reset';
+          resetBtn.className = 'btn btn-reset';
+          resetBtn.textContent = '🔄 다시 시도';
+          gotoBtn.insertAdjacentElement('afterend', resetBtn);
+          resetBtn.addEventListener('click', () => {
+            gotoBtn.textContent = '저장된 위치로 이동 ↓';
+            gotoBtn.className = 'btn btn-secondary';
+            gotoBtn.disabled = false;
+            resetBtn.remove();
+          });
+        }
       }
     } else {
       window.close();

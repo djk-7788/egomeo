@@ -72,7 +72,7 @@ video_url     text          -- Cloudflare R2 영상 URL (선택, null 가능)
 affiliate_link text         -- 쿠팡/알리/아마존 링크
 is_active     boolean       -- false면 메인페이지에 안 보임
 sort_order    integer       -- 노출 순서 (낮을수록 앞에 표시, null이면 맨 뒤)
-platform      text          -- 'amazon_us' | 'amazon_jp' | 'aliexpress' | 'coupang' | null
+platform      text          -- 'amazon_us' | 'amazon_jp' | 'aliexpress' | 'coupang' | 'etc' | null
 ```
 
 > **가격(price) 컬럼은 제거됨** — 2026-05-23 `ALTER TABLE products DROP COLUMN price;` 실행 완료  
@@ -213,6 +213,7 @@ egomeo/
 - 인증: HttpOnly 쿠키 기반, 24시간 유지
 - **탭 1 — 상품 목록**: 등록/수정/삭제, 노출/숨김 토글, 미리보기 링크, 미디어 타입 표시
   - "☁️ Supabase → R2 마이그레이션" 버튼 (Supabase Storage URL → R2 URL 일괄 변환)
+  - "🖼️ 알리 이미지 고화질 교체" 버튼 — platform=aliexpress이고 image_url이 R2 주소인 상품들의 이미지를 AliExpress API로 재조회 후 R2 재업로드 (스트리밍 진행 로그 표시, `/api/admin/refresh-ali-images`)
 - **탭 2 — 알리익스프레스 검색**:
   - 좌우 분할 레이아웃 (왼쪽 65% 그리드 스크롤 / 오른쪽 35% sticky 패널)
   - 키워드 검색 (최대 50개, 정렬: 관련도/판매량/가격순, 카테고리 필터 10종)
@@ -227,13 +228,13 @@ egomeo/
   - 드래그 앤 드롭으로 메인 피드 노출 순서 조정
   - `sort_order` 컬럼에 저장, 메인 피드는 sort_order ASC 정렬
   - 영상 상품은 썸네일 우상단에 🎬 배지 표시
-  - 플랫폼 뱃지: `platform` 컬럼 값 기반 (amazon_us → 🇺🇸 아마존, amazon_jp → 🇯🇵 아마존JP, aliexpress → 알리, coupang → 쿠팡, null → 표시 안 함)
+  - 플랫폼 뱃지: `platform` 컬럼 값 기반 (amazon_us → 🇺🇸 아마존, amazon_jp → 🇯🇵 아마존JP, aliexpress → 알리, coupang → 쿠팡, etc → 기타, null → 표시 안 함)
 - **상품 등록/수정 모달**:
   - 이미지 업로드 → R2 저장 (`/api/upload`)
   - 영상 업로드 (선택) → R2 저장, `video_url` 컬럼에 저장
-  - 제휴 링크 입력 시 platform 자동 감지: 알리/쿠팡은 URL로 자동, 아마존(amazon.com/amzn.to/amazon.co.jp)은 지역 라디오 버튼 표시 (🇺🇸 미국 기본 / 🇯🇵 일본)
+  - 제휴 링크 입력 시 platform 자동 감지: 알리/쿠팡은 URL로 자동, 아마존(amazon.com/amzn.to/amazon.co.jp)은 지역 라디오 버튼 표시 (🇺🇸 미국 기본 / 🇯🇵 일본), 그 외 URL은 'etc' 자동 저장
   - 알리 검색 탭에서 불러오면 platform = aliexpress 자동 설정
-  - 모달: backdrop 클릭 시 닫기, 내부 스크롤(max-height 90vh)
+  - 모달: X·취소 버튼으로만 닫기 (backdrop 클릭으로 닫히지 않음), 내부 스크롤(max-height 90vh)
 
 ---
 
@@ -241,7 +242,7 @@ egomeo/
 
 아래 항목들이 이번 세션에서 완료됨. 상세 내용은 하단 "완료된 작업" 참고.
 
-- igemugo.com 도메인 구입 완료 (Cloudflare Registrar)
+- igemugo.com 도메인 구입 완료 (Cloudflare Registrar, 연 $10.44)
 - Vercel 커스텀 도메인 연결 완료 (www.igemugo.com)
 - sitemap.xml 동적 생성 완료 (`app/sitemap.ts`, `is_active = true` 기준)
 - 구글 서치 콘솔 등록 + 사이트맵 제출 완료
@@ -249,6 +250,13 @@ egomeo/
 - 빙 웹마스터 등록 완료 (사이트맵은 DNS 전파 완료 후 제출 필요)
 - 얀덱스 웹마스터 등록 + 사이트맵 제출 완료
 - 바이두는 중국 전화번호 필요로 패스
+- platform `'etc'` 추가 — 알리/쿠팡/아마존 외 URL 자동 분류
+- 어드민 모달 backdrop 클릭 닫힘 방지 (X·취소 버튼으로만 닫기)
+- 알리 이미지 고화질 수정 — `upgradeAliRes` 함수로 AVIF 포맷 접미사 포함 크기 파라미터 전부 제거
+- 기존 저화질 알리 이미지 일괄 교체 버튼 추가 (상품 목록 탭, `/api/admin/refresh-ali-images`)
+- 소싱툴 이미지 URL 복사 버튼 — 이미지 호버 시 우상단에 "URL" 버튼 표시, 클릭 시 클립보드 복사
+- 스크롤 북마크 확장: '여기까지 봤다' 확인 팝업 + 이동 버튼 고장 시 🔄 새로고침 버튼 추가
+- 상품 200개 등록 완료
 
 ---
 
@@ -335,6 +343,13 @@ egomeo/
 - [완료] 빙 웹마스터 등록 (사이트맵은 DNS 전파 완료 후 제출 필요)
 - [완료] 얀덱스 웹마스터 등록 + 사이트맵 제출 (소유 확인 메타태그: `yandex-verification`)
 - [완료] 바이두 — 중국 전화번호 필요로 패스
+- [완료] platform `'etc'` 추가 — 알리/쿠팡/아마존 외 URL 입력 시 자동으로 `platform = 'etc'` 저장, 순서 편집 탭에 '기타' 뱃지 표시
+- [완료] 어드민 모달 backdrop 클릭 닫힘 방지 — X 버튼·취소 버튼으로만 닫기 (실수 입력 방지)
+- [완료] 알리 이미지 `upgradeAliRes` 강화 — `_.avif` 포맷 변환 접미사 포함 3단계 정규식으로 모든 크기/품질 파라미터 제거 (content.js + refresh-ali-images API 동일 적용)
+- [완료] 알리 이미지 일괄 고화질 교체 (`/api/admin/refresh-ali-images`) — AliExpress API 재조회 → R2 재업로드 → DB 업데이트, 스트리밍 NDJSON 진행 로그
+- [완료] 소싱툴 이미지 URL 복사 버튼 — `type='url'` 이미지 호버 시 우상단 "URL" 버튼, 클릭 시 클립보드 복사 후 "✓" 피드백
+- [완료] 스크롤 북마크 확장 UX 개선 — '여기까지 봤다' 덮어쓰기 확인 팝업, 이동 버튼 비활성화 시 🔄 새로고침 버튼 자동 표시
+- [완료] 상품 200개 등록 완료
 
 ---
 
@@ -367,6 +382,7 @@ egomeo/
 | 어필리에이트 변환에 `link.generate` 사용 | `product.query` 등 검색 계열 API는 다른 상품을 반환할 수 있음. `link.generate`는 원본 URL을 그대로 변환해 product_id가 절대 바뀌지 않음 |
 | 소싱툴 확장에서 X-Admin-Key 헤더 인증 | 확장에서는 HttpOnly 쿠키 접근 불가. X-Admin-Key 헤더로 동일한 ADMIN_PASSWORD 값 검증 |
 | 아마존 지역만 수동 선택, 나머지는 URL 자동판별 | 알리/쿠팡은 URL 패턴이 명확해 자동 감지 가능. 아마존만 amzn.to 단축 URL 사용 시 JP/US 구분 불가능해 라디오로 명시 선택 |
+| **아마존 이미지는 R2 저장 절대 금지** | 아마존 이미지는 저작권 문제로 R2에 업로드하지 않음. 관리자 모달에서 이미지 URL 직접 입력 방식만 사용. PA API 승인 받은 이후에도 동일 원칙 유지 |
 
 ---
 
