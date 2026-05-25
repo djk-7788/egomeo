@@ -348,6 +348,7 @@ document.getElementById('btnUpload').addEventListener('click', async () => {
           video_url: r2VideoUrl,
           affiliate_link: item.productUrl,
           is_active: isPublic,
+          platform: item.platform ?? null,
         }),
       });
       if (!supaRes.ok) {

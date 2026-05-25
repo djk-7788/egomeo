@@ -343,11 +343,18 @@ document.getElementById('btnAdd').addEventListener('click', async () => {
     const selectedImages = imagesToSave.filter((i) => i.selected);
     const mainImageUrl = selectedImages.find((i) => i.type === 'url')?.src || '';
 
+    const platform = rawProductUrl.includes('aliexpress.com')
+      ? 'aliexpress'
+      : rawProductUrl.includes('coupang.com')
+      ? 'coupang'
+      : null;
+
     const item = {
       id: Date.now(),
       title: document.getElementById('inpTitle').value.trim() || '(제목 없음)',
       productUrl: finalProductUrl,
       affiliateConverted,   // 변환 여부 기록
+      platform,
       category: document.getElementById('selCategory').value,
       images: imagesToSave,
       imageUrl: mainImageUrl,
