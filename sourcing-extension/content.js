@@ -1,10 +1,13 @@
 (function () {
 
-  // ─── 이미지 URL 고해상도로 업그레이드 (알리 전용) ─────────────
+  // ─── 이미지 URL 원본 해상도로 변환 (알리 전용) ──────────────
+  // 패턴 1: "file.jpg_50x50.jpg"  → "file.jpg"  (확장자 중복형)
+  // 패턴 2: "file_50x50.jpg"      → "file.jpg"  (단순 크기 접미사형)
+  // 패턴 3: "file_960x960q80.jpg" → "file.jpg"  (품질 접미사 포함형)
   function upgradeAliRes(src) {
-    return src
-      .replace(/_\d+x\d+(\.\w+)$/, '_960x960$1')
-      .replace(/_\d+x\d+\.jpg/, '_960x960.jpg');
+    src = src.replace(/(\.\w+)_\d+x\d+[a-z0-9]*\.\w+$/, '$1'); // 패턴 1
+    src = src.replace(/_\d+x\d+[a-z0-9]*(\.\w+)$/, '$1');       // 패턴 2·3
+    return src;
   }
 
   // ─── 알리익스프레스 — 갤러리 이미지 전체 파싱 ─────────────────
@@ -29,8 +32,8 @@
         let src = img.getAttribute('src') || img.getAttribute('data-src') || img.getAttribute('data-lazy') || '';
         if (src.startsWith('//')) src = 'https:' + src;
         if (!src || src.includes('1x1') || src.includes('placeholder') || src.includes('gif')) return;
-        const key = src.replace(/_\d+x\d+(\.\w+)$/, '$1'); // 사이즈 제거한 dedup 키
-        if (!seen.has(key)) seen.set(key, upgradeAliRes(src));
+        const hq = upgradeAliRes(src);
+        if (!seen.has(hq)) seen.set(hq, hq);
       });
 
       if (seen.size > 1) break; // 여러 장 있으면 OK
