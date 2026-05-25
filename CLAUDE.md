@@ -20,6 +20,7 @@
 - **DB/Auth**: Supabase
 - **미디어 스토리지**: Cloudflare R2 (`@aws-sdk/client-s3`, S3 호환 API)
 - **배포**: Vercel (GitHub 자동 연동, push하면 자동 재배포)
+- **도메인**: www.igemugo.com (Cloudflare Registrar 구매, Vercel 연결)
 - **저장소**: https://github.com/djk-7788/egomeo.git
 
 ---
@@ -236,13 +237,18 @@ egomeo/
 
 ---
 
-## 최근 완료 작업 (2026-05-24 기준)
+## 최근 완료 작업 (2026-05-25 기준)
 
 아래 항목들이 이번 세션에서 완료됨. 상세 내용은 하단 "완료된 작업" 참고.
 
-- `products` 테이블에 `platform` 컬럼 추가 (text, nullable)
-- 관리자 모달에 플랫폼 자동 감지 — 아마존 URL 시 지역 라디오(🇺🇸/🇯🇵), 알리/쿠팡 URL 자동판별
-- 순서 편집 탭 플랫폼 뱃지: URL 자동판별 → platform 컬럼 값 기반으로 변경
+- igemugo.com 도메인 구입 완료 (Cloudflare Registrar)
+- Vercel 커스텀 도메인 연결 완료 (www.igemugo.com)
+- sitemap.xml 동적 생성 완료 (`app/sitemap.ts`, `is_active = true` 기준)
+- 구글 서치 콘솔 등록 + 사이트맵 제출 완료
+- 네이버 서치어드바이저 등록 완료 (소유 확인 메타태그 추가)
+- 빙 웹마스터 등록 완료 (사이트맵은 DNS 전파 완료 후 제출 필요)
+- 얀덱스 웹마스터 등록 + 사이트맵 제출 완료
+- 바이두는 중국 전화번호 필요로 패스
 
 ---
 
@@ -322,6 +328,13 @@ egomeo/
 - [완료] `products` 테이블에 `platform` 컬럼 추가 (text, nullable — 'amazon_us'|'amazon_jp'|'aliexpress'|'coupang'|null)
 - [완료] 순서 편집 탭 플랫폼 뱃지: URL 자동판별 → platform 컬럼 값 기반으로 변경
 - [완료] 관리자 모달 플랫폼 처리: 아마존 URL 감지 시 지역 라디오(🇺🇸 미국/🇯🇵 일본), 알리/쿠팡은 URL 자동판별로 platform 저장
+- [완료] igemugo.com 도메인 구입 (Cloudflare Registrar) + Vercel 커스텀 도메인 연결 (www.igemugo.com)
+- [완료] sitemap.xml 동적 생성 (`app/sitemap.ts`) — `is_active = true` 상품 전체 포함, 메인 페이지 포함
+- [완료] 구글 서치 콘솔 등록 + 사이트맵 제출
+- [완료] 네이버 서치어드바이저 등록 (소유 확인 메타태그: `naver-site-verification`)
+- [완료] 빙 웹마스터 등록 (사이트맵은 DNS 전파 완료 후 제출 필요)
+- [완료] 얀덱스 웹마스터 등록 + 사이트맵 제출 (소유 확인 메타태그: `yandex-verification`)
+- [완료] 바이두 — 중국 전화번호 필요로 패스
 
 ---
 
