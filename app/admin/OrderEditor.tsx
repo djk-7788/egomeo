@@ -32,68 +32,100 @@ function getPlatformColor(platform: string | null): string {
   return "bg-gray-50 text-gray-400";
 }
 
-// 그리디 알고리즘: 플랫폼 분산 + 영상 4칸 간격
+// 2단계 알고리즘: 영상 위치를 먼저 균등 분산 계산 후 플랫폼 다양성 적용
 function optimizeOrder(items: OrderItem[]): { result: OrderItem[]; warnings: string[] } {
   const warnSet = new Set<string>();
-  const result: OrderItem[] = [];
+  const N = items.length;
+  if (N === 0) return { result: [], warnings: [] };
 
-  // 플랫폼별 큐 생성, 각 큐 내부는 비영상 먼저 정렬
-  const queues = new Map<string | null, OrderItem[]>();
-  for (const item of items) {
-    if (!queues.has(item.platform)) queues.set(item.platform, []);
-    queues.get(item.platform)!.push(item);
+  const videos = items.filter(i => i.video_url);
+  const nonVideos = items.filter(i => !i.video_url);
+  const V = videos.length;
+
+  // ── 1단계: 영상 위치 계산 ─────────────────────────────────────────
+  // N/(V+1) 간격으로 균등 분산 + 랜덤 지터 ±2 (최소 4칸 보장)
+  const videoSlots = new Set<number>();
+
+  if (V > 0) {
+    const spacing = N / (V + 1);
+    let lastPos = -999;
+
+    for (let vi = 0; vi < V; vi++) {
+      const idealPos = Math.round(spacing * (vi + 1)) - 1; // 0-indexed 이상적 위치
+      const jitter = Math.floor(Math.random() * 5) - 2;    // -2 ~ +2 랜덤 지터
+
+      // 최소 4칸 보장 + 남은 영상들이 들어갈 공간 확보
+      const minValid = Math.max(lastPos + 4, 0);
+      const maxValid = N - 1 - (V - vi - 1) * 4;
+
+      if (minValid > maxValid) {
+        warnSet.add("일부 영상 간격이 4칸 미만입니다 (영상이 너무 많음).");
+        break;
+      }
+
+      // idealPos+jitter를 유효 범위로 클램프
+      const chosen = Math.max(minValid, Math.min(maxValid, idealPos + jitter));
+      videoSlots.add(chosen);
+      lastPos = chosen;
+    }
   }
-  for (const q of queues.values()) {
-    q.sort((a, b) => (a.video_url ? 1 : 0) - (b.video_url ? 1 : 0));
-  }
 
-  let lastPlatform: string | null = null;
-  let hadFirst = false;
-  let lastVideoPos = -999;
+  // ── 2단계: 플랫폼별 큐 구성 ──────────────────────────────────────
+  const mkQueues = (lst: OrderItem[]) => {
+    const m = new Map<string | null, OrderItem[]>();
+    for (const item of lst) {
+      if (!m.has(item.platform)) m.set(item.platform, []);
+      m.get(item.platform)!.push(item);
+    }
+    return m;
+  };
 
-  // 남은 아이템이 많은 플랫폼 순으로 정렬 (가장 많은 플랫폼부터 배치해 균등 분산)
-  const getPool = () =>
-    [...queues.entries()]
+  const vq = mkQueues(videos);
+  const nvq = mkQueues(nonVideos);
+  const hasAny = (m: Map<string | null, OrderItem[]>) =>
+    [...m.values()].some(q => q.length > 0);
+
+  // 가장 많이 남은 플랫폼부터 시도, 직전과 다른 플랫폼 우선
+  const pickBest = (
+    queues: Map<string | null, OrderItem[]>,
+    lastPlatform: string | null,
+    isFirst: boolean
+  ): { item: OrderItem; platform: string | null } | null => {
+    const pool = [...queues.entries()]
       .filter(([, q]) => q.length > 0)
       .sort((a, b) => b[1].length - a[1].length);
+    if (!pool.length) return null;
 
-  while (result.length < items.length) {
-    const pos = result.length;
-    const pool = getPool();
-    if (!pool.length) break;
-
-    let picked: OrderItem | null = null;
-    let pickedKey: string | null = null;
-
-    // 1순위: 다른 플랫폼 + 영상 간격 ok
     for (const [p, q] of pool) {
-      if (hadFirst && p === lastPlatform) continue;
-      const c = q.find(i => !i.video_url || pos - lastVideoPos >= 4);
-      if (c) { picked = c; pickedKey = p; break; }
+      if (!isFirst && p === lastPlatform) continue;
+      return { item: q.shift()!, platform: p };
     }
 
-    // 2순위: 플랫폼 제약 완화 + 영상 간격 ok
-    if (!picked) {
-      warnSet.add("일부 구간에서 연속 동일 플랫폼이 발생합니다.");
-      for (const [p, q] of pool) {
-        const c = q.find(i => !i.video_url || pos - lastVideoPos >= 4);
-        if (c) { picked = c; pickedKey = p; break; }
-      }
-    }
+    // 동일 플랫폼 폴백
+    warnSet.add("일부 구간에서 연속 동일 플랫폼이 발생합니다.");
+    const [p, q] = pool[0];
+    return { item: q.shift()!, platform: p };
+  };
 
-    // 3순위: 모든 제약 완화 (영상이 너무 많거나 몰린 경우)
-    if (!picked) {
-      warnSet.add("일부 영상 간격이 4칸 미만입니다 (영상이 너무 많거나 몰려 있음).");
-      pickedKey = pool[0][0];
-      picked = pool[0][1][0];
-    }
+  // ── 3단계: 위치별 배치 ───────────────────────────────────────────
+  // 영상 슬롯 → 영상 큐, 나머지 → 비영상 큐 (소진 시 반대 큐로 폴백)
+  const result: OrderItem[] = [];
+  let lastPlatform: string | null = null;
+  let isFirst = true;
 
-    const q = queues.get(pickedKey!)!;
-    q.splice(q.indexOf(picked!), 1);
-    if (picked!.video_url) lastVideoPos = pos;
-    lastPlatform = pickedKey!;
-    hadFirst = true;
-    result.push(picked!);
+  for (let pos = 0; pos < N; pos++) {
+    const isVideoSlot = videoSlots.has(pos);
+    const primaryQ = isVideoSlot ? vq : nvq;
+    const fallbackQ = isVideoSlot ? nvq : vq;
+    const activeQ = hasAny(primaryQ) ? primaryQ : fallbackQ;
+    if (!hasAny(activeQ)) continue;
+
+    const picked = pickBest(activeQ, lastPlatform, isFirst);
+    if (!picked) continue;
+
+    result.push(picked.item);
+    lastPlatform = picked.platform;
+    isFirst = false;
   }
 
   return { result, warnings: [...warnSet] };
