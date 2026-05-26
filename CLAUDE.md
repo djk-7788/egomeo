@@ -244,6 +244,8 @@ egomeo/
 
 - About/Privacy Policy/Contact 페이지 추가 (`/about`, `/privacy`, `/contact`)
 - Footer 링크 추가 (About | Privacy Policy | Contact)
+- Footer 저작권 연도 제거 ("© 이게머고?"), 제휴 마케팅 수수료 문구 추가
+- 헤더 우측 햄버거 메뉴 추가 (`HamburgerMenu.tsx`) — About/Privacy Policy/Contact 사이드 드로어
 
 - igemugo.com 도메인 구입 완료 (Cloudflare Registrar, 연 $10.44)
 - Vercel 커스텀 도메인 연결 완료 (www.igemugo.com)
@@ -357,6 +359,8 @@ egomeo/
 - [완료] Privacy Policy 페이지 추가 (`app/privacy/page.tsx`) — 개인정보 미수집 고지, 제휴 마케팅 고지
 - [완료] Contact 페이지 추가 (`app/contact/page.tsx`) — 이메일 문의 안내
 - [완료] Footer에 About | Privacy Policy | Contact 링크 추가
+- [완료] Footer 저작권 연도 제거 ("© 이게머고?"), 제휴 마케팅 수수료 문구 추가
+- [완료] 헤더 우측 햄버거 메뉴 추가 (`components/HamburgerMenu.tsx`) — 클릭 시 우측 사이드 드로어, About/Privacy Policy/Contact 링크, 페이지 이동 시 자동 닫힘
 
 ---
 
