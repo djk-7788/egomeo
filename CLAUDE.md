@@ -238,9 +238,12 @@ egomeo/
 
 ---
 
-## 최근 완료 작업 (2026-05-25 기준)
+## 최근 완료 작업 (2026-05-26 기준)
 
 아래 항목들이 이번 세션에서 완료됨. 상세 내용은 하단 "완료된 작업" 참고.
+
+- About/Privacy Policy/Contact 페이지 추가 (`/about`, `/privacy`, `/contact`)
+- Footer 링크 추가 (About | Privacy Policy | Contact)
 
 - igemugo.com 도메인 구입 완료 (Cloudflare Registrar, 연 $10.44)
 - Vercel 커스텀 도메인 연결 완료 (www.igemugo.com)
@@ -350,6 +353,10 @@ egomeo/
 - [완료] 소싱툴 이미지 URL 복사 버튼 — `type='url'` 이미지 호버 시 우상단 "URL" 버튼, 클릭 시 클립보드 복사 후 "✓" 피드백
 - [완료] 스크롤 북마크 확장 UX 개선 — '여기까지 봤다' 덮어쓰기 확인 팝업, 이동 버튼 비활성화 시 🔄 새로고침 버튼 자동 표시
 - [완료] 상품 200개 등록 완료
+- [완료] About 페이지 추가 (`app/about/page.tsx`) — 운영자/문의 정보
+- [완료] Privacy Policy 페이지 추가 (`app/privacy/page.tsx`) — 개인정보 미수집 고지, 제휴 마케팅 고지
+- [완료] Contact 페이지 추가 (`app/contact/page.tsx`) — 이메일 문의 안내
+- [완료] Footer에 About | Privacy Policy | Contact 링크 추가
 
 ---
 
