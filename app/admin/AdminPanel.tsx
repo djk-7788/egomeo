@@ -18,6 +18,7 @@ type Product = {
   affiliate_link: string;
   is_active: boolean;
   platform: Platform;
+  sort_order: number | null;
 };
 
 type FormState = {
@@ -63,6 +64,7 @@ export default function AdminPanel() {
   const [refreshLog, setRefreshLog] = useState<string[]>([]);
   const [refreshDone, setRefreshDone] = useState<{ success: number; failed: number; skipped: number } | null>(null);
   const [imageInputMode, setImageInputMode] = useState<"upload" | "url">("upload");
+  const [searchQuery, setSearchQuery] = useState("");
 
   useEffect(() => {
     fetchProducts();
@@ -73,6 +75,7 @@ export default function AdminPanel() {
     const { data } = await supabase
       .from("products")
       .select("*")
+      .order("sort_order", { ascending: true, nullsFirst: false })
       .order("created_at", { ascending: false });
     setProducts(data || []);
     setLoading(false);
@@ -459,11 +462,33 @@ export default function AdminPanel() {
       {/* 상품 목록 탭 */}
       {activeTab === "list" && (
       <div className="max-w-5xl mx-auto px-6 py-8">
-        {/* 상단 정보 바 */}
-        <div className="mb-4 flex items-center justify-between">
-          <span className="text-sm font-semibold text-gray-500">
-            총 <span className="text-[#111111]">{products.length}</span>개 등록됨
+        {/* 상단 정보 바 + 검색 */}
+        <div className="mb-4 flex items-center gap-3">
+          <span className="text-sm font-semibold text-gray-500 whitespace-nowrap">
+            총 <span className="text-[#111111]">{products.length}</span>개
           </span>
+          <div className="relative flex-1 max-w-xs">
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={e => setSearchQuery(e.target.value)}
+              placeholder="제목 검색..."
+              className="w-full border border-gray-200 rounded-lg px-3 py-1.5 text-sm outline-none focus:border-[#FF5A00] transition-colors pr-7"
+            />
+            {searchQuery && (
+              <button
+                onClick={() => setSearchQuery("")}
+                className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-300 hover:text-gray-500 text-xs"
+              >
+                ✕
+              </button>
+            )}
+          </div>
+          {searchQuery && (
+            <span className="text-xs text-gray-400">
+              {products.filter(p => p.title.toLowerCase().includes(searchQuery.toLowerCase())).length}건
+            </span>
+          )}
         </div>
 
         {/* 유틸 버튼 */}
@@ -522,10 +547,19 @@ export default function AdminPanel() {
             등록된 상품이 없습니다.
           </p>
         ) : (
+          (() => {
+            const filtered = searchQuery
+              ? products.filter(p => p.title.toLowerCase().includes(searchQuery.toLowerCase()))
+              : products;
+            if (filtered.length === 0) return (
+              <p className="text-center text-gray-400 py-20">"{searchQuery}"에 대한 검색 결과가 없습니다.</p>
+            );
+            return (
           <div className="bg-white rounded-xl border border-gray-100 overflow-hidden">
             <table className="w-full text-sm">
               <thead className="bg-gray-50 border-b border-gray-100">
                 <tr>
+                  <th className="text-left px-4 py-3 font-semibold text-gray-500">순서</th>
                   <th className="text-left px-4 py-3 font-semibold text-gray-500">제목</th>
                   <th className="text-left px-4 py-3 font-semibold text-gray-500">카테고리</th>
                   <th className="text-left px-4 py-3 font-semibold text-gray-500">미디어</th>
@@ -534,8 +568,13 @@ export default function AdminPanel() {
                 </tr>
               </thead>
               <tbody>
-                {products.map((product) => (
+                {filtered.map((product) => {
+                  const rank = products.findIndex(p => p.id === product.id) + 1;
+                  return (
                   <tr key={product.id} className="border-b border-gray-50 last:border-0">
+                    <td className="px-4 py-3 text-xs font-bold text-gray-400 w-12 text-right">
+                      {rank}
+                    </td>
                     <td className="px-4 py-3 font-medium text-[#111111] max-w-xs truncate">
                       {product.title}
                     </td>
@@ -582,10 +621,13 @@ export default function AdminPanel() {
                       </div>
                     </td>
                   </tr>
-                ))}
+                  );
+                })}
               </tbody>
             </table>
           </div>
+            );
+          })()
         )}
       </div>
       )}

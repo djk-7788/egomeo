@@ -166,6 +166,8 @@ egomeo/
 │   │   │       └── route.ts  # 알리 URL → 상품 ID 추출 → API 조회
 │   │   └── parse-url/
 │   │       └── route.ts      # 쿠팡/아마존 URL 파싱 (봇 차단으로 제한적)
+│   ├── search/
+│   │   └── page.tsx          # 검색 결과 페이지 (`/search?q=키워드`, ilike 검색, 카드 그리드)
 │   └── product/
 │       └── [id]/
 │           └── page.tsx      # 상품 상세 페이지 (공유 링크용, 영상 지원)
@@ -249,6 +251,9 @@ egomeo/
 - 순서 편집 탭 상단에 "정렬 최적화" 기능 추가 (범위 지정 → 미리보기 → 적용)
 - 정렬 최적화 버그 수정: 범위를 sort_order 값 기준 → 순위(rank) 기준으로 변경, 적용 시 순위 기반 연속 정수 할당으로 실제 반영 보장
 - 정렬 최적화 알고리즘 개선: 2단계 방식 — 영상 위치를 N/(V+1) 간격으로 균등 분산 후 ±2 랜덤 지터 적용 (영상이 뒤쪽에 몰리는 현상 해결)
+- 어드민 상품 목록 sort_order 기준 정렬, 순서 번호 표기, 제목 검색 기능 추가
+- 사이트 검색 페이지 추가 (`/search?q=키워드`, `app/search/page.tsx`) — 제목 ilike 검색, 메인 피드와 동일한 카드 그리드
+- 햄버거 메뉴에 사이트 검색창 추가 — 검색 후 /search?q=… 이동
 
 - igemugo.com 도메인 구입 완료 (Cloudflare Registrar, 연 $10.44)
 - Vercel 커스텀 도메인 연결 완료 (www.igemugo.com)
