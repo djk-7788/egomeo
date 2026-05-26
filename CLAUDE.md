@@ -21,6 +21,7 @@
 - **미디어 스토리지**: Cloudflare R2 (`@aws-sdk/client-s3`, S3 호환 API)
 - **배포**: Vercel (GitHub 자동 연동, push하면 자동 재배포)
 - **도메인**: www.igemugo.com (Cloudflare Registrar 구매, Vercel 연결)
+- **이메일**: hello@igemugo.com (Cloudflare Email Routing → Gmail 포워딩)
 - **저장소**: https://github.com/djk-7788/egomeo.git
 
 ---
@@ -256,37 +257,12 @@ egomeo/
 
 ## 최근 완료 작업 (2026-05-26 기준)
 
-아래 항목들이 이번 세션에서 완료됨. 상세 내용은 하단 "완료된 작업" 참고.
-
-- 어드민 큐(임시저장) 기능 추가 — `is_queued` 컬럼, 큐 관리 탭, 공개 상태 라디오 버튼, 대기중 배지
-- 큐 관리 탭 개별 선택 공개 기능 추가 — 체크박스, 전체 선택/해제, 선택한 상품 공개하기
-
-- About/Privacy Policy/Contact 페이지 추가 (`/about`, `/privacy`, `/contact`)
-- Footer 링크 추가 (About | Privacy Policy | Contact)
-- Footer 저작권 연도 제거 ("© 이게머고?"), 제휴 마케팅 수수료 문구 추가
-- 헤더 우측 햄버거 메뉴 추가 (`HamburgerMenu.tsx`) — About/Privacy Policy/Contact 사이드 드로어
-- 순서 편집 탭 상단에 "정렬 최적화" 기능 추가 (범위 지정 → 미리보기 → 적용)
-- 정렬 최적화 버그 수정: 범위를 sort_order 값 기준 → 순위(rank) 기준으로 변경, 적용 시 순위 기반 연속 정수 할당으로 실제 반영 보장
-- 정렬 최적화 알고리즘 개선: 2단계 방식 — 영상 위치를 N/(V+1) 간격으로 균등 분산 후 ±2 랜덤 지터 적용 (영상이 뒤쪽에 몰리는 현상 해결)
-- 어드민 상품 목록 sort_order 기준 정렬, 순서 번호 표기, 제목 검색 기능 추가
-- 사이트 검색 페이지 추가 (`/search?q=키워드`, `app/search/page.tsx`) — 제목 ilike 검색, 메인 피드와 동일한 카드 그리드
-- 햄버거 메뉴에 사이트 검색창 추가 — 검색 후 /search?q=… 이동
-
-- igemugo.com 도메인 구입 완료 (Cloudflare Registrar, 연 $10.44)
-- Vercel 커스텀 도메인 연결 완료 (www.igemugo.com)
-- sitemap.xml 동적 생성 완료 (`app/sitemap.ts`, `is_active = true` 기준)
-- 구글 서치 콘솔 등록 + 사이트맵 제출 완료
-- 네이버 서치어드바이저 등록 완료 (소유 확인 메타태그 추가)
-- 빙 웹마스터 등록 완료 (사이트맵은 DNS 전파 완료 후 제출 필요)
-- 얀덱스 웹마스터 등록 + 사이트맵 제출 완료
-- 바이두는 중국 전화번호 필요로 패스
-- platform `'etc'` 추가 — 알리/쿠팡/아마존 외 URL 자동 분류
-- 어드민 모달 backdrop 클릭 닫힘 방지 (X·취소 버튼으로만 닫기)
-- 알리 이미지 고화질 수정 — `upgradeAliRes` 함수로 AVIF 포맷 접미사 포함 크기 파라미터 전부 제거
-- 기존 저화질 알리 이미지 일괄 교체 버튼 추가 (상품 목록 탭, `/api/admin/refresh-ali-images`)
-- 소싱툴 이미지 URL 복사 버튼 — 이미지 호버 시 우상단에 "URL" 버튼 표시, 클릭 시 클립보드 복사
-- 스크롤 북마크 확장: '여기까지 봤다' 확인 팝업 + 이동 버튼 고장 시 🔄 새로고침 버튼 추가
-- 상품 200개 등록 완료
+- hello@igemugo.com 이메일 설정 완료 (Cloudflare Email Routing → Gmail 포워딩)
+- About / Privacy Policy / Contact 페이지 + Footer 링크 + 햄버거 메뉴 추가
+- 사이트 검색 페이지 (`/search`) + 햄버거 메뉴 검색창
+- 어드민 상품 목록 sort_order 정렬 + 순서 번호 표기 + 제목 검색
+- 어드민 정렬 최적화 기능 (플랫폼 분산 + 영상 4칸 간격 알고리즘, 미리보기 후 적용)
+- 어드민 큐 관리 탭 — `is_queued` 컬럼, 상품 추가 기본값 큐에 저장, 체크박스 개별 선택 공개
 
 ---
 
@@ -387,11 +363,20 @@ egomeo/
 - [완료] Footer 저작권 연도 제거 ("© 이게머고?"), 제휴 마케팅 수수료 문구 추가
 - [완료] 헤더 우측 햄버거 메뉴 추가 (`components/HamburgerMenu.tsx`) — 클릭 시 우측 사이드 드로어, About/Privacy Policy/Contact 링크, 페이지 이동 시 자동 닫힘
 - [완료] 순서 편집 탭 "정렬 최적화" 기능 추가 (`OrderEditor.tsx`) — sort_order 범위 지정 후 플랫폼 분산+영상 4칸 간격 그리디 알고리즘으로 자동 재배치, 미리보기(변경 전/후 나란히) 후 적용, 규칙 충족 불가 시 경고 표시
+- [완료] hello@igemugo.com 이메일 설정 (Cloudflare Email Routing → Gmail 포워딩)
+- [완료] 어드민 상품 목록 sort_order 기준 정렬 + 순서 번호 표기 + 제목 검색 기능
+- [완료] 사이트 검색 페이지 추가 (`app/search/page.tsx`) — `/search?q=키워드`, ilike 검색, 카드 그리드
+- [완료] 햄버거 메뉴에 사이트 검색창 추가
+- [완료] 순서 편집 탭 "정렬 최적화" 기능 추가 — 범위 지정, 플랫폼 분산 + 영상 4칸 간격 알고리즘, 미리보기 후 적용
+- [완료] About 페이지 (`app/about/page.tsx`) + Privacy Policy (`app/privacy/page.tsx`) + Contact (`app/contact/page.tsx`)
+- [완료] Footer에 About | Privacy Policy | Contact 링크 + 제휴 마케팅 수수료 문구
+- [완료] 헤더 우측 햄버거 메뉴 (`components/HamburgerMenu.tsx`) — 사이드 드로어, 페이지 이동 시 자동 닫힘
 - [완료] 어드민 큐(임시저장) 기능 추가
   - `products` 테이블에 `is_queued` 컬럼 추가 (boolean, default false)
   - 상품 추가/수정 모달에 "공개 상태" 라디오 버튼 ("바로 공개" / "큐에 저장", 기본값: 큐에 저장)
   - 어드민 "큐 관리" 탭 추가 (`QueueManager.tsx`) — 카드 그리드, 드래그 앤 드롭 순서 변경, 개별 "공개하기", "전체 공개" 버튼, 탭에 큐 상품 수 배지
   - 상품 목록에서 큐 상품 "대기중" 배지 표시 + "공개하기" 버튼으로 즉시 공개
+- [완료] 큐 관리 탭 개별 선택 공개 — 카드 체크박스, 전체 선택/해제, 선택한 상품 공개하기
 
 ---
 
