@@ -36,9 +36,11 @@ export default function QueueManager({ onPublished }: { onPublished?: () => void
   const [loading, setLoading] = useState(true);
   const [publishing, setPublishing] = useState<string | null>(null);
   const [publishingAll, setPublishingAll] = useState(false);
+  const [publishingSelected, setPublishingSelected] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [dragOverIdx, setDragOverIdx] = useState<number | null>(null);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const dragIdxRef = useRef<number | null>(null);
 
   useEffect(() => {
@@ -54,7 +56,25 @@ export default function QueueManager({ onPublished }: { onPublished?: () => void
       .order("sort_order", { ascending: true, nullsFirst: false })
       .order("created_at", { ascending: false });
     setItems(data || []);
+    setSelectedIds(new Set());
     setLoading(false);
+  }
+
+  function toggleSelect(id: string) {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+
+  function handleSelectAll() {
+    setSelectedIds(new Set(items.map((i) => i.id)));
+  }
+
+  function handleDeselectAll() {
+    setSelectedIds(new Set());
   }
 
   async function handlePublish(id: string) {
@@ -64,6 +84,19 @@ export default function QueueManager({ onPublished }: { onPublished?: () => void
       .update({ is_active: true, is_queued: false })
       .eq("id", id);
     setPublishing(null);
+    await fetchItems();
+    onPublished?.();
+  }
+
+  async function handlePublishSelected() {
+    if (selectedIds.size === 0) return;
+    if (!confirm(`선택한 ${selectedIds.size}개 상품을 공개합니다. 계속할까요?`)) return;
+    setPublishingSelected(true);
+    await supabase
+      .from("products")
+      .update({ is_active: true, is_queued: false })
+      .in("id", [...selectedIds]);
+    setPublishingSelected(false);
     await fetchItems();
     onPublished?.();
   }
@@ -132,13 +165,16 @@ export default function QueueManager({ onPublished }: { onPublished?: () => void
     }
   }
 
+  const allSelected = items.length > 0 && selectedIds.size === items.length;
+
   if (loading) {
     return <p className="text-center text-gray-400 py-20">불러오는 중...</p>;
   }
 
   return (
     <div className="max-w-6xl mx-auto px-6 py-8">
-      <div className="flex items-center justify-between mb-6">
+      {/* 상단 헤더 */}
+      <div className="flex items-center justify-between mb-4">
         <div>
           <div className="flex items-center gap-2">
             <h2 className="text-base font-black text-[#111111]">큐 관리</h2>
@@ -176,6 +212,43 @@ export default function QueueManager({ onPublished }: { onPublished?: () => void
         </div>
       </div>
 
+      {/* 선택 컨트롤 바 */}
+      {items.length > 0 && (
+        <div className="flex items-center gap-3 mb-5 py-2.5 px-3 bg-gray-50 rounded-xl border border-gray-100">
+          <button
+            onClick={allSelected ? handleDeselectAll : handleSelectAll}
+            className="text-xs font-semibold text-gray-600 hover:text-[#111111] transition-colors"
+          >
+            {allSelected ? "전체 해제" : "전체 선택"}
+          </button>
+          <span className="text-gray-200">|</span>
+          {selectedIds.size > 0 ? (
+            <>
+              <span className="text-xs font-semibold text-[#FF5A00]">
+                {selectedIds.size}개 선택됨
+              </span>
+              <button
+                onClick={handlePublishSelected}
+                disabled={publishingSelected}
+                className="text-xs font-bold px-3 py-1.5 bg-[#FF5A00] text-white rounded-lg hover:bg-[#e04e00] transition-colors disabled:opacity-50"
+              >
+                {publishingSelected
+                  ? "공개 중..."
+                  : `선택한 상품 공개하기 (${selectedIds.size}개)`}
+              </button>
+              <button
+                onClick={handleDeselectAll}
+                className="text-xs text-gray-400 hover:text-gray-600 transition-colors"
+              >
+                해제
+              </button>
+            </>
+          ) : (
+            <span className="text-xs text-gray-400">카드 체크박스로 선택 후 일괄 공개</span>
+          )}
+        </div>
+      )}
+
       {items.length === 0 ? (
         <div className="text-center py-20">
           <p className="text-2xl mb-3">📋</p>
@@ -186,73 +259,94 @@ export default function QueueManager({ onPublished }: { onPublished?: () => void
         </div>
       ) : (
         <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-3">
-          {items.map((item, index) => (
-            <div
-              key={item.id}
-              draggable
-              onDragStart={() => handleDragStart(index)}
-              onDragOver={(e) => handleDragOver(e, index)}
-              onDrop={() => handleDrop(index)}
-              onDragEnd={handleDragEnd}
-              className={`relative bg-white border-2 rounded-xl overflow-hidden cursor-grab active:cursor-grabbing select-none transition-all duration-150 ${
-                dragOverIdx === index
-                  ? "border-[#FF5A00] shadow-lg scale-105"
-                  : "border-gray-100 hover:border-gray-300"
-              }`}
-            >
-              {/* 순서 번호 */}
-              <div className="absolute top-1.5 left-1.5 z-10 bg-black/60 text-white text-[10px] font-bold w-5 h-5 rounded-full flex items-center justify-center">
-                {index + 1}
-              </div>
-              {/* 플랫폼 배지 */}
-              {getPlatformBadge(item.platform) && (
-                <div
-                  className={`absolute top-7 left-1.5 z-10 text-[9px] font-bold px-1.5 py-0.5 rounded-full whitespace-nowrap leading-tight ${getPlatformColor(item.platform)}`}
-                >
-                  {getPlatformBadge(item.platform)}
-                </div>
-              )}
-              {/* 영상 배지 */}
-              {item.video_url && (
-                <div className="absolute top-1.5 right-1.5 z-10 bg-[#FF5A00] text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full">
-                  🎬
-                </div>
-              )}
-              {/* 썸네일 */}
-              <div className="aspect-square bg-gray-50">
-                {item.video_url ? (
-                  <video
-                    src={item.video_url}
-                    className="w-full h-full object-cover"
-                    preload="metadata"
-                    muted
-                    playsInline
-                    draggable={false}
-                  />
-                ) : (
-                  <img
-                    src={item.image_url}
-                    alt={item.title}
-                    className="w-full h-full object-cover"
-                    draggable={false}
-                  />
+          {items.map((item, index) => {
+            const isSelected = selectedIds.has(item.id);
+            return (
+              <div
+                key={item.id}
+                draggable
+                onDragStart={() => handleDragStart(index)}
+                onDragOver={(e) => handleDragOver(e, index)}
+                onDrop={() => handleDrop(index)}
+                onDragEnd={handleDragEnd}
+                className={`relative bg-white border-2 rounded-xl overflow-hidden cursor-grab active:cursor-grabbing select-none transition-all duration-150 ${
+                  dragOverIdx === index
+                    ? "border-[#FF5A00] shadow-lg scale-105"
+                    : isSelected
+                    ? "border-[#FF5A00] shadow-sm"
+                    : "border-gray-100 hover:border-gray-300"
+                }`}
+              >
+                {/* 선택 오버레이 (선택 시 반투명 주황) */}
+                {isSelected && (
+                  <div className="absolute inset-0 bg-[#FF5A00]/8 z-10 pointer-events-none" />
                 )}
+                {/* 순서 번호 */}
+                <div className="absolute top-1.5 left-1.5 z-20 bg-black/60 text-white text-[10px] font-bold w-5 h-5 rounded-full flex items-center justify-center">
+                  {index + 1}
+                </div>
+                {/* 플랫폼 배지 */}
+                {getPlatformBadge(item.platform) && (
+                  <div
+                    className={`absolute top-7 left-1.5 z-20 text-[9px] font-bold px-1.5 py-0.5 rounded-full whitespace-nowrap leading-tight ${getPlatformColor(item.platform)}`}
+                  >
+                    {getPlatformBadge(item.platform)}
+                  </div>
+                )}
+                {/* 영상 배지 */}
+                {item.video_url && (
+                  <div className="absolute top-1.5 right-1.5 z-20 bg-[#FF5A00] text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full">
+                    🎬
+                  </div>
+                )}
+                {/* 썸네일 */}
+                <div className="aspect-square bg-gray-50">
+                  {item.video_url ? (
+                    <video
+                      src={item.video_url}
+                      className="w-full h-full object-cover"
+                      preload="metadata"
+                      muted
+                      playsInline
+                      draggable={false}
+                    />
+                  ) : (
+                    <img
+                      src={item.image_url}
+                      alt={item.title}
+                      className="w-full h-full object-cover"
+                      draggable={false}
+                    />
+                  )}
+                </div>
+                {/* 카드 하단 */}
+                <div className="p-2">
+                  {/* 체크박스 + 제목 */}
+                  <div className="flex items-start gap-1.5 mb-1.5">
+                    <input
+                      type="checkbox"
+                      checked={isSelected}
+                      onChange={() => toggleSelect(item.id)}
+                      onMouseDown={(e) => e.stopPropagation()}
+                      onClick={(e) => e.stopPropagation()}
+                      draggable={false}
+                      className="mt-0.5 flex-shrink-0 accent-[#FF5A00] cursor-pointer"
+                    />
+                    <p className="text-[10px] font-semibold text-[#111111] line-clamp-2 leading-tight">
+                      {item.title}
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => handlePublish(item.id)}
+                    disabled={publishing === item.id}
+                    className="w-full text-[10px] font-bold py-1 bg-[#FF5A00] text-white rounded-md hover:bg-[#e04e00] transition-colors disabled:opacity-50"
+                  >
+                    {publishing === item.id ? "..." : "공개하기"}
+                  </button>
+                </div>
               </div>
-              {/* 카드 하단 */}
-              <div className="p-2">
-                <p className="text-[10px] font-semibold text-[#111111] line-clamp-2 leading-tight mb-1.5">
-                  {item.title}
-                </p>
-                <button
-                  onClick={() => handlePublish(item.id)}
-                  disabled={publishing === item.id}
-                  className="w-full text-[10px] font-bold py-1 bg-[#FF5A00] text-white rounded-md hover:bg-[#e04e00] transition-colors disabled:opacity-50"
-                >
-                  {publishing === item.id ? "..." : "공개하기"}
-                </button>
-              </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
     </div>
