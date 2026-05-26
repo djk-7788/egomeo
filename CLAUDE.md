@@ -247,6 +247,7 @@ egomeo/
 - Footer 저작권 연도 제거 ("© 이게머고?"), 제휴 마케팅 수수료 문구 추가
 - 헤더 우측 햄버거 메뉴 추가 (`HamburgerMenu.tsx`) — About/Privacy Policy/Contact 사이드 드로어
 - 순서 편집 탭 상단에 "정렬 최적화" 기능 추가 (범위 지정 → 미리보기 → 적용)
+- 정렬 최적화 버그 수정: 범위를 sort_order 값 기준 → 순위(rank) 기준으로 변경, 적용 시 순위 기반 연속 정수 할당으로 실제 반영 보장
 
 - igemugo.com 도메인 구입 완료 (Cloudflare Registrar, 연 $10.44)
 - Vercel 커스텀 도메인 연결 완료 (www.igemugo.com)

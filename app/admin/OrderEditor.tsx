@@ -113,7 +113,7 @@ export default function OrderEditor() {
   const [preview, setPreview] = useState<{
     before: OrderItem[];
     after: OrderItem[];
-    sortOrders: number[];
+    startRank: number;  // 범위 첫 번째 순위 (1-indexed)
     warnings: string[];
   } | null>(null);
   const [applying, setApplying] = useState(false);
@@ -138,45 +138,48 @@ export default function OrderEditor() {
   function handlePreview() {
     const start = parseInt(rangeStart);
     const end = parseInt(rangeEnd);
-    if (isNaN(start) || isNaN(end) || start >= end || start < 1) {
+    if (isNaN(start) || isNaN(end) || start < 1 || end < start) {
       alert("올바른 범위를 입력해 주세요. (시작 < 끝, 1 이상)");
       return;
     }
-    const inRange = items.filter(
-      item => item.sort_order != null && item.sort_order >= start && item.sort_order <= end
-    );
-    if (inRange.length < 2) {
-      alert(`범위 ${start}~${end}에 해당하는 상품이 ${inRange.length}개뿐입니다.`);
+    if (end > items.length) {
+      alert(`전체 상품이 ${items.length}개입니다. 끝 번호는 ${items.length} 이하로 입력해 주세요.`);
       return;
     }
-    const before = [...inRange].sort((a, b) => a.sort_order - b.sort_order);
-    const sortOrders = before.map(i => i.sort_order);
+    // items는 sort_order 순 정렬된 상태 — 순위(rank) 기반으로 슬라이싱
+    const before = items.slice(start - 1, end);
+    if (before.length < 2) {
+      alert("선택한 범위에 상품이 2개 이상 있어야 합니다.");
+      return;
+    }
     const { result: after, warnings } = optimizeOrder([...before]);
-    setPreview({ before, after, sortOrders, warnings });
+    setPreview({ before, after, startRank: start, warnings });
     setApplyDone(false);
   }
 
   async function handleApply() {
     if (!preview) return;
-    if (!confirm(`${preview.after.length}개 상품의 순서를 업데이트합니다. 계속할까요?`)) return;
+    if (!confirm(`${preview.after.length}개 상품의 순서를 변경합니다. 범위 밖 상품은 영향 없습니다. 계속할까요?`)) return;
     setApplying(true);
     const errors: string[] = [];
-    await Promise.all(
-      preview.after.map(async (item, i) => {
-        const { error } = await supabase
-          .from("products")
-          .update({ sort_order: preview.sortOrders[i] })
-          .eq("id", item.id);
-        if (error) errors.push(error.message);
-      })
-    );
+    // 순위 기반 연속 정수 할당 (startRank, startRank+1, ...)
+    // Promise.all 대신 순차 업데이트 — 충돌 없이 확실하게 반영
+    for (let i = 0; i < preview.after.length; i++) {
+      const item = preview.after[i];
+      const newOrder = preview.startRank + i;
+      const { error } = await supabase
+        .from("products")
+        .update({ sort_order: newOrder })
+        .eq("id", item.id);
+      if (error) errors.push(`[${i + 1}번] ${error.message}`);
+    }
     setApplying(false);
     if (errors.length > 0) {
-      alert("저장 실패: " + errors[0]);
+      alert(`저장 실패 (${errors.length}건):\n${errors[0]}`);
     } else {
       setApplyDone(true);
       setPreview(null);
-      fetchItems();
+      await fetchItems();
     }
   }
 
@@ -383,7 +386,7 @@ export default function OrderEditor() {
                 취소
               </button>
               <span className="text-[10px] text-gray-400">
-                sort_order {preview.sortOrders[0]}~{preview.sortOrders[preview.sortOrders.length - 1]}, 총 {preview.before.length}개 재배치
+                {preview.startRank}번~{preview.startRank + preview.before.length - 1}번 상품, 총 {preview.before.length}개 재배치
               </span>
             </div>
           </>
