@@ -246,6 +246,7 @@ egomeo/
 - Footer 링크 추가 (About | Privacy Policy | Contact)
 - Footer 저작권 연도 제거 ("© 이게머고?"), 제휴 마케팅 수수료 문구 추가
 - 헤더 우측 햄버거 메뉴 추가 (`HamburgerMenu.tsx`) — About/Privacy Policy/Contact 사이드 드로어
+- 순서 편집 탭 상단에 "정렬 최적화" 기능 추가 (범위 지정 → 미리보기 → 적용)
 
 - igemugo.com 도메인 구입 완료 (Cloudflare Registrar, 연 $10.44)
 - Vercel 커스텀 도메인 연결 완료 (www.igemugo.com)
@@ -361,6 +362,7 @@ egomeo/
 - [완료] Footer에 About | Privacy Policy | Contact 링크 추가
 - [완료] Footer 저작권 연도 제거 ("© 이게머고?"), 제휴 마케팅 수수료 문구 추가
 - [완료] 헤더 우측 햄버거 메뉴 추가 (`components/HamburgerMenu.tsx`) — 클릭 시 우측 사이드 드로어, About/Privacy Policy/Contact 링크, 페이지 이동 시 자동 닫힘
+- [완료] 순서 편집 탭 "정렬 최적화" 기능 추가 (`OrderEditor.tsx`) — sort_order 범위 지정 후 플랫폼 분산+영상 4칸 간격 그리디 알고리즘으로 자동 재배치, 미리보기(변경 전/후 나란히) 후 적용, 규칙 충족 불가 시 경고 표시
 
 ---
 
