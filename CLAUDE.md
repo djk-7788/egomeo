@@ -71,12 +71,14 @@ image_url     text          -- Cloudflare R2 퍼블릭 URL (기존 Supabase Stor
 video_url     text          -- Cloudflare R2 영상 URL (선택, null 가능)
 affiliate_link text         -- 쿠팡/알리/아마존 링크
 is_active     boolean       -- false면 메인페이지에 안 보임
+is_queued     boolean       -- true면 큐(임시저장) 상태, is_active=false와 함께 사용
 sort_order    integer       -- 노출 순서 (낮을수록 앞에 표시, null이면 맨 뒤)
 platform      text          -- 'amazon_us' | 'amazon_jp' | 'aliexpress' | 'coupang' | 'etc' | null
 ```
 
 > **가격(price) 컬럼은 제거됨** — 2026-05-23 `ALTER TABLE products DROP COLUMN price;` 실행 완료  
-> **platform 컬럼 추가** — 2026-05-24 `ALTER TABLE products ADD COLUMN IF NOT EXISTS platform text;` 실행 완료
+> **platform 컬럼 추가** — 2026-05-24 `ALTER TABLE products ADD COLUMN IF NOT EXISTS platform text;` 실행 완료  
+> **is_queued 컬럼 추가** — 2026-05-26 `ALTER TABLE products ADD COLUMN IF NOT EXISTS is_queued boolean DEFAULT false;` 실행 완료
 
 **RLS**: 비활성화됨 (`alter table products disable row level security`)
 → 나중에 Supabase Auth 연동 시 RLS 정책 재설정 필요
@@ -150,7 +152,8 @@ egomeo/
 │   │   ├── page.tsx          # 쿠키 확인 → LoginForm or AdminPanel
 │   │   ├── actions.ts        # 로그인/로그아웃 서버 액션
 │   │   ├── LoginForm.tsx     # 비밀번호 입력 화면 (클라이언트)
-│   │   ├── AdminPanel.tsx    # 상품 CRUD 관리 패널 — 4개 탭 (상품목록/알리검색/URL파싱/순서편집) + R2 업로드
+│   │   ├── AdminPanel.tsx    # 상품 CRUD 관리 패널 — 5개 탭 (상품목록/큐관리/알리검색/URL파싱/순서편집) + R2 업로드
+│   │   ├── QueueManager.tsx  # 큐 관리 탭 (is_queued 상품, 드래그 앤 드롭, 공개하기/전체공개)
 │   │   ├── AliexpressSearch.tsx  # 알리 검색 탭 (좌우 분할, URL 직접 입력, 클리어 버튼)
 │   │   ├── UrlParser.tsx     # URL 파싱 탭 (쿠팡/아마존 URL → 이미지/상품명 추출, 봇 차단으로 제한적)
 │   │   └── OrderEditor.tsx   # 순서 편집 탭 (drag & drop, sort_order 저장, 🎬 영상 배지)
@@ -216,17 +219,24 @@ egomeo/
 - **탭 1 — 상품 목록**: 등록/수정/삭제, 노출/숨김 토글, 미리보기 링크, 미디어 타입 표시
   - "☁️ Supabase → R2 마이그레이션" 버튼 (Supabase Storage URL → R2 URL 일괄 변환)
   - "🖼️ 알리 이미지 고화질 교체" 버튼 — platform=aliexpress이고 image_url이 R2 주소인 상품들의 이미지를 AliExpress API로 재조회 후 R2 재업로드 (스트리밍 진행 로그 표시, `/api/admin/refresh-ali-images`)
-- **탭 2 — 알리익스프레스 검색**:
+  - 큐에 저장된 상품은 제목 옆 "대기중" 배지 표시, 노출 컬럼에 "공개하기" 버튼으로 즉시 공개 가능
+- **탭 2 — 큐 관리**: is_queued=true 상품들만 표시
+  - 썸네일 카드 그리드 (플랫폼 배지 + 영상 배지 표시)
+  - 드래그 앤 드롭으로 큐 순서 변경 + "순서 저장" 버튼
+  - 개별 "공개하기" 버튼 → is_active=true, is_queued=false
+  - "전체 공개" 버튼 → 큐 전체 한번에 공개
+  - 탭 버튼에 큐 상품 수 배지 표시
+- **탭 3 — 알리익스프레스 검색**:
   - 좌우 분할 레이아웃 (왼쪽 65% 그리드 스크롤 / 오른쪽 35% sticky 패널)
   - 키워드 검색 (최대 50개, 정렬: 관련도/판매량/가격순, 카테고리 필터 10종)
   - URL 직접 입력: 알리 상품 URL → 상품 ID 추출 → Affiliate API 조회
   - 상품 클릭 → 오른쪽 패널에 이미지 여러 장 표시 → 선택 후 폼에 불러오기
   - 썸네일 hover 시 280px 확대 팝업, 원본 보기 버튼
   - 입력창 클리어(X) 버튼 (키워드/URL 모두)
-- **탭 3 — URL 파싱**:
+- **탭 4 — URL 파싱**:
   - 쿠팡/아마존 상품 URL 붙여넣기 → 이미지/상품명 자동 추출 (가격 제거됨)
   - **주의**: 쿠팡/아마존 모두 봇 차단(403/Cloudflare)으로 현재 제한적으로만 동작
-- **탭 4 — 순서 편집**:
+- **탭 5 — 순서 편집**:
   - 드래그 앤 드롭으로 메인 피드 노출 순서 조정
   - `sort_order` 컬럼에 저장, 메인 피드는 sort_order ASC 정렬
   - 영상 상품은 썸네일 우상단에 🎬 배지 표시
@@ -236,6 +246,7 @@ egomeo/
   - 영상 업로드 (선택) → R2 저장, `video_url` 컬럼에 저장
   - 제휴 링크 입력 시 platform 자동 감지: 알리/쿠팡은 URL로 자동, 아마존(amazon.com/amzn.to/amazon.co.jp)은 지역 라디오 버튼 표시 (🇺🇸 미국 기본 / 🇯🇵 일본), 그 외 URL은 'etc' 자동 저장
   - 알리 검색 탭에서 불러오면 platform = aliexpress 자동 설정
+  - **공개 상태 라디오**: "바로 공개" (is_active=true, is_queued=false) / "큐에 저장" (is_active=false, is_queued=true) — **기본값: 큐에 저장**
   - 모달: X·취소 버튼으로만 닫기 (backdrop 클릭으로 닫히지 않음), 내부 스크롤(max-height 90vh)
 
 ---
@@ -243,6 +254,8 @@ egomeo/
 ## 최근 완료 작업 (2026-05-26 기준)
 
 아래 항목들이 이번 세션에서 완료됨. 상세 내용은 하단 "완료된 작업" 참고.
+
+- 어드민 큐(임시저장) 기능 추가 — `is_queued` 컬럼, 큐 관리 탭, 공개 상태 라디오 버튼, 대기중 배지
 
 - About/Privacy Policy/Contact 페이지 추가 (`/about`, `/privacy`, `/contact`)
 - Footer 링크 추가 (About | Privacy Policy | Contact)
@@ -370,6 +383,11 @@ egomeo/
 - [완료] Footer 저작권 연도 제거 ("© 이게머고?"), 제휴 마케팅 수수료 문구 추가
 - [완료] 헤더 우측 햄버거 메뉴 추가 (`components/HamburgerMenu.tsx`) — 클릭 시 우측 사이드 드로어, About/Privacy Policy/Contact 링크, 페이지 이동 시 자동 닫힘
 - [완료] 순서 편집 탭 "정렬 최적화" 기능 추가 (`OrderEditor.tsx`) — sort_order 범위 지정 후 플랫폼 분산+영상 4칸 간격 그리디 알고리즘으로 자동 재배치, 미리보기(변경 전/후 나란히) 후 적용, 규칙 충족 불가 시 경고 표시
+- [완료] 어드민 큐(임시저장) 기능 추가
+  - `products` 테이블에 `is_queued` 컬럼 추가 (boolean, default false)
+  - 상품 추가/수정 모달에 "공개 상태" 라디오 버튼 ("바로 공개" / "큐에 저장", 기본값: 큐에 저장)
+  - 어드민 "큐 관리" 탭 추가 (`QueueManager.tsx`) — 카드 그리드, 드래그 앤 드롭 순서 변경, 개별 "공개하기", "전체 공개" 버튼, 탭에 큐 상품 수 배지
+  - 상품 목록에서 큐 상품 "대기중" 배지 표시 + "공개하기" 버튼으로 즉시 공개
 
 ---
 

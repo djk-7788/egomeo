@@ -6,6 +6,7 @@ import { logout } from "./actions";
 import AliexpressSearch, { AliProduct } from "./AliexpressSearch";
 import UrlParser, { ParsedProduct } from "./UrlParser";
 import OrderEditor from "./OrderEditor";
+import QueueManager from "./QueueManager";
 
 type Platform = "amazon_us" | "amazon_jp" | "aliexpress" | "coupang" | "etc" | null;
 
@@ -17,6 +18,7 @@ type Product = {
   video_url: string | null;
   affiliate_link: string;
   is_active: boolean;
+  is_queued: boolean;
   platform: Platform;
   sort_order: number | null;
 };
@@ -28,6 +30,7 @@ type FormState = {
   video_url: string;
   affiliate_link: string;
   is_active: boolean;
+  is_queued: boolean;
   platform: Platform;
 };
 
@@ -37,7 +40,8 @@ const emptyForm: FormState = {
   image_url: "",
   video_url: "",
   affiliate_link: "",
-  is_active: true,
+  is_active: false,
+  is_queued: true,
   platform: null,
 };
 
@@ -48,7 +52,7 @@ const categoryLabel = {
 };
 
 export default function AdminPanel() {
-  const [activeTab, setActiveTab] = useState<"list" | "order" | "search" | "parse">("list");
+  const [activeTab, setActiveTab] = useState<"list" | "queue" | "order" | "search" | "parse">("list");
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
@@ -134,6 +138,7 @@ export default function AdminPanel() {
       video_url: product.video_url || "",
       affiliate_link: product.affiliate_link,
       is_active: product.is_active,
+      is_queued: product.is_queued,
       platform: product.platform,
     });
     setImageInputMode("upload");
@@ -307,8 +312,10 @@ export default function AdminPanel() {
     }
   }
 
-  async function handleToggleActive(id: string, current: boolean) {
-    await supabase.from("products").update({ is_active: !current }).eq("id", id);
+  async function handleToggleActive(id: string, current: boolean, isQueued: boolean) {
+    const updates: { is_active: boolean; is_queued?: boolean } = { is_active: !current };
+    if (!current && isQueued) updates.is_queued = false;
+    await supabase.from("products").update(updates).eq("id", id);
     fetchProducts();
   }
 
@@ -415,6 +422,27 @@ export default function AdminPanel() {
           상품 목록
         </button>
         <button
+          onClick={() => setActiveTab("queue")}
+          className={`text-sm font-semibold px-4 py-3 border-b-2 transition-colors flex items-center gap-1.5 ${
+            activeTab === "queue"
+              ? "border-[#FF5A00] text-[#FF5A00]"
+              : "border-transparent text-gray-400 hover:text-gray-600"
+          }`}
+        >
+          큐 관리
+          {products.filter((p) => p.is_queued).length > 0 && (
+            <span
+              className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${
+                activeTab === "queue"
+                  ? "bg-[#FF5A00] text-white"
+                  : "bg-amber-100 text-amber-600"
+              }`}
+            >
+              {products.filter((p) => p.is_queued).length}
+            </span>
+          )}
+        </button>
+        <button
           onClick={() => setActiveTab("order")}
           className={`text-sm font-semibold px-4 py-3 border-b-2 transition-colors ${
             activeTab === "order"
@@ -445,6 +473,9 @@ export default function AdminPanel() {
           🔗 URL 파싱 (쿠팡/아마존)
         </button>
       </div>
+
+      {/* 큐 관리 탭 */}
+      {activeTab === "queue" && <QueueManager onPublished={fetchProducts} />}
 
       {/* 순서 편집 탭 */}
       {activeTab === "order" && <OrderEditor />}
@@ -575,8 +606,15 @@ export default function AdminPanel() {
                     <td className="px-4 py-3 text-xs font-bold text-gray-400 w-12 text-right">
                       {rank}
                     </td>
-                    <td className="px-4 py-3 font-medium text-[#111111] max-w-xs truncate">
-                      {product.title}
+                    <td className="px-4 py-3 font-medium text-[#111111] max-w-xs">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <span className="truncate">{product.title}</span>
+                        {product.is_queued && (
+                          <span className="flex-shrink-0 text-[10px] font-bold px-1.5 py-0.5 bg-amber-100 text-amber-600 rounded-full">
+                            대기중
+                          </span>
+                        )}
+                      </div>
                     </td>
                     <td className="px-4 py-3 text-gray-500">
                       {categoryLabel[product.category]}
@@ -585,16 +623,25 @@ export default function AdminPanel() {
                       {product.video_url ? "🎥 영상+이미지" : "🖼️ 이미지"}
                     </td>
                     <td className="px-4 py-3">
-                      <button
-                        onClick={() => handleToggleActive(product.id, product.is_active)}
-                        className={`text-xs font-semibold px-2 py-1 rounded-full transition-colors ${
-                          product.is_active
-                            ? "bg-green-100 text-green-600 hover:bg-green-200"
-                            : "bg-gray-100 text-gray-400 hover:bg-gray-200"
-                        }`}
-                      >
-                        {product.is_active ? "노출 중" : "숨김"}
-                      </button>
+                      {product.is_queued ? (
+                        <button
+                          onClick={() => handleToggleActive(product.id, false, true)}
+                          className="text-xs font-semibold px-2 py-1 rounded-full bg-amber-100 text-amber-600 hover:bg-amber-200 transition-colors"
+                        >
+                          공개하기
+                        </button>
+                      ) : (
+                        <button
+                          onClick={() => handleToggleActive(product.id, product.is_active, false)}
+                          className={`text-xs font-semibold px-2 py-1 rounded-full transition-colors ${
+                            product.is_active
+                              ? "bg-green-100 text-green-600 hover:bg-green-200"
+                              : "bg-gray-100 text-gray-400 hover:bg-gray-200"
+                          }`}
+                        >
+                          {product.is_active ? "노출 중" : "숨김"}
+                        </button>
+                      )}
                     </td>
                     <td className="px-4 py-3 text-right">
                       <div className="flex gap-2 justify-end">
@@ -884,17 +931,33 @@ export default function AdminPanel() {
                   </div>
                 )}
               </div>
-              <div className="flex items-center gap-2">
-                <input
-                  type="checkbox"
-                  id="is_active"
-                  checked={form.is_active}
-                  onChange={(e) => setForm({ ...form, is_active: e.target.checked })}
-                  className="accent-[#FF5A00]"
-                />
-                <label htmlFor="is_active" className="text-sm text-gray-600">
-                  메인 페이지에 노출
+              <div>
+                <label className="text-xs font-semibold text-gray-500 block mb-2">
+                  공개 상태
                 </label>
+                <div className="flex gap-4">
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="radio"
+                      name="visibility"
+                      checked={!form.is_queued}
+                      onChange={() => setForm({ ...form, is_active: true, is_queued: false })}
+                      className="accent-[#FF5A00]"
+                    />
+                    <span className="text-sm text-gray-700">바로 공개</span>
+                  </label>
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="radio"
+                      name="visibility"
+                      checked={form.is_queued}
+                      onChange={() => setForm({ ...form, is_active: false, is_queued: true })}
+                      className="accent-[#FF5A00]"
+                    />
+                    <span className="text-sm text-gray-700">큐에 저장</span>
+                    <span className="text-[10px] text-amber-500 font-semibold bg-amber-50 px-1.5 py-0.5 rounded-full">기본값</span>
+                  </label>
+                </div>
               </div>
               <div className="flex gap-3 pt-2">
                 <button
