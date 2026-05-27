@@ -73,7 +73,7 @@ export default async function ProductPage({ params }: Props) {
               <ImageSlider
                 images={product.image_urls}
                 alt={product.title}
-                mode="manual"
+                mode="auto"
                 className="w-full h-full"
               />
             ) : (
