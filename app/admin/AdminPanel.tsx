@@ -15,6 +15,7 @@ type Product = {
   title: string;
   category: "mild" | "medium" | "hot";
   image_url: string;
+  image_urls: string[] | null;
   video_url: string | null;
   affiliate_link: string;
   is_active: boolean;
@@ -27,6 +28,7 @@ type FormState = {
   title: string;
   category: "mild" | "medium" | "hot";
   image_url: string;
+  image_urls: string[];
   video_url: string;
   affiliate_link: string;
   is_active: boolean;
@@ -38,6 +40,7 @@ const emptyForm: FormState = {
   title: "",
   category: "mild",
   image_url: "",
+  image_urls: [],
   video_url: "",
   affiliate_link: "",
   is_active: false,
@@ -69,6 +72,8 @@ export default function AdminPanel() {
   const [refreshDone, setRefreshDone] = useState<{ success: number; failed: number; skipped: number } | null>(null);
   const [imageInputMode, setImageInputMode] = useState<"upload" | "url">("upload");
   const [searchQuery, setSearchQuery] = useState("");
+  const [imageUrlInput, setImageUrlInput] = useState("");
+  const [brokenImages, setBrokenImages] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     fetchProducts();
@@ -90,6 +95,8 @@ export default function AdminPanel() {
     setAliHint("");
     setForm(emptyForm);
     setImageInputMode("upload");
+    setImageUrlInput("");
+    setBrokenImages(new Set());
     setShowForm(true);
   }
 
@@ -112,6 +119,8 @@ export default function AdminPanel() {
       platform: detectPlatformFromUrl(product.productUrl),
     });
     setImageInputMode("upload");
+    setImageUrlInput("");
+    setBrokenImages(new Set());
     setShowForm(true);
   }
 
@@ -125,6 +134,8 @@ export default function AdminPanel() {
       platform: "aliexpress",
     });
     setImageInputMode("upload");
+    setImageUrlInput("");
+    setBrokenImages(new Set());
     setShowForm(true);
   }
 
@@ -135,6 +146,7 @@ export default function AdminPanel() {
       title: product.title,
       category: product.category,
       image_url: product.image_url,
+      image_urls: product.image_urls || [],
       video_url: product.video_url || "",
       affiliate_link: product.affiliate_link,
       is_active: product.is_active,
@@ -142,6 +154,8 @@ export default function AdminPanel() {
       platform: product.platform,
     });
     setImageInputMode("upload");
+    setImageUrlInput("");
+    setBrokenImages(new Set());
     setShowForm(true);
   }
 
@@ -153,6 +167,7 @@ export default function AdminPanel() {
       ...form,
       video_url: form.video_url || null,
       platform: form.platform || null,
+      image_urls: form.image_urls.length > 0 ? form.image_urls : null,
     };
 
     const { error } = editing
@@ -384,6 +399,28 @@ export default function AdminPanel() {
     } finally {
       setMigrating(false);
     }
+  }
+
+  function addImageUrl() {
+    const url = imageUrlInput.trim();
+    if (!url) return;
+    setForm((prev) => ({ ...prev, image_urls: [...prev.image_urls, url] }));
+    setImageUrlInput("");
+  }
+
+  function removeImageUrl(index: number) {
+    setForm((prev) => ({
+      ...prev,
+      image_urls: prev.image_urls.filter((_, i) => i !== index),
+    }));
+  }
+
+  function moveImageUrl(index: number, direction: -1 | 1) {
+    const newArr = [...form.image_urls];
+    const newIndex = index + direction;
+    if (newIndex < 0 || newIndex >= newArr.length) return;
+    [newArr[index], newArr[newIndex]] = [newArr[newIndex], newArr[index]];
+    setForm((prev) => ({ ...prev, image_urls: newArr }));
   }
 
   return (
@@ -883,6 +920,75 @@ export default function AdminPanel() {
                       disabled={uploadingVideo}
                     />
                   </label>
+                )}
+              </div>
+
+              {/* 추가 이미지 (슬라이드용) */}
+              <div>
+                <label className="text-xs font-semibold text-gray-500 block mb-1">
+                  추가 이미지 <span className="font-normal text-gray-400">(슬라이드용 — 2장 이상이면 카드에서 슬라이드로 표시)</span>
+                </label>
+                <div className="flex gap-2 mb-2">
+                  <input
+                    type="text"
+                    value={imageUrlInput}
+                    onChange={(e) => setImageUrlInput(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addImageUrl(); } }}
+                    placeholder="https://..."
+                    className="flex-1 border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-[#FF5A00] transition-colors"
+                  />
+                  <button
+                    type="button"
+                    onClick={addImageUrl}
+                    disabled={!imageUrlInput.trim()}
+                    className="px-3 py-2 bg-[#FF5A00] text-white text-sm font-semibold rounded-lg hover:bg-[#e04e00] transition-colors disabled:opacity-40"
+                  >
+                    + 추가
+                  </button>
+                </div>
+                {form.image_urls.length > 0 && (
+                  <div className="flex flex-col gap-1.5">
+                    {form.image_urls.map((url, i) => (
+                      <div key={i} className="flex items-center gap-2 bg-gray-50 border border-gray-100 rounded-lg px-2 py-1.5">
+                        {brokenImages.has(url) ? (
+                          <div className="w-10 h-10 rounded flex-shrink-0 bg-gray-100 flex items-center justify-center text-sm">❌</div>
+                        ) : (
+                          <img
+                            src={url}
+                            alt=""
+                            className="w-10 h-10 rounded object-cover flex-shrink-0 bg-gray-200"
+                            onError={() => setBrokenImages((prev) => new Set([...prev, url]))}
+                          />
+                        )}
+                        <span className="flex-1 text-xs text-gray-500 truncate min-w-0">{url}</span>
+                        <div className="flex gap-1 flex-shrink-0">
+                          <button
+                            type="button"
+                            onClick={() => moveImageUrl(i, -1)}
+                            disabled={i === 0}
+                            className="w-7 h-7 flex items-center justify-center rounded text-gray-400 hover:text-gray-700 hover:bg-gray-200 transition-colors disabled:opacity-30"
+                          >
+                            ↑
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => moveImageUrl(i, 1)}
+                            disabled={i === form.image_urls.length - 1}
+                            className="w-7 h-7 flex items-center justify-center rounded text-gray-400 hover:text-gray-700 hover:bg-gray-200 transition-colors disabled:opacity-30"
+                          >
+                            ↓
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => removeImageUrl(i)}
+                            className="w-7 h-7 flex items-center justify-center rounded text-red-300 hover:text-red-500 hover:bg-red-50 transition-colors"
+                          >
+                            🗑️
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
                 )}
               </div>
 

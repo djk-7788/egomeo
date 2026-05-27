@@ -2,6 +2,7 @@ import { supabase } from "@/lib/supabase";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import VideoPlayer from "@/components/VideoPlayer";
+import ImageSlider from "@/components/ImageSlider";
 import ShareButton from "@/components/ShareButton";
 import InfiniteProductGrid from "@/components/InfiniteProductGrid";
 
@@ -43,7 +44,7 @@ export default async function ProductPage({ params }: Props) {
     supabase.from("products").select("*").eq("id", id).single(),
     supabase
       .from("products")
-      .select("id, title, category, image_url, video_url, affiliate_link", {
+      .select("id, title, category, image_url, image_urls, video_url, affiliate_link", {
         count: "exact",
       })
       .eq("is_active", true)
@@ -61,12 +62,19 @@ export default async function ProductPage({ params }: Props) {
       {/* 상단: 상품 상세 */}
       <div className="max-w-3xl mx-auto mb-16">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-start">
-          {/* 영상 또는 이미지 */}
+          {/* 영상 또는 슬라이드 또는 이미지 */}
           <div className="aspect-square w-full overflow-hidden rounded-2xl border border-gray-100 bg-black">
             {product.video_url ? (
               <VideoPlayer
                 src={product.video_url}
                 className="w-full h-full object-cover"
+              />
+            ) : product.image_urls && product.image_urls.length >= 2 ? (
+              <ImageSlider
+                images={product.image_urls}
+                alt={product.title}
+                mode="manual"
+                className="w-full h-full"
               />
             ) : (
               <img

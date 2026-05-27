@@ -8,6 +8,7 @@ export type GridProduct = {
   title: string;
   category: "mild" | "medium" | "hot";
   image_url: string;
+  image_urls: string[] | null;
   video_url: string | null;
   affiliate_link: string;
 };
@@ -109,6 +110,7 @@ export default function InfiniteProductGrid({
             id={p.id}
             category={p.category}
             imageUrl={p.image_url}
+            imageUrls={p.image_urls}
             videoUrl={p.video_url}
             title={p.title}
             link={p.affiliate_link}

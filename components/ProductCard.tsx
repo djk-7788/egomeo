@@ -1,5 +1,6 @@
 import CardShareButton from "@/components/CardShareButton";
 import VideoPlayer from "@/components/VideoPlayer";
+import ImageSlider from "@/components/ImageSlider";
 
 type Category = "mild" | "medium" | "hot";
 
@@ -7,6 +8,7 @@ type ProductCardProps = {
   id: string;
   category: Category;
   imageUrl: string;
+  imageUrls?: string[] | null;
   videoUrl?: string | null;
   title: string;
   link: string;
@@ -22,10 +24,13 @@ export default function ProductCard({
   id,
   category,
   imageUrl,
+  imageUrls,
   videoUrl,
   title,
   link,
 }: ProductCardProps) {
+  const hasSlide = !videoUrl && imageUrls && imageUrls.length >= 2;
+
   return (
     <div className="flex flex-col bg-white border border-gray-100 rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-shadow">
       {/* 1층: 카테고리 */}
@@ -35,7 +40,7 @@ export default function ProductCard({
         </span>
       </div>
 
-      {/* 2층: 영상 또는 이미지 — 클릭 시 제휴 링크 */}
+      {/* 2층: 영상 또는 슬라이드 또는 이미지 */}
       <a
         href={link}
         target="_blank"
@@ -44,6 +49,8 @@ export default function ProductCard({
       >
         {videoUrl ? (
           <VideoPlayer src={videoUrl} className="w-full h-full object-cover" />
+        ) : hasSlide ? (
+          <ImageSlider images={imageUrls!} alt={title} mode="auto" className="w-full h-full" />
         ) : (
           <img
             src={imageUrl}
