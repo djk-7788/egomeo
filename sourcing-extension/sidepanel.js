@@ -56,12 +56,21 @@ function renderImageGrid() {
 
     if (displaySrc) {
       const imgEl = document.createElement('img');
-      imgEl.src = displaySrc;
-      if (displaySrc.includes('coupang.com') || displaySrc.includes('coupangcdn.com')) {
-        imgEl.referrerPolicy = 'no-referrer';
-      }
       imgEl.onerror = () => { imgEl.style.visibility = 'hidden'; };
       cell.appendChild(imgEl);
+
+      if (displaySrc.includes('coupang.com') || displaySrc.includes('coupangcdn.com')) {
+        // 쿠팡 이미지: Referer 차단 우회 — background에서 fetch 후 data URL로 표시
+        chrome.runtime.sendMessage({ action: 'fetchImageAsBlob', url: displaySrc }, (res) => {
+          if (res?.dataUrl) {
+            imgEl.src = res.dataUrl;
+          } else {
+            imgEl.style.visibility = 'hidden';
+          }
+        });
+      } else {
+        imgEl.src = displaySrc;
+      }
     }
 
     // 제거 버튼
