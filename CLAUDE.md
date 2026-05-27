@@ -69,6 +69,7 @@ created_at    timestamp (자동생성)
 title         text          -- 드립형 제목
 category      text          -- 'mild' | 'medium' | 'hot'
 image_url     text          -- Cloudflare R2 퍼블릭 URL (기존 Supabase Storage에서 마이그레이션 완료)
+image_urls    text[]        -- 슬라이드용 추가 이미지 배열 (선택, null 가능, 2장 이상이면 카드에서 슬라이드)
 video_url     text          -- Cloudflare R2 영상 URL (선택, null 가능)
 affiliate_link text         -- 쿠팡/알리/아마존 링크
 is_active     boolean       -- false면 메인페이지에 안 보임
@@ -79,7 +80,8 @@ platform      text          -- 'amazon_us' | 'amazon_jp' | 'aliexpress' | 'coupa
 
 > **가격(price) 컬럼은 제거됨** — 2026-05-23 `ALTER TABLE products DROP COLUMN price;` 실행 완료  
 > **platform 컬럼 추가** — 2026-05-24 `ALTER TABLE products ADD COLUMN IF NOT EXISTS platform text;` 실행 완료  
-> **is_queued 컬럼 추가** — 2026-05-26 `ALTER TABLE products ADD COLUMN IF NOT EXISTS is_queued boolean DEFAULT false;` 실행 완료
+> **is_queued 컬럼 추가** — 2026-05-26 `ALTER TABLE products ADD COLUMN IF NOT EXISTS is_queued boolean DEFAULT false;` 실행 완료  
+> **image_urls 컬럼 추가** — 2026-05-28 `ALTER TABLE products ADD COLUMN IF NOT EXISTS image_urls text[];` 실행 완료
 
 **RLS**: 비활성화됨 (`alter table products disable row level security`)
 → 나중에 Supabase Auth 연동 시 RLS 정책 재설정 필요
@@ -108,7 +110,7 @@ platform      text          -- 'amazon_us' | 'amazon_jp' | 'aliexpress' | 'coupa
 ```
 ┌─────────────────────────┐
 │ 1층: 카테고리 뱃지        │
-│ 2층: 1:1 영상 또는 이미지  │  ← 클릭 시 쿠팡/알리 링크 새 창 (video_url 있으면 autoplay 영상)
+│ 2층: 1:1 영상/슬라이드/이미지│  ← 우선순위: video_url > image_urls(2장↑, 1초 자동슬라이드) > image_url
 │ 3층: 드립형 제목 (3줄)    │
 │ 4층: [🔗]               │  ← 🔗 클릭 시 상세페이지 URL 복사
 │ 5층: [구경하러 가기]       │  ← 쿠팡/알리 링크 새 창
@@ -153,11 +155,11 @@ egomeo/
 │   │   ├── page.tsx          # 쿠키 확인 → LoginForm or AdminPanel
 │   │   ├── actions.ts        # 로그인/로그아웃 서버 액션
 │   │   ├── LoginForm.tsx     # 비밀번호 입력 화면 (클라이언트)
-│   │   ├── AdminPanel.tsx    # 상품 CRUD 관리 패널 — 5개 탭 (상품목록/큐관리/알리검색/URL파싱/순서편집) + R2 업로드
+│   │   ├── AdminPanel.tsx    # 상품 CRUD 관리 패널 — 5개 탭 (상품목록/큐관리/URL불러오기/URL파싱/순서편집) + R2 업로드
 │   │   ├── QueueManager.tsx  # 큐 관리 탭 (is_queued 상품, 드래그 앤 드롭, 공개하기/전체공개)
-│   │   ├── AliexpressSearch.tsx  # 알리 검색 탭 (좌우 분할, URL 직접 입력, 클리어 버튼)
+│   │   ├── AliexpressSearch.tsx  # URL 불러오기 탭 (알리/쿠팡 플랫폼 탭, URL 입력 → 이미지 선택)
 │   │   ├── UrlParser.tsx     # URL 파싱 탭 (쿠팡/아마존 URL → 이미지/상품명 추출, 봇 차단으로 제한적)
-│   │   └── OrderEditor.tsx   # 순서 편집 탭 (drag & drop, sort_order 저장, 🎬 영상 배지)
+│   │   └── OrderEditor.tsx   # 순서 편집 탭 (drag & drop, sort_order 저장, 🎬 영상/슬라이드 배지)
 │   ├── api/
 │   │   ├── upload/
 │   │   │   └── route.ts      # R2 파일 업로드 (이미지/영상, admin_auth 쿠키 필요)
@@ -178,7 +180,8 @@ egomeo/
 ├── components/
 │   ├── Header.tsx            # 상단 고정 헤더 + 카테고리 네비
 │   ├── Footer.tsx            # 쿠팡파트너스 고지 문구 + 저작권
-│   ├── ProductCard.tsx       # 5층 카드 컴포넌트 (video_url 있으면 영상 표시)
+│   ├── ProductCard.tsx       # 5층 카드 컴포넌트 (video > image_urls 슬라이드 > image_url 우선순위)
+│   ├── ImageSlider.tsx       # 이미지 슬라이더 (auto: IntersectionObserver 1초 자동, manual: 화살표)
 │   ├── CardShareButton.tsx   # 카드 내 공유 버튼 (클라이언트)
 │   └── ShareButton.tsx       # 상세 페이지 공유 버튼 (클라이언트)
 ├── lib/
@@ -230,13 +233,14 @@ egomeo/
   - 개별 "공개하기" 버튼 → is_active=true, is_queued=false
   - "전체 공개" 버튼 → 큐 전체 한번에 공개
   - 탭 버튼에 큐 상품 수 배지 표시
-- **탭 3 — 알리익스프레스 검색**:
-  - 좌우 분할 레이아웃 (왼쪽 65% 그리드 스크롤 / 오른쪽 35% sticky 패널)
-  - 키워드 검색 (최대 50개, 정렬: 관련도/판매량/가격순, 카테고리 필터 10종)
-  - URL 직접 입력: 알리 상품 URL → 상품 ID 추출 → Affiliate API 조회
-  - 상품 클릭 → 오른쪽 패널에 이미지 여러 장 표시 → 선택 후 폼에 불러오기
-  - 썸네일 hover 시 280px 확대 팝업, 원본 보기 버튼
-  - 입력창 클리어(X) 버튼 (키워드/URL 모두)
+- **탭 3 — URL 불러오기** (`AliexpressSearch.tsx`):
+  - 플랫폼 탭으로 알리익스프레스 / 쿠팡 전환
+  - 알리: URL 입력 → `/api/aliexpress/parse` → 이미지 목록 표시
+  - 쿠팡: URL 입력 → `/api/parse-url` → 이미지 목록 표시 (봇 차단 시 에러)
+  - 좌우 분할 레이아웃 (왼쪽 URL 입력 / 오른쪽 이미지 선택 패널)
+  - 이미지 선택 → "폼에 불러오기" → platform 자동 저장 (aliexpress/coupang)
+  - 썸네일 hover 시 280px 확대 팝업, 알리 상품은 "원본 보기 ↗" 버튼
+  - 키워드 검색/정렬/카테고리 필터 기능은 2026-05-28 제거됨
 - **탭 4 — URL 파싱**:
   - 쿠팡/아마존 상품 URL 붙여넣기 → 이미지/상품명 자동 추출 (가격 제거됨)
   - **주의**: 쿠팡/아마존 모두 봇 차단(403/Cloudflare)으로 현재 제한적으로만 동작
@@ -248,21 +252,21 @@ egomeo/
 - **상품 등록/수정 모달**:
   - 이미지 업로드 → R2 저장 (`/api/upload`)
   - 영상 업로드 (선택) → R2 저장, `video_url` 컬럼에 저장
+  - **추가 이미지 (슬라이드용)**: URL 입력 + 추가 버튼으로 `image_urls` 배열 관리 (썸네일 미리보기, ↑↓ 순서변경, 🗑️ 삭제)
   - 제휴 링크 입력 시 platform 자동 감지: 알리/쿠팡은 URL로 자동, 아마존(amazon.com/amzn.to/amazon.co.jp)은 지역 라디오 버튼 표시 (🇺🇸 미국 기본 / 🇯🇵 일본), 그 외 URL은 'etc' 자동 저장
-  - 알리 검색 탭에서 불러오면 platform = aliexpress 자동 설정
+  - URL 불러오기 탭에서 불러오면 platform 자동 설정 (aliexpress/coupang)
   - **공개 상태 라디오**: "바로 공개" (is_active=true, is_queued=false) / "큐에 저장" (is_active=false, is_queued=true) — **기본값: 큐에 저장**
   - 모달: X·취소 버튼으로만 닫기 (backdrop 클릭으로 닫히지 않음), 내부 스크롤(max-height 90vh)
 
 ---
 
-## 최근 완료 작업 (2026-05-26 기준)
+## 최근 완료 작업 (2026-05-28 기준)
 
-- hello@igemugo.com 이메일 설정 완료 (Cloudflare Email Routing → Gmail 포워딩)
-- About / Privacy Policy / Contact 페이지 + Footer 링크 + 햄버거 메뉴 추가
-- 사이트 검색 페이지 (`/search`) + 햄버거 메뉴 검색창
-- 어드민 상품 목록 sort_order 정렬 + 순서 번호 표기 + 제목 검색
-- 어드민 정렬 최적화 기능 (플랫폼 분산 + 영상 4칸 간격 알고리즘, 미리보기 후 적용)
-- 어드민 큐 관리 탭 — `is_queued` 컬럼, 상품 추가 기본값 큐에 저장, 체크박스 개별 선택 공개
+- `image_urls` 슬라이드 기능 — DB 컬럼 추가, ImageSlider 컴포넌트, 카드/상세페이지 자동 슬라이드
+- 어드민 모달 추가 이미지 입력 UI (URL 추가/순서변경/삭제)
+- 큐 관리·순서 편집 탭 썸네일 image_urls 대응 (이미지 우선순위 + 🎬 배지)
+- 소싱툴 쿠팡 이미지 canvas drawImage → data URL 방식으로 Referer 차단 우회
+- 어드민 "URL 불러오기" 탭 개편 — 키워드 검색 제거, 알리/쿠팡 플랫폼 탭으로 통합
 
 ---
 
@@ -377,6 +381,15 @@ egomeo/
   - 어드민 "큐 관리" 탭 추가 (`QueueManager.tsx`) — 카드 그리드, 드래그 앤 드롭 순서 변경, 개별 "공개하기", "전체 공개" 버튼, 탭에 큐 상품 수 배지
   - 상품 목록에서 큐 상품 "대기중" 배지 표시 + "공개하기" 버튼으로 즉시 공개
 - [완료] 큐 관리 탭 개별 선택 공개 — 카드 체크박스, 전체 선택/해제, 선택한 상품 공개하기
+- [완료] `products` 테이블에 `image_urls` 컬럼 추가 (text[], nullable) — `ALTER TABLE products ADD COLUMN IF NOT EXISTS image_urls text[];`
+- [완료] `ImageSlider` 컴포넌트 신규 생성 (`components/ImageSlider.tsx`) — auto 모드(IntersectionObserver 1초 자동슬라이드, 이탈 시 첫 장 리셋) / manual 모드(화살표+dots)
+- [완료] ProductCard `image_urls` 슬라이드 지원 — 우선순위: video_url > image_urls(2장↑ auto슬라이드) > image_url
+- [완료] 상세 페이지 `image_urls` auto 슬라이드 지원
+- [완료] 어드민 모달 "추가 이미지 (슬라이드용)" 섹션 — URL 입력/추가, 썸네일 미리보기, ↑↓ 순서변경, 🗑️ 삭제, image_urls 컬럼 저장
+- [완료] 큐 관리·순서 편집 탭 썸네일 image_urls 대응 — 이미지 우선순위(image_url → image_urls[0] → 빈박스), image_urls 2장↑ 상품 🎬 배지 표시
+- [완료] 소싱툴 쿠팡 이미지 Referer 차단 우회 — content.js `parseCoupangImages()` 개선: 로드된 img 요소를 canvas.drawImage() → toDataURL()로 base64 변환, canvas taint 시 원본 URL 폴백
+- [완료] 어드민 탭 이름 변경: "알리익스프레스 검색" → "URL 불러오기"
+- [완료] 어드민 URL 불러오기 탭 개편 (`AliexpressSearch.tsx`) — 키워드 검색/정렬/카테고리 전체 제거, 알리/쿠팡 플랫폼 탭 추가, 쿠팡은 기존 `/api/parse-url` 재활용, platform 자동 저장
 
 ---
 
