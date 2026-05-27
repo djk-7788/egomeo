@@ -7,6 +7,7 @@ type OrderItem = {
   id: string;
   title: string;
   image_url: string;
+  image_urls: string[] | null;
   video_url: string | null;
   sort_order: number;
   created_at: string;
@@ -159,7 +160,7 @@ export default function OrderEditor() {
     setLoading(true);
     const { data } = await supabase
       .from("products")
-      .select("id, title, image_url, video_url, sort_order, created_at, affiliate_link, platform")
+      .select("id, title, image_url, image_urls, video_url, sort_order, created_at, affiliate_link, platform")
       .eq("is_active", true)
       .order("sort_order", { ascending: true, nullsFirst: false })
       .order("created_at", { ascending: false });
@@ -474,7 +475,7 @@ export default function OrderEditor() {
                 {getPlatformBadge(item.platform)}
               </div>
             )}
-            {item.video_url && (
+            {(item.video_url || (item.image_urls && item.image_urls.length >= 2)) && (
               <div className="absolute top-1.5 right-1.5 z-10 bg-[#FF5A00] text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full">
                 🎬
               </div>
@@ -489,13 +490,15 @@ export default function OrderEditor() {
                   playsInline
                   draggable={false}
                 />
-              ) : (
+              ) : (item.image_url || item.image_urls?.[0]) ? (
                 <img
-                  src={item.image_url}
+                  src={item.image_url || item.image_urls![0]}
                   alt={item.title}
                   className="w-full h-full object-cover"
                   draggable={false}
                 />
+              ) : (
+                <div className="w-full h-full bg-gray-100" />
               )}
             </div>
             <div className="p-2">
