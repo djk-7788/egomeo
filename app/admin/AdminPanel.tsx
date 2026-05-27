@@ -131,7 +131,7 @@ export default function AdminPanel() {
       ...emptyForm,
       image_url: imageUrl,
       affiliate_link: product.affiliate_link,
-      platform: "aliexpress",
+      platform: product.platform ?? "aliexpress",
     });
     setImageInputMode("upload");
     setImageUrlInput("");
@@ -497,7 +497,7 @@ export default function AdminPanel() {
               : "border-transparent text-gray-400 hover:text-gray-600"
           }`}
         >
-          🛍️ 알리익스프레스 검색
+          🔗 URL 불러오기
         </button>
         <button
           onClick={() => setActiveTab("parse")}
