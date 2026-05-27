@@ -71,9 +71,12 @@
     return Array.from(seen.values()).slice(0, 12);
   }
 
-  // ─── 쿠팡 — 갤러리 이미지 전체 파싱 ──────────────────────────
+  // ─── 쿠팡 — 갤러리 이미지 전체 파싱 (canvas → data URL) ──────
+  // 이미 페이지에 로드된 img 요소를 canvas에 그려 data URL로 변환.
+  // sidepanel에서 img src에 Referer가 포함돼 쿠팡 CDN이 차단하는 문제 우회.
   function parseCoupangImages() {
-    const found = new Set();
+    const seen = new Set();
+    const loaded = [];
 
     const selectors = [
       '#carousel_vertical_target img',
@@ -84,19 +87,41 @@
 
     for (const sel of selectors) {
       document.querySelectorAll(sel).forEach((img) => {
-        const src = img.getAttribute('src') || img.getAttribute('data-src') || '';
-        if (src && src.startsWith('http') && !src.includes('1x1')) found.add(src);
+        if (!img.complete || img.naturalWidth === 0) return;
+        const src = img.src;
+        if (!src || !src.startsWith('http') || src.includes('1x1') || seen.has(src)) return;
+        seen.add(src);
+        loaded.push(img);
       });
-      if (found.size > 0) break;
+      if (loaded.length > 0) break;
     }
 
-    // OG 폴백
-    if (found.size === 0) {
+    // OG 폴백 — canvas 캡처 가능한 이미지가 없으면 URL 그대로 반환
+    if (loaded.length === 0) {
       const og = document.querySelector('meta[property="og:image"]')?.getAttribute('content');
-      if (og) found.add(og);
+      return og ? [og] : [];
     }
 
-    return Array.from(found).slice(0, 12);
+    const MAX = 600; // 전송 크기 vs 품질 균형
+    const results = [];
+
+    for (const img of loaded.slice(0, 12)) {
+      try {
+        const w = img.naturalWidth;
+        const h = img.naturalHeight;
+        const scale = Math.min(1, MAX / Math.max(w, h, 1));
+        const canvas = document.createElement('canvas');
+        canvas.width = Math.round(w * scale);
+        canvas.height = Math.round(h * scale);
+        canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
+        results.push(canvas.toDataURL('image/jpeg', 0.88));
+      } catch {
+        // canvas 오염(cross-origin taint) 발생 시 원본 URL 폴백
+        results.push(img.src);
+      }
+    }
+
+    return results;
   }
 
   // ─── 알리익스프레스 상품 정보 파싱 ────────────────────────────
