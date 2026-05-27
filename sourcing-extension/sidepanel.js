@@ -57,6 +57,9 @@ function renderImageGrid() {
     if (displaySrc) {
       const imgEl = document.createElement('img');
       imgEl.src = displaySrc;
+      if (displaySrc.includes('coupang.com') || displaySrc.includes('coupangcdn.com')) {
+        imgEl.referrerPolicy = 'no-referrer';
+      }
       imgEl.onerror = () => { imgEl.style.visibility = 'hidden'; };
       cell.appendChild(imgEl);
     }
