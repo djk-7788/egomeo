@@ -44,7 +44,7 @@ export default async function ProductPage({ params }: Props) {
     supabase.from("products").select("*").eq("id", id).single(),
     supabase
       .from("products")
-      .select("id, title, category, image_url, image_urls, video_url, affiliate_link", {
+      .select("id, title, category, image_url, image_urls, video_url, affiliate_link, button_text", {
         count: "exact",
       })
       .eq("is_active", true)
@@ -99,7 +99,7 @@ export default async function ProductPage({ params }: Props) {
               rel="noopener noreferrer"
               className="block w-full text-center font-bold text-white bg-[#FF5A00] rounded-xl py-4 hover:bg-[#e04e00] transition-colors text-lg"
             >
-              구경하러 가기
+              {product.button_text || "구경하러 가기"}
             </a>
             <ShareButton />
           </div>

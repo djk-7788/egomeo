@@ -11,6 +11,7 @@ export type GridProduct = {
   image_urls: string[] | null;
   video_url: string | null;
   affiliate_link: string;
+  button_text: string | null;
 };
 
 type Props = {
@@ -114,6 +115,7 @@ export default function InfiniteProductGrid({
             videoUrl={p.video_url}
             title={p.title}
             link={p.affiliate_link}
+            buttonText={p.button_text}
           />
         ))}
       </div>

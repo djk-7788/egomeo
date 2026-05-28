@@ -12,6 +12,7 @@ type ProductCardProps = {
   videoUrl?: string | null;
   title: string;
   link: string;
+  buttonText?: string | null;
 };
 
 const categoryLabel: Record<Category, string> = {
@@ -28,6 +29,7 @@ export default function ProductCard({
   videoUrl,
   title,
   link,
+  buttonText,
 }: ProductCardProps) {
   const hasSlide = !videoUrl && imageUrls && imageUrls.length >= 2;
 
@@ -80,7 +82,7 @@ export default function ProductCard({
           rel="noopener noreferrer"
           className="block w-full text-center text-sm font-bold text-white bg-[#FF5A00] rounded-lg py-2 hover:bg-[#e04e00] transition-colors"
         >
-          구경하러 가기
+          {buttonText || "구경하러 가기"}
         </a>
       </div>
     </div>

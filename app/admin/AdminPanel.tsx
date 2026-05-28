@@ -18,6 +18,7 @@ type Product = {
   image_urls: string[] | null;
   video_url: string | null;
   affiliate_link: string;
+  button_text: string | null;
   is_active: boolean;
   is_queued: boolean;
   platform: Platform;
@@ -31,6 +32,7 @@ type FormState = {
   image_urls: string[];
   video_url: string;
   affiliate_link: string;
+  button_text: string;
   is_active: boolean;
   is_queued: boolean;
   platform: Platform;
@@ -43,6 +45,7 @@ const emptyForm: FormState = {
   image_urls: [],
   video_url: "",
   affiliate_link: "",
+  button_text: "",
   is_active: false,
   is_queued: true,
   platform: null,
@@ -149,6 +152,7 @@ export default function AdminPanel() {
       image_urls: product.image_urls || [],
       video_url: product.video_url || "",
       affiliate_link: product.affiliate_link,
+      button_text: product.button_text || "",
       is_active: product.is_active,
       is_queued: product.is_queued,
       platform: product.platform,
@@ -168,6 +172,7 @@ export default function AdminPanel() {
       video_url: form.video_url || null,
       platform: form.platform || null,
       image_urls: form.image_urls.length > 0 ? form.image_urls : null,
+      button_text: form.button_text.trim() || null,
     };
 
     const { error } = editing
@@ -1036,6 +1041,18 @@ export default function AdminPanel() {
                     </label>
                   </div>
                 )}
+              </div>
+              <div>
+                <label className="text-xs font-semibold text-gray-500 block mb-1">
+                  버튼 텍스트 <span className="font-normal text-gray-400">(비워두면 "구경하러 가기" 표시)</span>
+                </label>
+                <input
+                  type="text"
+                  value={form.button_text}
+                  onChange={(e) => setForm({ ...form, button_text: e.target.value })}
+                  placeholder="구경하러 가기"
+                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-[#FF5A00] transition-colors"
+                />
               </div>
               <div>
                 <label className="text-xs font-semibold text-gray-500 block mb-2">

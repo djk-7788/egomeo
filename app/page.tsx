@@ -16,7 +16,7 @@ export default async function Home({ searchParams }: Props) {
 
   let query = supabase
     .from("products")
-    .select("id, title, category, image_url, image_urls, video_url, affiliate_link", {
+    .select("id, title, category, image_url, image_urls, video_url, affiliate_link, button_text", {
       count: "exact",
     })
     .eq("is_active", true)
