@@ -1,4 +1,4 @@
-* { box-sizing: border-box; margin: 0; padding: 0; }
+﻿* { box-sizing: border-box; margin: 0; padding: 0; }
 
 body {
   width: 100%;
@@ -34,7 +34,7 @@ body {
   display: flex; align-items: center; justify-content: center;
   transition: all 0.15s;
 }
-.icon-btn:hover { border-color: #FF5A00; color: #FF5A00; }
+.icon-btn:hover { border-color: #FF7A30; color: #FF7A30; }
 
 .queue-btn {
   display: flex; align-items: center; gap: 5px;
@@ -43,10 +43,10 @@ body {
   cursor: pointer; font-size: 12px; color: #555; font-weight: 600;
   transition: all 0.15s;
 }
-.queue-btn:hover { border-color: #FF5A00; color: #FF5A00; }
+.queue-btn:hover { border-color: #FF7A30; color: #FF7A30; }
 
 .badge {
-  background: #FF5A00; color: #fff;
+  background: #FF7A30; color: #fff;
   border-radius: 10px; padding: 1px 6px;
   font-size: 11px; font-weight: 700;
   min-width: 18px; text-align: center;
@@ -64,7 +64,7 @@ body {
 
 .spinner {
   width: 28px; height: 28px;
-  border: 3px solid #eee; border-top-color: #FF5A00;
+  border: 3px solid #eee; border-top-color: #FF7A30;
   border-radius: 50%;
   animation: spin 0.8s linear infinite; margin-bottom: 12px;
 }
@@ -89,7 +89,7 @@ body {
   resize: none;
 }
 .form input:focus, .form textarea:focus, .form select:focus {
-  border-color: #FF5A00; background: #fff;
+  border-color: #FF7A30; background: #fff;
 }
 .form input.readonly { color: #aaa; font-size: 11px; cursor: default; }
 .form textarea { line-height: 1.5; }
@@ -104,7 +104,7 @@ body {
   justify-content: space-between; margin-bottom: 10px;
 }
 .section-label { font-size: 11px; font-weight: 600; color: #999; }
-.img-sel-count { font-size: 11px; color: #FF5A00; font-weight: 600; }
+.img-sel-count { font-size: 11px; color: #FF7A30; font-weight: 600; }
 
 /* 이미지 그리드 */
 .img-grid {
@@ -125,7 +125,7 @@ body {
   transition: border-color 0.15s, opacity 0.15s;
 }
 .img-cell:hover { border-color: #ffb899; }
-.img-cell.selected { border-color: #FF5A00; }
+.img-cell.selected { border-color: #FF7A30; }
 .img-cell.unselected { opacity: 0.45; }
 
 .img-cell img {
@@ -137,7 +137,7 @@ body {
 /* 대표 배지 */
 .img-badge-main {
   position: absolute; bottom: 4px; left: 4px;
-  background: #FF5A00; color: #fff;
+  background: #FF7A30; color: #fff;
   border-radius: 4px; padding: 2px 5px;
   font-size: 10px; font-weight: 700;
   pointer-events: none;
@@ -187,7 +187,7 @@ body {
   transition: all 0.15s;
 }
 .direct-add-toggle:hover, .direct-add-toggle.open {
-  border-color: #FF5A00; color: #FF5A00; background: #fff8f5;
+  border-color: #FF7A30; color: #FF7A30; background: #fff8f5;
 }
 
 /* ── 직접 추가 패널 ── */
@@ -205,7 +205,7 @@ body {
   font-size: 12px; color: #888; cursor: pointer;
   transition: all 0.15s;
 }
-.dtab.active { background: #fff; color: #FF5A00; font-weight: 600; }
+.dtab.active { background: #fff; color: #FF7A30; font-weight: 600; }
 .dtab:hover:not(.active) { background: #f5f5f5; color: #555; }
 
 /* 파일 드롭존 */
@@ -215,7 +215,7 @@ body {
   cursor: pointer; font-size: 12px; color: #aaa;
   text-align: center; transition: background 0.15s;
 }
-.file-drop-zone:hover { background: #fffaf8; color: #FF5A00; }
+.file-drop-zone:hover { background: #fffaf8; color: #FF7A30; }
 
 /* URL 입력 행 */
 .url-row {
@@ -225,15 +225,15 @@ body {
   flex: 1; border: 1px solid #e5e5e5; border-radius: 6px;
   padding: 7px 9px; font-size: 12px; outline: none;
 }
-.url-row input:focus { border-color: #FF5A00; }
+.url-row input:focus { border-color: #FF7A30; }
 .url-row button {
   padding: 7px 12px;
-  background: #FF5A00; color: #fff;
+  background: #FF7A30; color: #fff;
   border: none; border-radius: 6px;
   font-size: 12px; font-weight: 600; cursor: pointer;
   white-space: nowrap;
 }
-.url-row button:hover { background: #e04e00; }
+.url-row button:hover { background: #e06b2a; }
 
 /* ── 하단 액션 바 ── */
 .action-bar {
@@ -244,12 +244,12 @@ body {
 
 .primary-btn {
   display: block; width: 100%;
-  background: #FF5A00; color: #fff;
+  background: #FF7A30; color: #fff;
   border: none; border-radius: 9px;
   padding: 13px; font-size: 15px; font-weight: 700;
   cursor: pointer; transition: background 0.15s;
 }
-.primary-btn:hover { background: #e04e00; }
+.primary-btn:hover { background: #e06b2a; }
 .primary-btn:disabled { background: #ddd; cursor: not-allowed; }
 
 /* ── 성공 상태 ── */

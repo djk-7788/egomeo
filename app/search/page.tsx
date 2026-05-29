@@ -1,4 +1,4 @@
-import { supabase } from "@/lib/supabase";
+﻿import { supabase } from "@/lib/supabase";
 import ProductCard from "@/components/ProductCard";
 import Link from "next/link";
 import type { Metadata } from "next";
@@ -64,7 +64,7 @@ export default async function SearchPage({ searchParams }: Props) {
           </p>
           <Link
             href="/"
-            className="text-sm font-bold text-[#FF5A00] hover:underline"
+            className="text-sm font-bold text-[#FF7A30] hover:underline"
           >
             전체 상품 보기
           </Link>

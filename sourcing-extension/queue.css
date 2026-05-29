@@ -1,4 +1,4 @@
-* { box-sizing: border-box; margin: 0; padding: 0; }
+﻿* { box-sizing: border-box; margin: 0; padding: 0; }
 
 body {
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
@@ -54,10 +54,10 @@ button {
   transition: all 0.15s;
 }
 .btn-primary {
-  background: #FF5A00;
+  background: #FF7A30;
   color: #fff;
 }
-.btn-primary:hover { background: #e04e00; }
+.btn-primary:hover { background: #e06b2a; }
 .btn-primary:disabled { background: #ccc; cursor: not-allowed; }
 
 .btn-ghost {
@@ -83,7 +83,7 @@ button {
 }
 .progress-fill {
   height: 100%;
-  background: #FF5A00;
+  background: #FF7A30;
   transition: width 0.3s;
   width: 0%;
 }
@@ -128,9 +128,9 @@ button {
   cursor: grab;
 }
 .card:hover { box-shadow: 0 2px 12px rgba(0,0,0,0.1); }
-.card.selected { border-color: #FF5A00; }
+.card.selected { border-color: #FF7A30; }
 .card.dragging { opacity: 0.5; cursor: grabbing; }
-.card.drag-over { border-color: #FF5A00; box-shadow: 0 0 0 2px #FF5A0040; }
+.card.drag-over { border-color: #FF7A30; box-shadow: 0 0 0 2px #FF7A3040; }
 .card.error { border-color: #cc0000; }
 
 /* 카드 상단 — 체크박스 + 삭제 */
@@ -143,7 +143,7 @@ button {
 .card-checkbox {
   width: 17px;
   height: 17px;
-  accent-color: #FF5A00;
+  accent-color: #FF7A30;
   cursor: pointer;
 }
 .card-delete {
@@ -213,7 +213,7 @@ button {
   font-family: inherit;
 }
 .editable:hover { border-color: #ddd; background: #fafafa; }
-.editable:focus { border-color: #FF5A00; background: #fff; }
+.editable:focus { border-color: #FF7A30; background: #fff; }
 
 .card-title {
   font-weight: 600;
@@ -238,7 +238,7 @@ button {
   text-overflow: ellipsis;
 }
 .card-link:hover { border-color: #ddd; background: #fafafa; color: #888; }
-.card-link:focus { border-color: #FF5A00; background: #fff; color: #111; white-space: normal; }
+.card-link:focus { border-color: #FF7A30; background: #fff; color: #111; white-space: normal; }
 
 /* 카테고리 셀렉트 */
 .card-category {
@@ -252,7 +252,7 @@ button {
   outline: none;
   cursor: pointer;
 }
-.card-category:focus { border-color: #FF5A00; }
+.card-category:focus { border-color: #FF7A30; }
 
 /* 카드 하단 버튼 */
 .card-footer {
@@ -273,10 +273,10 @@ button {
 }
 .card-video-btn.has-video {
   background: #fff8f5;
-  border-color: #FF5A00;
-  color: #FF5A00;
+  border-color: #FF7A30;
+  color: #FF7A30;
 }
-.card-video-btn:hover { background: #fff0e8; border-color: #FF5A00; color: #FF5A00; }
+.card-video-btn:hover { background: #fff0e8; border-color: #FF7A30; color: #FF7A30; }
 
 .card-error-msg {
   font-size: 11px;
@@ -371,7 +371,7 @@ button {
   outline: none;
 }
 .modal-form input:focus,
-.modal-form select:focus { border-color: #FF5A00; }
+.modal-form select:focus { border-color: #FF7A30; }
 .modal-actions {
   display: flex;
   justify-content: flex-end;

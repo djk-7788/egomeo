@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+﻿import type { Metadata } from "next";
 
 export const metadata: Metadata = {
   title: "Privacy Policy | 이게머고?",
@@ -19,7 +19,7 @@ export default function PrivacyPage() {
         <div className="pt-4 border-t border-gray-100">
           <p>
             <span className="text-[#111111] font-medium">문의</span>:{" "}
-            <a href="mailto:hello@igemugo.com" className="text-[#FF5A00] hover:underline">
+            <a href="mailto:hello@igemugo.com" className="text-[#FF7A30] hover:underline">
               hello@igemugo.com
             </a>
           </p>

@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabase";
@@ -436,7 +436,7 @@ export default function AdminPanel() {
         <div className="flex items-center gap-3">
           <button
             onClick={openAdd}
-            className="bg-[#FF5A00] text-white text-sm font-bold px-4 py-2 rounded-lg hover:bg-[#e04e00] transition-colors"
+            className="bg-[#FF7A30] text-white text-sm font-bold px-4 py-2 rounded-lg hover:bg-[#e06b2a] transition-colors"
           >
             + 상품 추가
           </button>
@@ -457,7 +457,7 @@ export default function AdminPanel() {
           onClick={() => setActiveTab("list")}
           className={`text-sm font-semibold px-4 py-3 border-b-2 transition-colors ${
             activeTab === "list"
-              ? "border-[#FF5A00] text-[#FF5A00]"
+              ? "border-[#FF7A30] text-[#FF7A30]"
               : "border-transparent text-gray-400 hover:text-gray-600"
           }`}
         >
@@ -467,7 +467,7 @@ export default function AdminPanel() {
           onClick={() => setActiveTab("queue")}
           className={`text-sm font-semibold px-4 py-3 border-b-2 transition-colors flex items-center gap-1.5 ${
             activeTab === "queue"
-              ? "border-[#FF5A00] text-[#FF5A00]"
+              ? "border-[#FF7A30] text-[#FF7A30]"
               : "border-transparent text-gray-400 hover:text-gray-600"
           }`}
         >
@@ -476,7 +476,7 @@ export default function AdminPanel() {
             <span
               className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${
                 activeTab === "queue"
-                  ? "bg-[#FF5A00] text-white"
+                  ? "bg-[#FF7A30] text-white"
                   : "bg-amber-100 text-amber-600"
               }`}
             >
@@ -488,7 +488,7 @@ export default function AdminPanel() {
           onClick={() => setActiveTab("order")}
           className={`text-sm font-semibold px-4 py-3 border-b-2 transition-colors ${
             activeTab === "order"
-              ? "border-[#FF5A00] text-[#FF5A00]"
+              ? "border-[#FF7A30] text-[#FF7A30]"
               : "border-transparent text-gray-400 hover:text-gray-600"
           }`}
         >
@@ -498,7 +498,7 @@ export default function AdminPanel() {
           onClick={() => setActiveTab("search")}
           className={`text-sm font-semibold px-4 py-3 border-b-2 transition-colors ${
             activeTab === "search"
-              ? "border-[#FF5A00] text-[#FF5A00]"
+              ? "border-[#FF7A30] text-[#FF7A30]"
               : "border-transparent text-gray-400 hover:text-gray-600"
           }`}
         >
@@ -508,7 +508,7 @@ export default function AdminPanel() {
           onClick={() => setActiveTab("parse")}
           className={`text-sm font-semibold px-4 py-3 border-b-2 transition-colors ${
             activeTab === "parse"
-              ? "border-[#FF5A00] text-[#FF5A00]"
+              ? "border-[#FF7A30] text-[#FF7A30]"
               : "border-transparent text-gray-400 hover:text-gray-600"
           }`}
         >
@@ -546,7 +546,7 @@ export default function AdminPanel() {
               value={searchQuery}
               onChange={e => setSearchQuery(e.target.value)}
               placeholder="제목 검색..."
-              className="w-full border border-gray-200 rounded-lg px-3 py-1.5 text-sm outline-none focus:border-[#FF5A00] transition-colors pr-7"
+              className="w-full border border-gray-200 rounded-lg px-3 py-1.5 text-sm outline-none focus:border-[#FF7A30] transition-colors pr-7"
             />
             {searchQuery && (
               <button
@@ -763,7 +763,7 @@ export default function AdminPanel() {
                   onChange={(e) => setForm({ ...form, title: e.target.value })}
                   required
                   placeholder="이게 뭔지 설명하면 내가 짐"
-                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-[#FF5A00] transition-colors"
+                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-[#FF7A30] transition-colors"
                 />
               </div>
               <div>
@@ -775,7 +775,7 @@ export default function AdminPanel() {
                   onChange={(e) =>
                     setForm({ ...form, category: e.target.value as "mild" | "medium" | "hot" })
                   }
-                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-[#FF5A00] transition-colors"
+                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-[#FF7A30] transition-colors"
                 >
                   <option value="mild">순한맛 — 이게 머고?</option>
                   <option value="medium">보통맛 — 이게? 머고???</option>
@@ -795,7 +795,7 @@ export default function AdminPanel() {
                       onClick={() => setImageInputMode("upload")}
                       className={`text-xs px-2.5 py-1 rounded-md font-semibold transition-colors ${
                         imageInputMode === "upload"
-                          ? "bg-[#FF5A00] text-white"
+                          ? "bg-[#FF7A30] text-white"
                           : "bg-gray-100 text-gray-500 hover:bg-gray-200"
                       }`}
                     >
@@ -806,7 +806,7 @@ export default function AdminPanel() {
                       onClick={() => setImageInputMode("url")}
                       className={`text-xs px-2.5 py-1 rounded-md font-semibold transition-colors ${
                         imageInputMode === "url"
-                          ? "bg-[#FF5A00] text-white"
+                          ? "bg-[#FF7A30] text-white"
                           : "bg-gray-100 text-gray-500 hover:bg-gray-200"
                       }`}
                     >
@@ -822,7 +822,7 @@ export default function AdminPanel() {
                       value={form.image_url}
                       onChange={(e) => setForm({ ...form, image_url: e.target.value })}
                       placeholder="https://example.com/image.jpg"
-                      className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-[#FF5A00] transition-colors"
+                      className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-[#FF7A30] transition-colors"
                     />
                     {form.image_url && (
                       <div className="relative w-full aspect-square rounded-lg overflow-hidden border border-gray-200">
@@ -864,7 +864,7 @@ export default function AdminPanel() {
                       </button>
                     </div>
                   ) : (
-                    <label className="flex flex-col items-center justify-center w-full h-36 border-2 border-dashed border-gray-200 rounded-lg cursor-pointer hover:border-[#FF5A00] transition-colors">
+                    <label className="flex flex-col items-center justify-center w-full h-36 border-2 border-dashed border-gray-200 rounded-lg cursor-pointer hover:border-[#FF7A30] transition-colors">
                       {uploading ? (
                         <span className="text-sm text-gray-400">업로드 중...</span>
                       ) : (
@@ -907,7 +907,7 @@ export default function AdminPanel() {
                     </button>
                   </div>
                 ) : (
-                  <label className="flex flex-col items-center justify-center w-full h-24 border-2 border-dashed border-gray-200 rounded-lg cursor-pointer hover:border-[#FF5A00] transition-colors">
+                  <label className="flex flex-col items-center justify-center w-full h-24 border-2 border-dashed border-gray-200 rounded-lg cursor-pointer hover:border-[#FF7A30] transition-colors">
                     {uploadingVideo ? (
                       <span className="text-sm text-gray-400">업로드 중...</span>
                     ) : (
@@ -940,13 +940,13 @@ export default function AdminPanel() {
                     onChange={(e) => setImageUrlInput(e.target.value)}
                     onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addImageUrl(); } }}
                     placeholder="https://..."
-                    className="flex-1 border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-[#FF5A00] transition-colors"
+                    className="flex-1 border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-[#FF7A30] transition-colors"
                   />
                   <button
                     type="button"
                     onClick={addImageUrl}
                     disabled={!imageUrlInput.trim()}
-                    className="px-3 py-2 bg-[#FF5A00] text-white text-sm font-semibold rounded-lg hover:bg-[#e04e00] transition-colors disabled:opacity-40"
+                    className="px-3 py-2 bg-[#FF7A30] text-white text-sm font-semibold rounded-lg hover:bg-[#e06b2a] transition-colors disabled:opacity-40"
                   >
                     + 추가
                   </button>
@@ -1014,7 +1014,7 @@ export default function AdminPanel() {
                   }}
                   required
                   placeholder="https://..."
-                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-[#FF5A00] transition-colors"
+                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-[#FF7A30] transition-colors"
                 />
                 {(form.affiliate_link.includes("amazon.com") || form.affiliate_link.includes("amzn.to") || form.affiliate_link.includes("amazon.co.jp")) && (
                   <div className="mt-2 flex items-center gap-4 bg-blue-50 border border-blue-100 rounded-lg px-3 py-2">
@@ -1025,7 +1025,7 @@ export default function AdminPanel() {
                         name="amazon_region"
                         checked={form.platform === "amazon_us"}
                         onChange={() => setForm({ ...form, platform: "amazon_us" })}
-                        className="accent-[#FF5A00]"
+                        className="accent-[#FF7A30]"
                       />
                       🇺🇸 미국
                     </label>
@@ -1035,7 +1035,7 @@ export default function AdminPanel() {
                         name="amazon_region"
                         checked={form.platform === "amazon_jp"}
                         onChange={() => setForm({ ...form, platform: "amazon_jp" })}
-                        className="accent-[#FF5A00]"
+                        className="accent-[#FF7A30]"
                       />
                       🇯🇵 일본
                     </label>
@@ -1051,7 +1051,7 @@ export default function AdminPanel() {
                   value={form.button_text}
                   onChange={(e) => setForm({ ...form, button_text: e.target.value })}
                   placeholder="구경하러 가기"
-                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-[#FF5A00] transition-colors"
+                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-[#FF7A30] transition-colors"
                 />
               </div>
               <div>
@@ -1065,7 +1065,7 @@ export default function AdminPanel() {
                       name="visibility"
                       checked={!form.is_queued}
                       onChange={() => setForm({ ...form, is_active: true, is_queued: false })}
-                      className="accent-[#FF5A00]"
+                      className="accent-[#FF7A30]"
                     />
                     <span className="text-sm text-gray-700">바로 공개</span>
                   </label>
@@ -1075,7 +1075,7 @@ export default function AdminPanel() {
                       name="visibility"
                       checked={form.is_queued}
                       onChange={() => setForm({ ...form, is_active: false, is_queued: true })}
-                      className="accent-[#FF5A00]"
+                      className="accent-[#FF7A30]"
                     />
                     <span className="text-sm text-gray-700">큐에 저장</span>
                     <span className="text-[10px] text-amber-500 font-semibold bg-amber-50 px-1.5 py-0.5 rounded-full">기본값</span>
@@ -1093,7 +1093,7 @@ export default function AdminPanel() {
                 <button
                   type="submit"
                   disabled={saving || uploading || uploadingVideo}
-                  className="flex-1 bg-[#FF5A00] text-white text-sm font-bold py-2.5 rounded-lg hover:bg-[#e04e00] transition-colors disabled:opacity-50"
+                  className="flex-1 bg-[#FF7A30] text-white text-sm font-bold py-2.5 rounded-lg hover:bg-[#e06b2a] transition-colors disabled:opacity-50"
                 >
                   {uploading ? "이미지 업로드 중..." : uploadingVideo ? "영상 업로드 중..." : saving ? "저장 중..." : editing ? "수정 완료" : "추가 완료"}
                 </button>

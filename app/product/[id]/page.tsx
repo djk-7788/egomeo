@@ -97,7 +97,7 @@ export default async function ProductPage({ params }: Props) {
               href={product.affiliate_link}
               target="_blank"
               rel="noopener noreferrer"
-              className="block w-full text-center font-bold text-white bg-[#FF5A00] rounded-xl py-4 hover:bg-[#e04e00] transition-colors text-lg"
+              className="block w-full text-center font-bold text-white bg-[#FF7A30] rounded-xl py-4 hover:bg-[#e06b2a] transition-colors text-lg"
             >
               {product.button_text || "구경하러 가기"}
             </a>

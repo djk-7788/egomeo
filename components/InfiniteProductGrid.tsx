@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState, useEffect, useRef } from "react";
 import ProductCard from "./ProductCard";
@@ -123,7 +123,7 @@ export default function InfiniteProductGrid({
       {/* 센티넬: 이 div가 뷰포트에 들어오면 다음 페이지 로드 */}
       <div ref={sentinelRef} className="flex justify-center py-10">
         {loading && (
-          <div className="w-8 h-8 border-[3px] border-[#FF5A00] border-t-transparent rounded-full animate-spin" />
+          <div className="w-8 h-8 border-[3px] border-[#FF7A30] border-t-transparent rounded-full animate-spin" />
         )}
         {!loading && !hasMoreRef.current && products.length > 0 && (
           <p className="text-xs text-gray-300">— 끝 —</p>

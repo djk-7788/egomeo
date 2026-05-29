@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+﻿import type { Metadata } from "next";
 
 export const metadata: Metadata = {
   title: "Contact | 이게머고?",
@@ -12,7 +12,7 @@ export default function ContactPage() {
       <div className="space-y-5 text-sm text-gray-600 leading-relaxed">
         <p>문의사항이 있으시면 아래 이메일로 연락해 주세요.</p>
         <p>
-          <a href="mailto:hello@igemugo.com" className="text-[#FF5A00] hover:underline text-base font-medium">
+          <a href="mailto:hello@igemugo.com" className="text-[#FF7A30] hover:underline text-base font-medium">
             hello@igemugo.com
           </a>
         </p>

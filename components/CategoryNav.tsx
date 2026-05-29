@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
@@ -22,8 +22,8 @@ export default function CategoryNav() {
           href={value ? `/?category=${value}` : "/"}
           className={
             current === value
-              ? "text-[#FF5A00] font-bold"
-              : "text-gray-500 hover:text-[#FF5A00] transition-colors"
+              ? "text-[#FF7A30] font-bold"
+              : "text-gray-500 hover:text-[#FF7A30] transition-colors"
           }
         >
           {label}

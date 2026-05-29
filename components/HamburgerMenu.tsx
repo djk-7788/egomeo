@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
@@ -90,11 +90,11 @@ export default function HamburgerMenu() {
               value={searchInput}
               onChange={e => setSearchInput(e.target.value)}
               placeholder="상품 검색..."
-              className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-[#FF5A00] transition-colors pr-16"
+              className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-[#FF7A30] transition-colors pr-16"
             />
             <button
               type="submit"
-              className="absolute right-2 top-1/2 -translate-y-1/2 text-xs font-bold text-white bg-[#FF5A00] px-2.5 py-1 rounded-md hover:bg-[#e04e00] transition-colors"
+              className="absolute right-2 top-1/2 -translate-y-1/2 text-xs font-bold text-white bg-[#FF7A30] px-2.5 py-1 rounded-md hover:bg-[#e06b2a] transition-colors"
             >
               검색
             </button>
@@ -107,7 +107,7 @@ export default function HamburgerMenu() {
             <Link
               key={href}
               href={href}
-              className="px-5 py-3 text-sm text-[#111111] hover:text-[#FF5A00] hover:bg-gray-50 transition-colors"
+              className="px-5 py-3 text-sm text-[#111111] hover:text-[#FF7A30] hover:bg-gray-50 transition-colors"
             >
               {label}
             </Link>

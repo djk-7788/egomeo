@@ -1,4 +1,4 @@
-import CardShareButton from "@/components/CardShareButton";
+﻿import CardShareButton from "@/components/CardShareButton";
 import VideoPlayer from "@/components/VideoPlayer";
 import ImageSlider from "@/components/ImageSlider";
 
@@ -80,7 +80,7 @@ export default function ProductCard({
           href={link}
           target="_blank"
           rel="noopener noreferrer"
-          className="block w-full text-center text-sm font-bold text-white bg-[#FF5A00] rounded-lg py-2 hover:bg-[#e04e00] transition-colors"
+          className="block w-full text-center text-sm font-bold text-white bg-[#FF7A30] rounded-lg py-2 hover:bg-[#e06b2a] transition-colors"
         >
           {buttonText || "구경하러 가기"}
         </a>

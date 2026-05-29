@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useActionState } from "react";
 import { login } from "./actions";
@@ -18,7 +18,7 @@ export default function LoginForm() {
             name="password"
             placeholder="비밀번호"
             required
-            className="border border-gray-200 rounded-lg px-4 py-3 text-sm outline-none focus:border-[#FF5A00] transition-colors"
+            className="border border-gray-200 rounded-lg px-4 py-3 text-sm outline-none focus:border-[#FF7A30] transition-colors"
           />
           {state.error && (
             <p className="text-sm text-red-500">{state.error}</p>
@@ -26,7 +26,7 @@ export default function LoginForm() {
           <button
             type="submit"
             disabled={pending}
-            className="bg-[#FF5A00] text-white font-bold py-3 rounded-lg hover:bg-[#e04e00] transition-colors disabled:opacity-50"
+            className="bg-[#FF7A30] text-white font-bold py-3 rounded-lg hover:bg-[#e06b2a] transition-colors disabled:opacity-50"
           >
             {pending ? "확인 중..." : "로그인"}
           </button>

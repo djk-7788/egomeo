@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState, useEffect, useRef } from "react";
 import { supabase } from "@/lib/supabase";
@@ -300,7 +300,7 @@ export default function OrderEditor() {
               value={rangeStart}
               onChange={e => { setRangeStart(e.target.value); setPreview(null); setApplyDone(false); }}
               placeholder="1"
-              className="w-20 border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-[#FF5A00] transition-colors"
+              className="w-20 border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-[#FF7A30] transition-colors"
             />
           </div>
           <span className="text-gray-400 text-sm">~</span>
@@ -312,7 +312,7 @@ export default function OrderEditor() {
               value={rangeEnd}
               onChange={e => { setRangeEnd(e.target.value); setPreview(null); setApplyDone(false); }}
               placeholder="50"
-              className="w-20 border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-[#FF5A00] transition-colors"
+              className="w-20 border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-[#FF7A30] transition-colors"
             />
           </div>
           <button
@@ -369,7 +369,7 @@ export default function OrderEditor() {
 
               {/* 변경 후 */}
               <div>
-                <p className="text-xs font-semibold text-[#FF5A00] mb-2 px-1">
+                <p className="text-xs font-semibold text-[#FF7A30] mb-2 px-1">
                   변경 후{" "}
                   <span className="font-normal text-orange-300">({preview.after.length}개)</span>
                 </p>
@@ -408,7 +408,7 @@ export default function OrderEditor() {
               <button
                 onClick={handleApply}
                 disabled={applying}
-                className="text-sm font-bold px-5 py-2 bg-[#FF5A00] text-white rounded-lg hover:bg-[#e04e00] transition-colors disabled:opacity-50"
+                className="text-sm font-bold px-5 py-2 bg-[#FF7A30] text-white rounded-lg hover:bg-[#e06b2a] transition-colors disabled:opacity-50"
               >
                 {applying ? "적용 중..." : "적용"}
               </button>
@@ -445,7 +445,7 @@ export default function OrderEditor() {
           className={`text-sm font-bold px-5 py-2.5 rounded-lg transition-colors disabled:opacity-50 ${
             saved
               ? "bg-green-500 text-white"
-              : "bg-[#FF5A00] text-white hover:bg-[#e04e00]"
+              : "bg-[#FF7A30] text-white hover:bg-[#e06b2a]"
           }`}
         >
           {saving ? "저장 중..." : saved ? "저장됨 ✓" : "순서 저장"}
@@ -463,7 +463,7 @@ export default function OrderEditor() {
             onDragEnd={handleDragEnd}
             className={`relative bg-white border-2 rounded-xl overflow-hidden cursor-grab active:cursor-grabbing select-none transition-all duration-150 ${
               dragOverIdx === index
-                ? "border-[#FF5A00] shadow-lg scale-105"
+                ? "border-[#FF7A30] shadow-lg scale-105"
                 : "border-gray-100 hover:border-gray-300"
             }`}
           >
@@ -476,7 +476,7 @@ export default function OrderEditor() {
               </div>
             )}
             {(item.video_url || (item.image_urls && item.image_urls.length >= 2)) && (
-              <div className="absolute top-1.5 right-1.5 z-10 bg-[#FF5A00] text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full">
+              <div className="absolute top-1.5 right-1.5 z-10 bg-[#FF7A30] text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full">
                 🎬
               </div>
             )}

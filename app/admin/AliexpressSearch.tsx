@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState } from "react";
 
@@ -101,7 +101,7 @@ export default function AliexpressSearch({ onSelect }: Props) {
             onClick={() => switchTab("ali")}
             className={`text-sm font-semibold px-6 py-2.5 transition-colors ${
               tab === "ali"
-                ? "bg-[#FF5A00] text-white"
+                ? "bg-[#FF7A30] text-white"
                 : "bg-white text-gray-400 hover:text-gray-600"
             }`}
           >
@@ -112,7 +112,7 @@ export default function AliexpressSearch({ onSelect }: Props) {
             onClick={() => switchTab("coupang")}
             className={`text-sm font-semibold px-6 py-2.5 transition-colors ${
               tab === "coupang"
-                ? "bg-[#FF5A00] text-white"
+                ? "bg-[#FF7A30] text-white"
                 : "bg-white text-gray-400 hover:text-gray-600"
             }`}
           >
@@ -128,7 +128,7 @@ export default function AliexpressSearch({ onSelect }: Props) {
               value={urlInput}
               onChange={(e) => setUrlInput(e.target.value)}
               placeholder={placeholder}
-              className="w-full border border-gray-200 rounded-lg px-3 py-2.5 pr-8 text-sm outline-none focus:border-[#FF5A00] transition-colors"
+              className="w-full border border-gray-200 rounded-lg px-3 py-2.5 pr-8 text-sm outline-none focus:border-[#FF7A30] transition-colors"
             />
             {urlInput && (
               <button
@@ -146,7 +146,7 @@ export default function AliexpressSearch({ onSelect }: Props) {
           <button
             type="submit"
             disabled={loading || !urlInput.trim()}
-            className="bg-[#FF5A00] text-white text-sm font-bold px-5 py-2.5 rounded-lg hover:bg-[#e04e00] transition-colors disabled:opacity-40 flex-shrink-0"
+            className="bg-[#FF7A30] text-white text-sm font-bold px-5 py-2.5 rounded-lg hover:bg-[#e06b2a] transition-colors disabled:opacity-40 flex-shrink-0"
           >
             {loading ? "로딩 중..." : "불러오기"}
           </button>
@@ -173,7 +173,7 @@ export default function AliexpressSearch({ onSelect }: Props) {
         {/* 로딩 스피너 */}
         {loading && (
           <div className="flex items-center justify-center py-32">
-            <div className="w-7 h-7 border-[3px] border-[#FF5A00] border-t-transparent rounded-full animate-spin" />
+            <div className="w-7 h-7 border-[3px] border-[#FF7A30] border-t-transparent rounded-full animate-spin" />
           </div>
         )}
       </div>
@@ -227,7 +227,7 @@ export default function AliexpressSearch({ onSelect }: Props) {
                       onMouseLeave={() => setHoverImage(null)}
                       className={`w-14 h-14 rounded-lg overflow-hidden flex-shrink-0 border-2 transition-colors ${
                         selectedImage === img
-                          ? "border-[#FF5A00]"
+                          ? "border-[#FF7A30]"
                           : "border-gray-100 hover:border-gray-300"
                       }`}
                     >
@@ -254,7 +254,7 @@ export default function AliexpressSearch({ onSelect }: Props) {
                 type="button"
                 onClick={() => onSelect(selectedProduct, selectedImage)}
                 disabled={!selectedImage}
-                className="w-full bg-[#FF5A00] text-white text-sm font-bold py-2.5 rounded-lg hover:bg-[#e04e00] transition-colors disabled:opacity-40"
+                className="w-full bg-[#FF7A30] text-white text-sm font-bold py-2.5 rounded-lg hover:bg-[#e06b2a] transition-colors disabled:opacity-40"
               >
                 폼에 불러오기
               </button>

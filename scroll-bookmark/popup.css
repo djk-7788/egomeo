@@ -1,4 +1,4 @@
-* {
+﻿* {
   box-sizing: border-box;
   margin: 0;
   padding: 0;
@@ -18,7 +18,7 @@ body {
   align-items: center;
   gap: 8px;
   padding: 12px 14px;
-  background: #FF5A00;
+  background: #FF7A30;
   color: white;
 }
 
@@ -83,7 +83,7 @@ body {
 
 .saved-info-text {
   font-size: 11px;
-  color: #FF5A00;
+  color: #FF7A30;
   font-weight: 600;
 }
 
@@ -109,12 +109,12 @@ body {
 }
 
 .btn-primary {
-  background: #FF5A00;
+  background: #FF7A30;
   color: white;
 }
 
 .btn-primary:hover {
-  background: #e04e00;
+  background: #e06b2a;
 }
 
 .btn-secondary {
@@ -233,7 +233,7 @@ body {
 
 .scroll-badge {
   background: #fff0e8;
-  color: #FF5A00;
+  color: #FF7A30;
   font-size: 10px;
   font-weight: 700;
   padding: 1px 6px;

@@ -1,4 +1,4 @@
-import Link from "next/link";
+﻿import Link from "next/link";
 
 export default function Footer() {
   return (
@@ -10,11 +10,11 @@ export default function Footer() {
         <p className="text-xs text-gray-300">
           © 이게머고?{" "}
           <span className="text-gray-200 mx-1">|</span>
-          <Link href="/about" className="hover:text-[#FF5A00] transition-colors">About</Link>
+          <Link href="/about" className="hover:text-[#FF7A30] transition-colors">About</Link>
           <span className="text-gray-200 mx-1">|</span>
-          <Link href="/privacy" className="hover:text-[#FF5A00] transition-colors">Privacy Policy</Link>
+          <Link href="/privacy" className="hover:text-[#FF7A30] transition-colors">Privacy Policy</Link>
           <span className="text-gray-200 mx-1">|</span>
-          <Link href="/contact" className="hover:text-[#FF5A00] transition-colors">Contact</Link>
+          <Link href="/contact" className="hover:text-[#FF7A30] transition-colors">Contact</Link>
         </p>
       </div>
     </footer>
