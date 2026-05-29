@@ -76,12 +76,14 @@ is_active     boolean       -- false면 메인페이지에 안 보임
 is_queued     boolean       -- true면 큐(임시저장) 상태, is_active=false와 함께 사용
 sort_order    integer       -- 노출 순서 (낮을수록 앞에 표시, null이면 맨 뒤)
 platform      text          -- 'amazon_us' | 'amazon_jp' | 'aliexpress' | 'coupang' | 'etc' | null
+button_text   text          -- 카드/상세 페이지 버튼 텍스트 커스터마이징 (null이면 "구경하러 가기" 기본값)
 ```
 
 > **가격(price) 컬럼은 제거됨** — 2026-05-23 `ALTER TABLE products DROP COLUMN price;` 실행 완료  
 > **platform 컬럼 추가** — 2026-05-24 `ALTER TABLE products ADD COLUMN IF NOT EXISTS platform text;` 실행 완료  
 > **is_queued 컬럼 추가** — 2026-05-26 `ALTER TABLE products ADD COLUMN IF NOT EXISTS is_queued boolean DEFAULT false;` 실행 완료  
-> **image_urls 컬럼 추가** — 2026-05-28 `ALTER TABLE products ADD COLUMN IF NOT EXISTS image_urls text[];` 실행 완료
+> **image_urls 컬럼 추가** — 2026-05-28 `ALTER TABLE products ADD COLUMN IF NOT EXISTS image_urls text[];` 실행 완료  
+> **button_text 컬럼 추가** — 2026-05-29 `ALTER TABLE products ADD COLUMN IF NOT EXISTS button_text text;` 실행 완료
 
 **RLS**: 비활성화됨 (`alter table products disable row level security`)
 → 나중에 Supabase Auth 연동 시 RLS 정책 재설정 필요
@@ -96,7 +98,7 @@ platform      text          -- 'amazon_us' | 'amazon_jp' | 'aliexpress' | 'coupa
 
 - **배경**: `#FFFFFF`
 - **텍스트**: `#111111`
-- **포인트 컬러**: `#FF5A00` — 버튼, 호버에만 제한적 사용
+- **포인트 컬러**: `#F5A623` — 버튼, 호버에만 제한적 사용 (호버: `#d8921f`)
 - **레이아웃**: 풀와이드 그리드, 사이드바 없음, 최대 3열
   - 모바일 (< 640px): 1열
   - 태블릿 (640px ~): 2열
@@ -105,18 +107,18 @@ platform      text          -- 'amazon_us' | 'amazon_jp' | 'aliexpress' | 'coupa
 
 ---
 
-## 카드 구조 (5층)
+## 카드 구조 (4층)
 
 ```
 ┌─────────────────────────┐
-│ 1층: 카테고리 뱃지        │
-│ 2층: 1:1 영상/슬라이드/이미지│  ← 우선순위: video_url > image_urls(2장↑, 1초 자동슬라이드) > image_url
-│ 3층: 드립형 제목 (3줄)    │
-│ 4층: [🔗]               │  ← 🔗 클릭 시 상세페이지 URL 복사
-│ 5층: [구경하러 가기]       │  ← 쿠팡/알리 링크 새 창
+│ 1층: 드립형 제목 (2줄, 가운데 정렬, 고정 높이) │
+│ 2층: 1:1 영상/슬라이드/이미지                 │  ← 우선순위: video_url > image_urls(2장↑, 1초 자동슬라이드) > image_url
+│ 3층: [♡]              [🔗]                  │  ← 왼쪽 하트(UI only), 오른쪽 🔗 클릭 시 상세페이지 URL 복사
+│ 4층: [구경하러 가기]                          │  ← 쿠팡/알리 링크 새 창 (button_text 커스터마이징 가능)
 └─────────────────────────┘
 ```
 
+> **카테고리 뱃지 제거됨** — 2026-05-29  
 > **가격 표시 제거됨** — 2026-05-23 가격 기능 완전 삭제 (DB 컬럼 포함)
 
 ---
@@ -180,7 +182,7 @@ egomeo/
 ├── components/
 │   ├── Header.tsx            # 상단 고정 헤더 + 카테고리 네비
 │   ├── Footer.tsx            # 쿠팡파트너스 고지 문구 + 저작권
-│   ├── ProductCard.tsx       # 5층 카드 컴포넌트 (video > image_urls 슬라이드 > image_url 우선순위)
+│   ├── ProductCard.tsx       # 4층 카드 컴포넌트 (제목→이미지→하트+공유→버튼, video > image_urls 슬라이드 > image_url 우선순위)
 │   ├── ImageSlider.tsx       # 이미지 슬라이더 (auto: IntersectionObserver 1초 자동, manual: 화살표)
 │   ├── CardShareButton.tsx   # 카드 내 공유 버튼 (클라이언트)
 │   └── ShareButton.tsx       # 상세 페이지 공유 버튼 (클라이언트)
@@ -256,17 +258,18 @@ egomeo/
   - 제휴 링크 입력 시 platform 자동 감지: 알리/쿠팡은 URL로 자동, 아마존(amazon.com/amzn.to/amazon.co.jp)은 지역 라디오 버튼 표시 (🇺🇸 미국 기본 / 🇯🇵 일본), 그 외 URL은 'etc' 자동 저장
   - URL 불러오기 탭에서 불러오면 platform 자동 설정 (aliexpress/coupang)
   - **공개 상태 라디오**: "바로 공개" (is_active=true, is_queued=false) / "큐에 저장" (is_active=false, is_queued=true) — **기본값: 큐에 저장**
+  - **버튼 텍스트**: `button_text` 입력 필드 (비워두면 "구경하러 가기" 기본값)
   - 모달: X·취소 버튼으로만 닫기 (backdrop 클릭으로 닫히지 않음), 내부 스크롤(max-height 90vh)
 
 ---
 
-## 최근 완료 작업 (2026-05-28 기준)
+## 최근 완료 작업 (2026-05-29 기준)
 
-- `image_urls` 슬라이드 기능 — DB 컬럼 추가, ImageSlider 컴포넌트, 카드/상세페이지 자동 슬라이드
-- 어드민 모달 추가 이미지 입력 UI (URL 추가/순서변경/삭제)
-- 큐 관리·순서 편집 탭 썸네일 image_urls 대응 (이미지 우선순위 + 🎬 배지)
-- 소싱툴 쿠팡 이미지 canvas drawImage → data URL 방식으로 Referer 차단 우회
-- 어드민 "URL 불러오기" 탭 개편 — 키워드 검색 제거, 알리/쿠팡 플랫폼 탭으로 통합
+- `products` 테이블에 `button_text` 컬럼 추가 — 카드/버튼 텍스트 커스터마이징 (null 시 "구경하러 가기")
+- 전체 포인트 색상 변경: `#FF5A00` → `#F5A623` (호버: `#d8921f`)
+- 메인 카드 구조 변경 — 카테고리 뱃지 제거, 순서: 제목 → 이미지 → 하트+공유버튼 → 버튼 (4층)
+- 카드 제목 스타일 개선 — 가운데 정렬, 최대 2줄 말줄임(`line-clamp-2`), 고정 높이로 카드 균일화
+- 카드 하트 아이콘(♡) 추가 — 공유버튼 반대편 좌측, 동일 스타일, 클릭 기능 없음 (찜하기 기능 추후 연결 예정)
 
 ---
 
@@ -390,6 +393,11 @@ egomeo/
 - [완료] 소싱툴 쿠팡 이미지 Referer 차단 우회 — content.js `parseCoupangImages()` 개선: 로드된 img 요소를 canvas.drawImage() → toDataURL()로 base64 변환, canvas taint 시 원본 URL 폴백
 - [완료] 어드민 탭 이름 변경: "알리익스프레스 검색" → "URL 불러오기"
 - [완료] 어드민 URL 불러오기 탭 개편 (`AliexpressSearch.tsx`) — 키워드 검색/정렬/카테고리 전체 제거, 알리/쿠팡 플랫폼 탭 추가, 쿠팡은 기존 `/api/parse-url` 재활용, platform 자동 저장
+- [완료] `products` 테이블에 `button_text` 컬럼 추가 — 카드 버튼 텍스트 커스터마이징 (`ALTER TABLE products ADD COLUMN IF NOT EXISTS button_text text;`)
+- [완료] 전체 포인트 색상 변경 — `#FF5A00` → `#F5A623`, 호버색 `#e04e00` → `#d8921f` (23개 파일 일괄 적용)
+- [완료] 메인 카드 구조 변경 — 카테고리 뱃지 제거, 5층 → 4층 (제목→이미지→하트+공유→버튼 순)
+- [완료] 카드 제목 스타일 개선 — 가운데 정렬, 최대 2줄 말줄임, 고정 높이(`h-[3.5rem]`)로 카드 균일화
+- [완료] 카드 하트 아이콘(♡) 추가 — 공유버튼 좌측 대칭 배치, UI only (찜하기 기능 추후 연결 예정)
 
 ---
 
@@ -401,7 +409,7 @@ egomeo/
 4. **쿠팡 URL 파싱 개선** — 현재 봇 차단으로 제한적. Puppeteer/플레이라이트 서버리스 또는 별도 파싱 서비스 검토 필요 (아마존은 보류)
 5. **알리 트래킹 ID 교체** — 포털에서 전용 ID 생성 후 `ALIEXPRESS_TRACKING_ID` 환경변수 교체 + `sourcing-extension/config.js`도 동일하게 업데이트
 6. **소셜 로그인** — Supabase Auth (구글/카카오/네이버)
-7. **찜하기** — 하트 버튼, 마이페이지
+7. **찜하기** — 카드 하트 버튼 UI는 완료. 실제 찜 기능(로그인+DB 저장+마이페이지)은 소셜 로그인 구현 후 연결
 
 ---
 
