@@ -1,5 +1,6 @@
 ﻿import VideoPlayer from "@/components/VideoPlayer";
 import ImageSlider from "@/components/ImageSlider";
+import CardShareButton from "@/components/CardShareButton";
 
 type ProductCardProps = {
   id: string;
@@ -53,8 +54,13 @@ export default function ProductCard({
         )}
       </a>
 
-      {/* 3층: 외부링크 버튼 */}
-      <div className="px-3 pt-2 pb-3 mt-auto">
+      {/* 3층: 공유 버튼 */}
+      <div className="px-3 pt-1 flex items-center justify-end">
+        <CardShareButton id={id} />
+      </div>
+
+      {/* 4층: 외부링크 버튼 */}
+      <div className="px-3 pt-1 pb-3 mt-auto">
         <a
           href={link}
           target="_blank"
