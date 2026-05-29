@@ -54,8 +54,14 @@ export default function ProductCard({
         )}
       </a>
 
-      {/* 3층: 공유 버튼 */}
-      <div className="px-3 pt-1 flex items-center justify-end">
+      {/* 3층: 하트 + 공유 버튼 */}
+      <div className="px-3 pt-1 flex items-center justify-between">
+        <button
+          title="찜하기"
+          className="shrink-0 w-9 h-9 flex items-center justify-center rounded-lg border border-gray-200 bg-white text-gray-400 transition-colors text-lg"
+        >
+          ♡
+        </button>
         <CardShareButton id={id} />
       </div>
 
