@@ -1,8 +1,8 @@
 ﻿*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
 :root {
-  --accent: #FF7A30;
-  --accent-hover: #e06b2a;
+  --accent: #F5A623;
+  --accent-hover: #d8921f;
   --text: #111111;
   --text-muted: #888;
   --border: #e5e5e5;

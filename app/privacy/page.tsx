@@ -19,7 +19,7 @@ export default function PrivacyPage() {
         <div className="pt-4 border-t border-gray-100">
           <p>
             <span className="text-[#111111] font-medium">문의</span>:{" "}
-            <a href="mailto:hello@igemugo.com" className="text-[#FF7A30] hover:underline">
+            <a href="mailto:hello@igemugo.com" className="text-[#F5A623] hover:underline">
               hello@igemugo.com
             </a>
           </p>

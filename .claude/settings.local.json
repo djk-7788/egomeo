@@ -15,7 +15,11 @@
       "Bash(Get-ChildItem C:\\\\Users\\\\dj\\\\Desktop\\\\egomeo\\\\app\\\\api\\\\aliexpress *)",
       "Bash(npm install *)",
       "Bash(npm list *)",
-      "PowerShell(New-Item *)"
+      "PowerShell(New-Item *)",
+      "Bash(node *)",
+      "Bash(curl -s 'https://akcpwirzkjdmdrajntum.supabase.co/rest/v1/products?select=id,title,image_url,affiliate_link&platform=eq.aliexpress&image_url=like.*pub-ca7c5843*' -H 'apikey: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFrY3B3aXJ6a2pkbWRyYWpudHVtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzkyNTc4MzcsImV4cCI6MjA5NDgzMzgzN30.MW2An2PQClvsnEeTndL3jz2VV70fmywNVb2m-Y3wh0k' -H 'Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFrY3B3aXJ6a2pkbWRyYWpudHVtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzkyNTc4MzcsImV4cCI6MjA5NDgzMzgzN30.MW2An2PQClvsnEeTndL3jz2VV70fmywNVb2m-Y3wh0k' -H 'Prefer: count=exact' -H 'Range: 0-999')",
+      "Bash(python -m json.tool)",
+      "Bash(curl -s 'https://akcpwirzkjdmdrajntum.supabase.co/rest/v1/products?select=id,affiliate_link&platform=eq.aliexpress&image_url=like.*pub-ca7c5843*' -H 'apikey: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFrY3B3aXJ6a2pkbWRyYWpudHVtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzkyNTc4MzcsImV4cCI6MjA5NDgzMzgzN30.MW2An2PQClvsnEeTndL3jz2VV70fmywNVb2m-Y3wh0k' -H 'Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFrY3B3aXJ6a2pkbWRyYWpudHVtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzkyNTc4MzcsImV4cCI6MjA5NDgzMzgzN30.MW2An2PQClvsnEeTndL3jz2VV70fmywNVb2m-Y3wh0k')"
     ]
   }
 }

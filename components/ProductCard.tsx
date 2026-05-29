@@ -80,7 +80,7 @@ export default function ProductCard({
           href={link}
           target="_blank"
           rel="noopener noreferrer"
-          className="block w-full text-center text-sm font-bold text-white bg-[#FF7A30] rounded-lg py-2 hover:bg-[#e06b2a] transition-colors"
+          className="block w-full text-center text-sm font-bold text-white bg-[#F5A623] rounded-lg py-2 hover:bg-[#d8921f] transition-colors"
         >
           {buttonText || "구경하러 가기"}
         </a>

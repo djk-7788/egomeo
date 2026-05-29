@@ -18,7 +18,7 @@ body {
   align-items: center;
   gap: 8px;
   padding: 12px 14px;
-  background: #FF7A30;
+  background: #F5A623;
   color: white;
 }
 
@@ -83,7 +83,7 @@ body {
 
 .saved-info-text {
   font-size: 11px;
-  color: #FF7A30;
+  color: #F5A623;
   font-weight: 600;
 }
 
@@ -109,12 +109,12 @@ body {
 }
 
 .btn-primary {
-  background: #FF7A30;
+  background: #F5A623;
   color: white;
 }
 
 .btn-primary:hover {
-  background: #e06b2a;
+  background: #d8921f;
 }
 
 .btn-secondary {
@@ -233,7 +233,7 @@ body {
 
 .scroll-badge {
   background: #fff0e8;
-  color: #FF7A30;
+  color: #F5A623;
   font-size: 10px;
   font-weight: 700;
   padding: 1px 6px;

@@ -70,12 +70,12 @@ export default function UrlParser({ onSelect }: Props) {
           value={url}
           onChange={(e) => setUrl(e.target.value)}
           placeholder="쿠팡 또는 아마존 상품 URL 붙여넣기"
-          className="flex-1 border border-gray-200 rounded-lg px-4 py-2.5 text-sm outline-none focus:border-[#FF7A30] transition-colors"
+          className="flex-1 border border-gray-200 rounded-lg px-4 py-2.5 text-sm outline-none focus:border-[#F5A623] transition-colors"
         />
         <button
           type="submit"
           disabled={loading || !url.trim()}
-          className="bg-[#FF7A30] text-white text-sm font-bold px-6 py-2.5 rounded-lg hover:bg-[#e06b2a] transition-colors disabled:opacity-40 flex-shrink-0"
+          className="bg-[#F5A623] text-white text-sm font-bold px-6 py-2.5 rounded-lg hover:bg-[#d8921f] transition-colors disabled:opacity-40 flex-shrink-0"
         >
           {loading ? "파싱 중..." : "불러오기"}
         </button>
@@ -110,10 +110,10 @@ export default function UrlParser({ onSelect }: Props) {
 
       {/* 파싱 결과 */}
       {result && (
-        <div className="bg-white border-2 border-[#FF7A30] rounded-xl p-5">
+        <div className="bg-white border-2 border-[#F5A623] rounded-xl p-5">
           {/* 헤더: 사이트 + 상품명 + 가격 */}
           <div className="flex items-center gap-2 mb-1">
-            <span className="text-[11px] font-bold bg-[#FF7A30] text-white px-2 py-0.5 rounded-full flex-shrink-0">
+            <span className="text-[11px] font-bold bg-[#F5A623] text-white px-2 py-0.5 rounded-full flex-shrink-0">
               {siteLabel}
             </span>
             <p className="text-sm font-semibold text-[#111111] line-clamp-1">
@@ -136,7 +136,7 @@ export default function UrlParser({ onSelect }: Props) {
                     onMouseLeave={() => setHoverImage(null)}
                     className={`w-16 h-16 rounded-lg overflow-hidden flex-shrink-0 border-2 transition-colors ${
                       selectedImage === img
-                        ? "border-[#FF7A30]"
+                        ? "border-[#F5A623]"
                         : "border-gray-100 hover:border-gray-300"
                     }`}
                   >
@@ -164,7 +164,7 @@ export default function UrlParser({ onSelect }: Props) {
             type="button"
             onClick={() => result && onSelect(result, selectedImage)}
             disabled={!selectedImage && result.images.length > 0}
-            className="w-full bg-[#FF7A30] text-white text-sm font-bold py-2.5 rounded-lg hover:bg-[#e06b2a] transition-colors disabled:opacity-40"
+            className="w-full bg-[#F5A623] text-white text-sm font-bold py-2.5 rounded-lg hover:bg-[#d8921f] transition-colors disabled:opacity-40"
           >
             폼에 불러오기
           </button>

@@ -21,7 +21,7 @@ export default function CardShareButton({ id }: { id: string }) {
       className={`shrink-0 w-9 h-9 flex items-center justify-center rounded-lg border transition-colors text-lg
         ${copied
           ? "border-green-200 bg-green-50 text-green-500"
-          : "border-gray-200 bg-white text-gray-400 hover:border-[#FF7A30] hover:text-[#FF7A30]"
+          : "border-gray-200 bg-white text-gray-400 hover:border-[#F5A623] hover:text-[#F5A623]"
         }`}
     >
       {copied ? "✓" : "🔗"}

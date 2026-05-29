@@ -22,8 +22,8 @@ export default function CategoryNav() {
           href={value ? `/?category=${value}` : "/"}
           className={
             current === value
-              ? "text-[#FF7A30] font-bold"
-              : "text-gray-500 hover:text-[#FF7A30] transition-colors"
+              ? "text-[#F5A623] font-bold"
+              : "text-gray-500 hover:text-[#F5A623] transition-colors"
           }
         >
           {label}

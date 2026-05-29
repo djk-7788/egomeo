@@ -205,7 +205,7 @@ export default function QueueManager({ onPublished }: { onPublished?: () => void
             <button
               onClick={handlePublishAll}
               disabled={publishingAll}
-              className="text-sm font-bold px-5 py-2.5 bg-[#FF7A30] text-white rounded-lg hover:bg-[#e06b2a] transition-colors disabled:opacity-50"
+              className="text-sm font-bold px-5 py-2.5 bg-[#F5A623] text-white rounded-lg hover:bg-[#d8921f] transition-colors disabled:opacity-50"
             >
               {publishingAll ? "공개 중..." : `전체 공개 (${items.length}개)`}
             </button>
@@ -225,13 +225,13 @@ export default function QueueManager({ onPublished }: { onPublished?: () => void
           <span className="text-gray-200">|</span>
           {selectedIds.size > 0 ? (
             <>
-              <span className="text-xs font-semibold text-[#FF7A30]">
+              <span className="text-xs font-semibold text-[#F5A623]">
                 {selectedIds.size}개 선택됨
               </span>
               <button
                 onClick={handlePublishSelected}
                 disabled={publishingSelected}
-                className="text-xs font-bold px-3 py-1.5 bg-[#FF7A30] text-white rounded-lg hover:bg-[#e06b2a] transition-colors disabled:opacity-50"
+                className="text-xs font-bold px-3 py-1.5 bg-[#F5A623] text-white rounded-lg hover:bg-[#d8921f] transition-colors disabled:opacity-50"
               >
                 {publishingSelected
                   ? "공개 중..."
@@ -272,15 +272,15 @@ export default function QueueManager({ onPublished }: { onPublished?: () => void
                 onDragEnd={handleDragEnd}
                 className={`relative bg-white border-2 rounded-xl overflow-hidden cursor-grab active:cursor-grabbing select-none transition-all duration-150 ${
                   dragOverIdx === index
-                    ? "border-[#FF7A30] shadow-lg scale-105"
+                    ? "border-[#F5A623] shadow-lg scale-105"
                     : isSelected
-                    ? "border-[#FF7A30] shadow-sm"
+                    ? "border-[#F5A623] shadow-sm"
                     : "border-gray-100 hover:border-gray-300"
                 }`}
               >
                 {/* 선택 오버레이 (선택 시 반투명 주황) */}
                 {isSelected && (
-                  <div className="absolute inset-0 bg-[#FF7A30]/8 z-10 pointer-events-none" />
+                  <div className="absolute inset-0 bg-[#F5A623]/8 z-10 pointer-events-none" />
                 )}
                 {/* 순서 번호 */}
                 <div className="absolute top-1.5 left-1.5 z-20 bg-black/60 text-white text-[10px] font-bold w-5 h-5 rounded-full flex items-center justify-center">
@@ -296,7 +296,7 @@ export default function QueueManager({ onPublished }: { onPublished?: () => void
                 )}
                 {/* 영상/슬라이드 배지 */}
                 {(item.video_url || (item.image_urls && item.image_urls.length >= 2)) && (
-                  <div className="absolute top-1.5 right-1.5 z-20 bg-[#FF7A30] text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full">
+                  <div className="absolute top-1.5 right-1.5 z-20 bg-[#F5A623] text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full">
                     🎬
                   </div>
                 )}
@@ -333,7 +333,7 @@ export default function QueueManager({ onPublished }: { onPublished?: () => void
                       onMouseDown={(e) => e.stopPropagation()}
                       onClick={(e) => e.stopPropagation()}
                       draggable={false}
-                      className="mt-0.5 flex-shrink-0 accent-[#FF7A30] cursor-pointer"
+                      className="mt-0.5 flex-shrink-0 accent-[#F5A623] cursor-pointer"
                     />
                     <p className="text-[10px] font-semibold text-[#111111] line-clamp-2 leading-tight">
                       {item.title}
@@ -342,7 +342,7 @@ export default function QueueManager({ onPublished }: { onPublished?: () => void
                   <button
                     onClick={() => handlePublish(item.id)}
                     disabled={publishing === item.id}
-                    className="w-full text-[10px] font-bold py-1 bg-[#FF7A30] text-white rounded-md hover:bg-[#e06b2a] transition-colors disabled:opacity-50"
+                    className="w-full text-[10px] font-bold py-1 bg-[#F5A623] text-white rounded-md hover:bg-[#d8921f] transition-colors disabled:opacity-50"
                   >
                     {publishing === item.id ? "..." : "공개하기"}
                   </button>

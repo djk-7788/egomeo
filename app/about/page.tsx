@@ -20,7 +20,7 @@ export default function AboutPage() {
           <p><span className="text-[#111111] font-medium">운영자</span>: Mugo</p>
           <p>
             <span className="text-[#111111] font-medium">문의</span>:{" "}
-            <a href="mailto:hello@igemugo.com" className="text-[#FF7A30] hover:underline">
+            <a href="mailto:hello@igemugo.com" className="text-[#F5A623] hover:underline">
               hello@igemugo.com
             </a>
           </p>

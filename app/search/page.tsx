@@ -64,7 +64,7 @@ export default async function SearchPage({ searchParams }: Props) {
           </p>
           <Link
             href="/"
-            className="text-sm font-bold text-[#FF7A30] hover:underline"
+            className="text-sm font-bold text-[#F5A623] hover:underline"
           >
             전체 상품 보기
           </Link>
