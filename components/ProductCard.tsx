@@ -1,24 +1,15 @@
-﻿import CardShareButton from "@/components/CardShareButton";
-import VideoPlayer from "@/components/VideoPlayer";
+﻿import VideoPlayer from "@/components/VideoPlayer";
 import ImageSlider from "@/components/ImageSlider";
-
-type Category = "mild" | "medium" | "hot";
 
 type ProductCardProps = {
   id: string;
-  category: Category;
+  category: string;
   imageUrl: string;
   imageUrls?: string[] | null;
   videoUrl?: string | null;
   title: string;
   link: string;
   buttonText?: string | null;
-};
-
-const categoryLabel: Record<Category, string> = {
-  mild: "이게 머고?",
-  medium: "이게? 머고???",
-  hot: "이게??? 머고???????",
 };
 
 export default function ProductCard({
@@ -35,11 +26,11 @@ export default function ProductCard({
 
   return (
     <div className="flex flex-col bg-white border border-gray-100 rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-shadow">
-      {/* 1층: 카테고리 */}
-      <div className="px-3 pt-3">
-        <span className="text-xs font-semibold text-gray-400 uppercase tracking-wide">
-          {categoryLabel[category]}
-        </span>
+      {/* 1층: 드립형 제목 */}
+      <div className="px-3 pt-3 pb-2">
+        <h2 className="text-sm font-bold text-[#111111] leading-snug line-clamp-3">
+          {title}
+        </h2>
       </div>
 
       {/* 2층: 영상 또는 슬라이드 또는 이미지 */}
@@ -47,7 +38,7 @@ export default function ProductCard({
         href={link}
         target="_blank"
         rel="noopener noreferrer"
-        className="relative w-full aspect-square mt-2 overflow-hidden block bg-black"
+        className="relative w-full aspect-square overflow-hidden block bg-black"
       >
         {videoUrl ? (
           <VideoPlayer src={videoUrl} className="w-full h-full object-cover" />
@@ -62,19 +53,7 @@ export default function ProductCard({
         )}
       </a>
 
-      {/* 3층: 드립형 제목 */}
-      <div className="px-3 pt-3">
-        <h2 className="text-sm font-bold text-[#111111] leading-snug line-clamp-3">
-          {title}
-        </h2>
-      </div>
-
-      {/* 4층: 공유 버튼 */}
-      <div className="px-3 pt-1 flex items-center justify-end">
-        <CardShareButton id={id} />
-      </div>
-
-      {/* 5층: 외부링크 버튼 */}
+      {/* 3층: 외부링크 버튼 */}
       <div className="px-3 pt-2 pb-3 mt-auto">
         <a
           href={link}
