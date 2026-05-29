@@ -27,8 +27,8 @@ export default function ProductCard({
   return (
     <div className="flex flex-col bg-white border border-gray-100 rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-shadow">
       {/* 1층: 드립형 제목 */}
-      <div className="px-3 pt-3 pb-2">
-        <h2 className="text-sm font-bold text-[#111111] leading-snug line-clamp-3">
+      <div className="px-3 pt-3 pb-2 h-[3.5rem] flex items-center justify-center">
+        <h2 className="text-sm font-bold text-[#111111] leading-snug line-clamp-2 text-center">
           {title}
         </h2>
       </div>
