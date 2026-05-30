@@ -193,12 +193,17 @@ egomeo/
 │   ├── supabase.ts           # Supabase 클라이언트 싱글톤
 │   └── r2.ts                 # Cloudflare R2 S3 클라이언트 (endpoint/bucket/publicUrl export)
 ├── chrome-extension/         # 크롬 확장 프로그램 "참아야하느니라 미디어툴" (Manifest V3)
-│   ├── manifest.json         # MV3 설정 (host_permissions: aliexpress/alicdn/unpkg, CSP: wasm-unsafe-eval)
+│   ├── manifest.json         # MV3 설정 (host_permissions: aliexpress/alicdn, CSP: wasm-unsafe-eval)
 │   ├── background.js         # 아이콘 클릭 → 새 탭 열기
 │   ├── newtab.html           # 전체 화면 UI (슬라이드쇼 + 영상 자르기 탭)
-│   ├── newtab.css            # 스타일 (#FF5A00 포인트)
-│   └── newtab.js             # 알리 이미지 fetch, Canvas+MediaRecorder 슬라이드쇼, 영상 자르기
-└── sourcing-extension/       # 크롬 확장 프로그램 "이게머고 소싱툴" (Manifest V3)
+│   ├── newtab.css            # 스타일 (#F5A623 포인트, 크롭 오버레이 포함)
+│   ├── newtab.js             # 알리 이미지 fetch, Canvas+MediaRecorder 슬라이드쇼, ffmpeg.wasm 영상 자르기 (1:1크롭·CRF압축)
+│   ├── ffmpeg.js             # @ffmpeg/ffmpeg UMD 번들 (로컬)
+│   ├── ffmpeg-util.js        # @ffmpeg/util UMD 번들 (fetchFile, toBlobURL)
+│   ├── 814.ffmpeg.js         # ffmpeg.wasm Worker 스크립트 (ffmpeg.js가 로드)
+│   ├── ffmpeg-core.js        # @ffmpeg/core 112KB — Worker가 importScripts로 로드
+│   └── ffmpeg-core.wasm      # @ffmpeg/core WASM 바이너리 31MB
+└── sourcing-extension/       # 크롬 확장 프로그램 "참아야하느니라 소싱툴" (Manifest V3)
     ├── manifest.json         # MV3 설정 (side_panel, content_scripts: aliexpress/coupang)
     ├── background.js         # 아이콘 클릭 → 사이드패널 열기 (setPanelBehavior)
     ├── config.js             # 사용자 설정 (SITE_URL, ADMIN_KEY, Supabase 키)
@@ -238,6 +243,7 @@ egomeo/
   - 개별 "공개하기" 버튼 → is_active=true, is_queued=false
   - "전체 공개" 버튼 → 큐 전체 한번에 공개
   - 탭 버튼에 큐 상품 수 배지 표시
+- **탭 6 — 통계** (`StatsPanel.tsx`): 공개/큐/숨김 상품 수, 플랫폼별 분포(공개+큐 합산), 영상·슬라이드 수, GA 대시보드 바로가기
 - **탭 3 — URL 불러오기** (`AliexpressSearch.tsx`):
   - 플랫폼 탭으로 알리익스프레스 / 쿠팡 전환
   - 알리: URL 입력 → `/api/aliexpress/parse` → 이미지 목록 표시
@@ -268,20 +274,15 @@ egomeo/
 
 ## 최근 완료 작업 (2026-05-30 기준)
 
-- 미디어툴 ffmpeg Worker importScripts CSP 오류 수정 — toBlobURL 제거, chrome.runtime.getURL 직접 전달로 'self' 정책 통과
-- 미디어툴 ffmpeg-core 로컬 번들로 전환 — CDN 로드 대신 ffmpeg-core.js/wasm을 확장 폴더에 포함, CSP 문제 해결
-- 미디어툴 영상 자르기 ffmpeg.wasm 개선 — Canvas+MediaRecorder→libx264 CRF 압축 (CRF 28 기준, 동일 구간 대비 용량 대폭 감소)
+- 미디어툴 1:1 크롭 오버레이 추가 — 영상 위 드래그 이동·SE핸들 리사이즈, 기본값 중앙 최대 정사각형, ffmpeg `crop=W:W:X:Y,scale` 필터 적용
+- 미디어툴 영상 자르기 오디오 트랙 제거 — `-an` 옵션 (사이트 muted 재생 환경)
+- 미디어툴 압축 설정 튜닝 — 품질별 CRF·해상도 차등: 고품질(CRF 26·1080p) / 중간(CRF 30·720p) / 저용량(CRF 34·480p)
+- 미디어툴 ffmpeg Worker CSP 오류 수정 — `toBlobURL` 제거, `chrome.runtime.getURL` 직접 전달로 `'self'` 정책 통과
+- 미디어툴 ffmpeg-core 로컬 번들 전환 — CDN 로드 대신 ffmpeg-core.js(112KB)+wasm(31MB) 확장 폴더에 포함, 오프라인 동작
+- 미디어툴 영상 자르기 ffmpeg.wasm 개선 — Canvas+MediaRecorder → libx264 CRF 압축으로 교체, 로그 기반 진행률 표시
 - 어드민 통계 탭 추가 (`StatsPanel.tsx`) — 공개/큐/숨김 현황, 플랫폼별 분포(공개+큐 기준), 영상·슬라이드 수, GA 대시보드 바로가기
 - Google Analytics 연동 — 측정 ID `G-6P979RX187`, `NEXT_PUBLIC_GA_ID` 환경변수, `app/layout.tsx`에 `next/script afterInteractive`로 삽입
 - 사이트명 전체 변경 — "이게머고?" → "참아야하느니라" (헤더/푸터/타이틀/메타/About/Privacy/Search/Admin/확장 프로그램 전체 적용)
-
-## 이전 완료 작업 (2026-05-29 기준)
-
-- `products` 테이블에 `button_text` 컬럼 추가 — 카드/버튼 텍스트 커스터마이징 (null 시 "구경하러 가기")
-- 전체 포인트 색상 변경: `#FF5A00` → `#F5A623` (호버: `#d8921f`)
-- 메인 카드 구조 변경 — 카테고리 뱃지 제거, 순서: 제목 → 이미지 → 하트+공유버튼 → 버튼 (4층)
-- 카드 제목 스타일 개선 — 가운데 정렬, 최대 2줄 말줄임(`line-clamp-2`), 고정 높이로 카드 균일화
-- 카드 하트 아이콘(♡) 추가 — 공유버튼 반대편 좌측, 동일 스타일, 클릭 기능 없음 (찜하기 기능 추후 연결 예정)
 
 ---
 
@@ -340,16 +341,13 @@ egomeo/
 - [완료] 공정위 고지 문구 추가 — 헤더 바로 아래 비고정(sticky 아님), 전 페이지 공통 적용 (`app/layout.tsx`)
 - [완료] 크롬 확장 프로그램 "참아야하느니라 미디어툴" 제작 (`chrome-extension/` 폴더, Manifest V3)
   - 슬라이드쇼 만들기 탭: 알리 URL 입력 → 이미지 선택(체크박스) → 드래그 순서 조정 → 간격 설정(0.5~2초) → Canvas+MediaRecorder로 MP4/WebM 생성 + 다운로드
-  - 영상 자르기 탭: **ffmpeg.wasm 기반** (libx264 + CRF + 해상도 제한 + 오디오 제거 + 1:1 크롭)
-    - 품질 선택 high/medium/low → CRF 26·1080p / CRF 30·720p / CRF 34·480p, ultrafast preset
-    - 1:1 크롭 오버레이: 영상 위 박스 드래그(이동) + SE핸들 드래그(리사이즈), 기본값 중앙 최대 정사각형
-    - ffmpeg vf: `crop=W:W:X:Y,scale=-2:min(maxH,ih)` 순서 적용, 창 리사이즈에 안전한 분율 좌표 관리
-    - 로컬 번들: ffmpeg.js, ffmpeg-util.js, 814.ffmpeg.js (Worker 스크립트)
-    - 로컬 번들: ffmpeg-core.js (112KB) + ffmpeg-core.wasm (31MB) 확장 폴더 포함
-    - 로드 방식: `chrome.runtime.getURL()` → `toBlobURL()` → Worker에 blob URL 전달 (CDN 불필요, 오프라인 동작)
-    - CSP: `wasm-unsafe-eval` 추가 (unpkg host_permissions 제거)
+  - 영상 자르기 탭: **ffmpeg.wasm 기반** (libx264 CRF 압축 + 해상도 제한 + 오디오 제거 + 1:1 크롭 오버레이)
+    - 품질: 고(CRF 26·1080p) / 중간(CRF 30·720p, 권장) / 저(CRF 34·480p), ultrafast preset, `-an`
+    - 1:1 크롭: 영상 위 드래그 이동·SE핸들 리사이즈, 분율 좌표 관리(창 리사이즈 안전), `crop=W:W:X:Y,scale` 순서
+    - 로컬 번들: ffmpeg.js·ffmpeg-util.js·814.ffmpeg.js(Worker)·ffmpeg-core.js(112KB)·ffmpeg-core.wasm(31MB)
+    - 로드: `chrome.runtime.getURL("ffmpeg-core.js")` 직접 전달 → Worker `importScripts`가 CSP `'self'`로 허용
   - host_permissions으로 aliexpress.com/alicdn.com CORS 없이 직접 fetch
-- [완료] 크롬 확장 프로그램 "이게머고 소싱툴" 제작 (`sourcing-extension/` 폴더, Manifest V3)
+- [완료] 크롬 확장 프로그램 "참아야하느니라 소싱툴" 제작 (`sourcing-extension/` 폴더, Manifest V3)
   - Chrome Side Panel 방식: 탭 이동해도 닫히지 않음, `chrome.tabs.onActivated/onUpdated`로 자동 재파싱
   - content.js: 알리/쿠팡 상품 페이지 자동 파싱 (제목/이미지 최대 12장/URL)
   - 이미지 단일 선택 그리드 (클릭 시 1장만 선택, 주황 테두리+대표 배지, 파일 드롭존/URL 직접 추가)
@@ -393,10 +391,9 @@ egomeo/
 - [완료] 어드민 상품 목록 sort_order 기준 정렬 + 순서 번호 표기 + 제목 검색 기능
 - [완료] 사이트 검색 페이지 추가 (`app/search/page.tsx`) — `/search?q=키워드`, ilike 검색, 카드 그리드
 - [완료] 햄버거 메뉴에 사이트 검색창 추가
-- [완료] 순서 편집 탭 "정렬 최적화" 기능 추가 — 범위 지정, 플랫폼 분산 + 영상 4칸 간격 알고리즘, 미리보기 후 적용
 - [완료] About 페이지 (`app/about/page.tsx`) + Privacy Policy (`app/privacy/page.tsx`) + Contact (`app/contact/page.tsx`)
 - [완료] Footer에 About | Privacy Policy | Contact 링크 + 제휴 마케팅 수수료 문구
-- [완료] 헤더 우측 햄버거 메뉴 (`components/HamburgerMenu.tsx`) — 사이드 드로어, 페이지 이동 시 자동 닫힘
+- [완료] 헤더 우측 햄버거 메뉴 (`components/HamburgerMenu.tsx`) — 사이드 드로어, 사이트 검색, 페이지 이동 시 자동 닫힘
 - [완료] 어드민 큐(임시저장) 기능 추가
   - `products` 테이블에 `is_queued` 컬럼 추가 (boolean, default false)
   - 상품 추가/수정 모달에 "공개 상태" 라디오 버튼 ("바로 공개" / "큐에 저장", 기본값: 큐에 저장)
@@ -417,6 +414,13 @@ egomeo/
 - [완료] 메인 카드 구조 변경 — 카테고리 뱃지 제거, 5층 → 4층 (제목→이미지→하트+공유→버튼 순)
 - [완료] 카드 제목 스타일 개선 — 가운데 정렬, 최대 2줄 말줄임, 고정 높이(`h-[3.5rem]`)로 카드 균일화
 - [완료] 카드 하트 아이콘(♡) 추가 — 공유버튼 좌측 대칭 배치, UI only (찜하기 기능 추후 연결 예정)
+- [완료] 사이트명 전체 변경 — "이게머고?" → "참아야하느니라" (헤더/푸터/메타/어드민/확장 전체)
+- [완료] Google Analytics 연동 (`G-6P979RX187`, `NEXT_PUBLIC_GA_ID`, `next/script afterInteractive`)
+- [완료] 어드민 통계 탭 (`StatsPanel.tsx`) — 공개/큐/숨김, 플랫폼 분포, 미디어 타입, GA 바로가기
+- [완료] 미디어툴 영상 자르기 ffmpeg.wasm 전환 — Canvas+MediaRecorder 제거, libx264 CRF 압축
+- [완료] 미디어툴 ffmpeg-core 로컬 번들 — ffmpeg-core.js(112KB)+wasm(31MB), CDN 불필요
+- [완료] 미디어툴 압축 설정 튜닝 — CRF 26/30/34 + 1080p/720p/480p 해상도 차등, 오디오 제거(-an)
+- [완료] 미디어툴 1:1 크롭 오버레이 — 드래그 이동+SE핸들 리사이즈, ffmpeg crop+scale 필터 연계
 
 ---
 
