@@ -352,9 +352,17 @@ async function makeSlideshow() {
   makeBtn.disabled = true;
   makeError.classList.add("hidden");
   makeLoading.classList.remove("hidden");
-  makeProgress.textContent = "캔버스 준비 중...";
+  makeProgress.textContent = "이미지 로딩 중...";
 
   try {
+    // ① 녹화 전 모든 이미지 미리 로드 (녹화 중 로딩 지연으로 인한 타이밍 오차 제거)
+    const imgEls = await Promise.all(
+      sortableImages.map((img, i) => loadImage(img.blobUrl).then(el => {
+        makeProgress.textContent = `이미지 로딩 중... (${i + 1}/${sortableImages.length})`;
+        return el;
+      }))
+    );
+
     // 해상도 결정
     let canvasW, canvasH;
     if (resolution === 1920) { canvasW = 1920; canvasH = 1080; }
@@ -365,7 +373,10 @@ async function makeSlideshow() {
     canvas.height = canvasH;
     const ctx = canvas.getContext("2d");
 
-    // MediaRecorder MIME 결정
+    // ② 첫 프레임을 미리 그리고 captureStream 시작 (녹화 시작 시 검은 화면 방지)
+    makeProgress.textContent = "녹화 준비 중...";
+    renderFrame(ctx, imgEls[0], canvasW, canvasH);
+
     const mimeType = getSupportedMime();
     const stream = canvas.captureStream(30);
     const recorder = new MediaRecorder(stream, { mimeType, videoBitsPerSecond: 4_000_000 });
@@ -374,10 +385,11 @@ async function makeSlideshow() {
 
     recorder.start();
 
-    for (let i = 0; i < sortableImages.length; i++) {
-      makeProgress.textContent = `이미지 렌더링 중... (${i + 1}/${sortableImages.length})`;
-      const imgEl = await loadImage(sortableImages[i].blobUrl);
-      await renderFrame(ctx, imgEl, canvasW, canvasH, intervalMs);
+    // ③ 각 이미지를 정확히 intervalMs씩 녹화 (로딩 없이 draw만 수행)
+    for (let i = 0; i < imgEls.length; i++) {
+      makeProgress.textContent = `녹화 중... (${i + 1}/${imgEls.length})`;
+      renderFrame(ctx, imgEls[i], canvasW, canvasH);
+      await new Promise((resolve) => setTimeout(resolve, intervalMs));
     }
 
     recorder.stop();
@@ -421,21 +433,16 @@ function loadImage(src) {
   });
 }
 
-function renderFrame(ctx, imgEl, w, h, duration) {
-  return new Promise((resolve) => {
-    // object-fit: cover 방식
-    const scale = Math.max(w / imgEl.naturalWidth, h / imgEl.naturalHeight);
-    const sw = imgEl.naturalWidth * scale;
-    const sh = imgEl.naturalHeight * scale;
-    const sx = (w - sw) / 2;
-    const sy = (h - sh) / 2;
-
-    ctx.fillStyle = "#000";
-    ctx.fillRect(0, 0, w, h);
-    ctx.drawImage(imgEl, sx, sy, sw, sh);
-
-    setTimeout(resolve, duration);
-  });
+// object-fit: cover 방식으로 캔버스에 그리기 (동기)
+function renderFrame(ctx, imgEl, w, h) {
+  const scale = Math.max(w / imgEl.naturalWidth, h / imgEl.naturalHeight);
+  const sw = imgEl.naturalWidth * scale;
+  const sh = imgEl.naturalHeight * scale;
+  const sx = (w - sw) / 2;
+  const sy = (h - sh) / 2;
+  ctx.fillStyle = "#000";
+  ctx.fillRect(0, 0, w, h);
+  ctx.drawImage(imgEl, sx, sy, sw, sh);
 }
 
 /* ══════════════════════════════════════════════════════

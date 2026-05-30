@@ -274,6 +274,7 @@ egomeo/
 
 ## 최근 완료 작업 (2026-05-30 기준)
 
+- 미디어툴 슬라이드쇼 이미지 지속 시간 오차 버그 수정 — 녹화 전 전체 이미지 병렬 프리로드, renderFrame을 동기 draw 함수로 분리, 루프에서 순수 setTimeout만 사용
 - 미디어툴 슬라이드쇼 드래그 앤 드롭 버그 수정 — `sortableImages` 초기화를 renderSortableList에서 toStep3 클릭으로 이동, img에 `draggable="false"` 추가
 - 미디어툴 1:1 크롭 오버레이 추가 — 영상 위 드래그 이동·SE핸들 리사이즈, 기본값 중앙 최대 정사각형, ffmpeg `crop=W:W:X:Y,scale` 필터 적용
 - 미디어툴 영상 자르기 오디오 트랙 제거 — `-an` 옵션 (사이트 muted 재생 환경)
