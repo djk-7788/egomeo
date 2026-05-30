@@ -463,6 +463,12 @@ let currentVideoFile = null; // ffmpeg.wasm에 넘길 원본 File 객체
 let ffmpegInst = null;
 let ffmpegReady = false;
 
+// 크롭 상태 (위치/크기는 비디오 표시 영역의 분율로 저장 → 창 리사이즈에 무관)
+let cropEnabled = false;
+let cropBox = { xFrac: 0, yFrac: 0, sizeFrac: 1 };
+let cropDragMode = null; // null | 'move' | 'resize'
+let cropDragStart = { x: 0, y: 0, box: null };
+
 // 드래그 앤 드롭 업로드
 uploadArea.addEventListener("dragover", (e) => {
   e.preventDefault();
@@ -498,6 +504,7 @@ function loadVideoFile(file) {
     endTimeInput.max = videoDuration;
     startTimeInput.value = "0";
     endTimeInput.value = videoDuration.toFixed(1);
+    if (cropEnabled) initCropBox(); // 새 영상 로드 시 크롭 박스 재초기화
   };
 }
 
@@ -523,6 +530,126 @@ function formatTime(sec) {
   const s = Math.floor(sec % 60);
   return `${m}:${String(s).padStart(2, "0")}`;
 }
+
+/* ══════════════════════════════════════════════════════
+   1:1 크롭 오버레이
+══════════════════════════════════════════════════════ */
+const cropOverlay = document.getElementById("crop-overlay");
+const cropBoxEl = document.getElementById("crop-box");
+const cropResizeHandle = document.getElementById("crop-resize-handle");
+const cropToggleBtn = document.getElementById("crop-toggle-btn");
+const cropInfoText = document.getElementById("crop-info-text");
+
+// 비디오 표시 영역 계산 (letterbox/pillarbox 오프셋 포함)
+function getVideoRect() {
+  const vid = previewVideo;
+  const W = vid.clientWidth;
+  const H = vid.clientHeight;
+  const vW = vid.videoWidth || W;
+  const vH = vid.videoHeight || H;
+  const vidAspect = vW / vH;
+  const elemAspect = W / H;
+  let dw, dh, ox, oy;
+  if (vidAspect > elemAspect) {
+    dw = W; dh = W / vidAspect; ox = 0; oy = (H - dh) / 2;
+  } else {
+    dh = H; dw = H * vidAspect; ox = (W - dw) / 2; oy = 0;
+  }
+  return { dw, dh, ox, oy, vw: vW, vh: vH };
+}
+
+// 크롭 박스 기본값: 중앙 최대 정사각형
+function initCropBox() {
+  const { dw, dh } = getVideoRect();
+  const minDim = Math.min(dw, dh);
+  cropBox.sizeFrac = 1.0;
+  cropBox.xFrac = (dw - minDim) / 2 / dw;
+  cropBox.yFrac = (dh - minDim) / 2 / dh;
+  renderCropBox();
+}
+
+// 분율 → 픽셀 변환 후 DOM 반영 + 정보 업데이트
+function renderCropBox() {
+  if (!cropEnabled) return;
+  const { dw, dh, ox, oy, vw } = getVideoRect();
+  const minDim = Math.min(dw, dh);
+  const sizePx = cropBox.sizeFrac * minDim;
+  const xPx = cropBox.xFrac * dw;
+  const yPx = cropBox.yFrac * dh;
+  cropBoxEl.style.left = (ox + xPx) + "px";
+  cropBoxEl.style.top  = (oy + yPx) + "px";
+  cropBoxEl.style.width = cropBoxEl.style.height = sizePx + "px";
+  const pixelSize = Math.round(sizePx / dw * vw);
+  cropInfoText.textContent = `${pixelSize} × ${pixelSize}`;
+}
+
+// 토글
+cropToggleBtn.addEventListener("click", () => {
+  cropEnabled = !cropEnabled;
+  if (cropEnabled) {
+    initCropBox();
+    cropOverlay.classList.remove("hidden");
+    cropToggleBtn.textContent = "크롭 해제";
+    cropToggleBtn.style.borderColor = "var(--accent)";
+    cropToggleBtn.style.color = "var(--accent)";
+  } else {
+    cropOverlay.classList.add("hidden");
+    cropToggleBtn.textContent = "크롭 적용";
+    cropToggleBtn.style.borderColor = "";
+    cropToggleBtn.style.color = "";
+    cropInfoText.textContent = "";
+  }
+});
+
+// 이동: 크롭 박스 드래그
+cropBoxEl.addEventListener("mousedown", (e) => {
+  if (e.target === cropResizeHandle) return;
+  e.preventDefault();
+  cropDragMode = "move";
+  cropDragStart = { x: e.clientX, y: e.clientY, box: { ...cropBox } };
+});
+
+// 리사이즈: SE 핸들 드래그
+cropResizeHandle.addEventListener("mousedown", (e) => {
+  e.preventDefault();
+  e.stopPropagation();
+  cropDragMode = "resize";
+  cropDragStart = { x: e.clientX, y: e.clientY, box: { ...cropBox } };
+});
+
+document.addEventListener("mousemove", (e) => {
+  if (!cropDragMode) return;
+  const { dw, dh } = getVideoRect();
+  const minDim = Math.min(dw, dh);
+  const dx = e.clientX - cropDragStart.x;
+  const dy = e.clientY - cropDragStart.y;
+
+  if (cropDragMode === "move") {
+    const sizePx = cropDragStart.box.sizeFrac * minDim;
+    let xPx = cropDragStart.box.xFrac * dw + dx;
+    let yPx = cropDragStart.box.yFrac * dh + dy;
+    xPx = Math.max(0, Math.min(dw - sizePx, xPx));
+    yPx = Math.max(0, Math.min(dh - sizePx, yPx));
+    cropBox.xFrac = xPx / dw;
+    cropBox.yFrac = yPx / dh;
+  } else {
+    // 대각 방향 평균으로 1:1 유지하며 리사이즈
+    const delta = (dx + dy) / 2;
+    const maxFrac = Math.min(
+      (dw - cropDragStart.box.xFrac * dw) / minDim,
+      (dh - cropDragStart.box.yFrac * dh) / minDim,
+      1.0
+    );
+    const newFrac = cropDragStart.box.sizeFrac + delta / minDim;
+    cropBox.sizeFrac = Math.max(30 / minDim, Math.min(maxFrac, newFrac));
+  }
+  renderCropBox();
+});
+
+document.addEventListener("mouseup", () => { cropDragMode = null; });
+
+// 창 크기 변경 시 픽셀 좌표 재계산 (분율 기반이라 자동 적응)
+window.addEventListener("resize", () => { if (cropEnabled) renderCropBox(); });
 
 /* ── 핸들 드래그 ── */
 [handleStart, handleEnd].forEach((handle) => {
@@ -557,6 +684,26 @@ endTimeInput.addEventListener("change", () => {
   trimEnd = Math.min(videoDuration, Math.max(parseFloat(endTimeInput.value) || videoDuration, trimStart + 0.1));
   updateTimeline();
 });
+
+/* ── 크롭 박스 → ffmpeg crop 필터 문자열 ── */
+function buildCropFilter() {
+  if (!cropEnabled) return null;
+  const { dw, dh, vw, vh } = getVideoRect();
+  const minDim = Math.min(dw, dh);
+  const sizePx  = cropBox.sizeFrac * minDim;
+  const xPx     = cropBox.xFrac * dw;
+  const yPx     = cropBox.yFrac * dh;
+
+  // 표시 좌표 → 실제 영상 픽셀 변환
+  const scaleX = vw / dw;
+  const scaleY = vh / dh;
+  const rawSize = Math.min(Math.round(sizePx * scaleX), Math.round(sizePx * scaleY));
+  const size = rawSize % 2 === 0 ? rawSize : rawSize - 1; // h264는 짝수 필요
+  const cropX = Math.max(0, Math.min(vw - size, Math.round(xPx * scaleX)));
+  const cropY = Math.max(0, Math.min(vh - size, Math.round(yPx * scaleY)));
+
+  return `crop=${size}:${size}:${cropX}:${cropY}`;
+}
 
 /* ── ffmpeg.wasm 로딩 (최초 1회 캐싱, 로컬 번들 사용) ── */
 async function ensureFfmpeg(progressEl) {
@@ -643,7 +790,12 @@ async function trimVideo() {
       low:    { crf: "34", maxH: 480  },
     };
     const { crf, maxH } = QUALITY[quality] || QUALITY.medium;
-    const scaleFilter = `scale=-2:min(${maxH}\\,ih)`;
+
+    // crop 필터 (활성화된 경우) + scale 필터 결합
+    const cropFilter = buildCropFilter();
+    const vf = cropFilter
+      ? `${cropFilter},scale=-2:min(${maxH}\\,ih)`
+      : `scale=-2:min(${maxH}\\,ih)`;
 
     const inputExt = (currentVideoFile.name.split(".").pop() || "mp4").toLowerCase();
     const inputName = `input.${inputExt}`;
@@ -656,7 +808,7 @@ async function trimVideo() {
       "-ss", trimStart.toFixed(3),
       "-i", inputName,
       "-t", segDuration.toFixed(3),
-      "-vf", scaleFilter,
+      "-vf", vf,
       "-c:v", "libx264",
       "-crf", crf,
       "-preset", "ultrafast",

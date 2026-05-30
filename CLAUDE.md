@@ -340,7 +340,10 @@ egomeo/
 - [완료] 공정위 고지 문구 추가 — 헤더 바로 아래 비고정(sticky 아님), 전 페이지 공통 적용 (`app/layout.tsx`)
 - [완료] 크롬 확장 프로그램 "참아야하느니라 미디어툴" 제작 (`chrome-extension/` 폴더, Manifest V3)
   - 슬라이드쇼 만들기 탭: 알리 URL 입력 → 이미지 선택(체크박스) → 드래그 순서 조정 → 간격 설정(0.5~2초) → Canvas+MediaRecorder로 MP4/WebM 생성 + 다운로드
-  - 영상 자르기 탭: **ffmpeg.wasm 기반** (libx264 + CRF 압축 + 해상도 제한 + 오디오 제거(-an), 품질 선택 high/medium/low → CRF 26·1080p / CRF 30·720p / CRF 34·480p, ultrafast preset, 로그 기반 진행률 표시)
+  - 영상 자르기 탭: **ffmpeg.wasm 기반** (libx264 + CRF + 해상도 제한 + 오디오 제거 + 1:1 크롭)
+    - 품질 선택 high/medium/low → CRF 26·1080p / CRF 30·720p / CRF 34·480p, ultrafast preset
+    - 1:1 크롭 오버레이: 영상 위 박스 드래그(이동) + SE핸들 드래그(리사이즈), 기본값 중앙 최대 정사각형
+    - ffmpeg vf: `crop=W:W:X:Y,scale=-2:min(maxH,ih)` 순서 적용, 창 리사이즈에 안전한 분율 좌표 관리
     - 로컬 번들: ffmpeg.js, ffmpeg-util.js, 814.ffmpeg.js (Worker 스크립트)
     - 로컬 번들: ffmpeg-core.js (112KB) + ffmpeg-core.wasm (31MB) 확장 폴더 포함
     - 로드 방식: `chrome.runtime.getURL()` → `toBlobURL()` → Worker에 blob URL 전달 (CDN 불필요, 오프라인 동작)

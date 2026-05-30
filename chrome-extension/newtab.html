@@ -119,7 +119,15 @@
               <p class="hint">MP4, MOV, AVI, WebM 등</p>
             </div>
           </div>
-          <video id="preview-video" class="preview-video hidden" controls muted></video>
+          <!-- 영상 미리보기 + 크롭 오버레이 -->
+          <div class="video-crop-wrapper">
+            <video id="preview-video" class="preview-video hidden" controls muted></video>
+            <div id="crop-overlay" class="crop-overlay hidden">
+              <div id="crop-box" class="crop-box">
+                <div id="crop-resize-handle" class="crop-resize-handle"></div>
+              </div>
+            </div>
+          </div>
         </div>
 
         <!-- 오른쪽: 타임라인 + 컨트롤 -->
@@ -153,7 +161,16 @@
               </div>
             </div>
 
-            <div class="trim-settings" style="margin-top:20px">
+            <!-- 1:1 크롭 토글 -->
+            <div class="crop-row">
+              <span style="font-size:13px;font-weight:700">✂️ 1:1 크롭</span>
+              <div style="display:flex;align-items:center;gap:8px">
+                <span id="crop-info-text" class="crop-info-text"></span>
+                <button id="crop-toggle-btn" class="btn-ghost crop-toggle-btn">크롭 적용</button>
+              </div>
+            </div>
+
+            <div class="trim-settings" style="margin-top:16px">
               <label class="setting-label">
                 영상 품질
               </label>
