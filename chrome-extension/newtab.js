@@ -459,6 +459,9 @@ let videoDuration = 0;
 let trimStart = 0;
 let trimEnd = 0;
 let isDragging = null; // 'start' | 'end'
+let currentVideoFile = null; // ffmpeg.wasm에 넘길 원본 File 객체
+let ffmpegInst = null;
+let ffmpegReady = false;
 
 // 드래그 앤 드롭 업로드
 uploadArea.addEventListener("dragover", (e) => {
@@ -478,6 +481,7 @@ videoFile.addEventListener("change", () => {
 });
 
 function loadVideoFile(file) {
+  currentVideoFile = file;
   const url = URL.createObjectURL(file);
   previewVideo.src = url;
   previewVideo.classList.remove("hidden");
@@ -554,6 +558,35 @@ endTimeInput.addEventListener("change", () => {
   updateTimeline();
 });
 
+/* ── ffmpeg.wasm 로딩 (최초 1회 캐싱) ── */
+async function ensureFfmpeg(progressEl) {
+  if (ffmpegReady && ffmpegInst) return ffmpegInst;
+
+  if (!window.FFmpegWASM) {
+    throw new Error("ffmpeg.js 파일을 찾을 수 없습니다. 확장 폴더에 ffmpeg.js가 있는지 확인해주세요.");
+  }
+  if (!window.FFmpegUtil) {
+    throw new Error("ffmpeg-util.js 파일을 찾을 수 없습니다. 확장 폴더에 ffmpeg-util.js가 있는지 확인해주세요.");
+  }
+
+  ffmpegInst = new FFmpegWASM.FFmpeg();
+  progressEl.textContent = "FFmpeg WASM 로딩 중... (최초 1회 약 30초 소요)";
+
+  const baseURL = "https://unpkg.com/@ffmpeg/core@0.12.6/dist/umd";
+  try {
+    await ffmpegInst.load({
+      coreURL: await FFmpegUtil.toBlobURL(`${baseURL}/ffmpeg-core.js`, "text/javascript"),
+      wasmURL: await FFmpegUtil.toBlobURL(`${baseURL}/ffmpeg-core.wasm`, "application/wasm"),
+    });
+  } catch (e) {
+    ffmpegInst = null;
+    throw new Error("FFmpeg 로딩 실패 (인터넷 연결 확인): " + e.message);
+  }
+
+  ffmpegReady = true;
+  return ffmpegInst;
+}
+
 /* ── 자르기 실행 ── */
 trimBtn.addEventListener("click", trimVideo);
 
@@ -563,72 +596,83 @@ async function trimVideo() {
   const trimProgress = document.getElementById("trim-progress");
   const quality = document.getElementById("trim-quality").value;
 
+  if (!currentVideoFile) {
+    alert("영상 파일을 먼저 불러와주세요.");
+    return;
+  }
+
+  const segDuration = trimEnd - trimStart;
+  if (segDuration <= 0) {
+    alert("구간을 올바르게 선택해주세요.");
+    return;
+  }
+
   trimBtn.disabled = true;
   trimError.classList.add("hidden");
   trimLoading.classList.remove("hidden");
   trimProgress.textContent = "준비 중...";
 
-  try {
-    const duration = trimEnd - trimStart;
-    if (duration <= 0) throw new Error("구간을 올바르게 선택해주세요.");
-
-    // 비트레이트 설정
-    const bitsPerSecond = { high: 8_000_000, medium: 4_000_000, low: 1_500_000 }[quality];
-    const mimeType = getSupportedMime();
-
-    // canvas + captureStream 방식
-    const video = previewVideo;
-    const canvas = document.createElement("canvas");
-    canvas.width = video.videoWidth || 1280;
-    canvas.height = video.videoHeight || 720;
-    const ctx = canvas.getContext("2d");
-
-    const stream = canvas.captureStream(30);
-    const recorder = new MediaRecorder(stream, { mimeType, videoBitsPerSecond: bitsPerSecond });
-    const chunks = [];
-    recorder.ondataavailable = (e) => { if (e.data.size > 0) chunks.push(e.data); };
-
-    // 시작 지점으로 이동
-    video.currentTime = trimStart;
-    await new Promise((resolve) => { video.onseeked = resolve; });
-    video.muted = true;
-    await video.play();
-
-    recorder.start();
-
-    let rafId;
-    const startWall = performance.now();
-
-    function drawLoop() {
-      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-      const elapsed = (performance.now() - startWall) / 1000;
-      trimProgress.textContent = `처리 중... ${elapsed.toFixed(1)}s / ${duration.toFixed(1)}s`;
-
-      if (elapsed < duration && !video.ended) {
-        rafId = requestAnimationFrame(drawLoop);
-      } else {
-        cancelAnimationFrame(rafId);
-        video.pause();
-        recorder.stop();
-      }
+  // 진행률 핸들러 (스코프에서 segDuration 캡처)
+  function onProgress({ progress }) {
+    if (progress > 0 && progress <= 1) {
+      trimProgress.textContent = `인코딩 중... ${Math.round(progress * 100)}%`;
     }
-    rafId = requestAnimationFrame(drawLoop);
+  }
+  function onLog({ message }) {
+    // ffmpeg 로그에서 time= 파싱으로 진행률 계산
+    const m = message.match(/time=(\d+):(\d+):(\d+\.\d+)/);
+    if (m) {
+      const secs = parseInt(m[1]) * 3600 + parseInt(m[2]) * 60 + parseFloat(m[3]);
+      const pct = Math.min(99, Math.round((secs / segDuration) * 100));
+      trimProgress.textContent = `인코딩 중... ${pct}%`;
+    }
+  }
 
-    await new Promise((resolve) => { recorder.onstop = resolve; });
+  try {
+    const ffmpeg = await ensureFfmpeg(trimProgress);
+    ffmpeg.on("progress", onProgress);
+    ffmpeg.on("log", onLog);
+
+    // 품질 → CRF 매핑 (숫자 클수록 압축률↑ 화질↓)
+    const crf = { high: "23", medium: "28", low: "35" }[quality] || "28";
+    const inputExt = (currentVideoFile.name.split(".").pop() || "mp4").toLowerCase();
+    const inputName = `input.${inputExt}`;
+
+    trimProgress.textContent = "파일 읽는 중...";
+    await ffmpeg.writeFile(inputName, await FFmpegUtil.fetchFile(currentVideoFile));
+
+    trimProgress.textContent = "인코딩 시작...";
+    await ffmpeg.exec([
+      "-ss", trimStart.toFixed(3),
+      "-i", inputName,
+      "-t", segDuration.toFixed(3),
+      "-c:v", "libx264",
+      "-crf", crf,
+      "-preset", "ultrafast",
+      "-c:a", "aac",
+      "-b:a", "128k",
+      "-movflags", "+faststart",
+      "output.mp4",
+    ]);
 
     trimProgress.textContent = "파일 저장 중...";
-    const ext = mimeType.includes("mp4") ? "mp4" : "webm";
-    const blob = new Blob(chunks, { type: mimeType });
-    downloadBlob(blob, `trimmed.${ext}`);
-    video.pause();
-    video.currentTime = 0;
-    video.muted = false;
+    const data = await ffmpeg.readFile("output.mp4");
+    const blob = new Blob([data.buffer], { type: "video/mp4" });
+    downloadBlob(blob, "trimmed.mp4");
+
+    // WASM 가상 파일시스템 정리
+    await ffmpeg.deleteFile(inputName).catch(() => {});
+    await ffmpeg.deleteFile("output.mp4").catch(() => {});
   } catch (err) {
     trimError.textContent = "자르기 실패: " + (err.message || "알 수 없는 오류");
     trimError.classList.remove("hidden");
   } finally {
     trimBtn.disabled = false;
     trimLoading.classList.add("hidden");
+    if (ffmpegInst) {
+      ffmpegInst.off("progress", onProgress);
+      ffmpegInst.off("log", onLog);
+    }
   }
 }
 

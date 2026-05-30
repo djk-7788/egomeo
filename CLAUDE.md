@@ -192,8 +192,8 @@ egomeo/
 ├── lib/
 │   ├── supabase.ts           # Supabase 클라이언트 싱글톤
 │   └── r2.ts                 # Cloudflare R2 S3 클라이언트 (endpoint/bucket/publicUrl export)
-├── chrome-extension/         # 크롬 확장 프로그램 "이게머고? 미디어툴" (Manifest V3)
-│   ├── manifest.json         # MV3 설정 (host_permissions: aliexpress/alicdn)
+├── chrome-extension/         # 크롬 확장 프로그램 "참아야하느니라 미디어툴" (Manifest V3)
+│   ├── manifest.json         # MV3 설정 (host_permissions: aliexpress/alicdn/unpkg, CSP: wasm-unsafe-eval)
 │   ├── background.js         # 아이콘 클릭 → 새 탭 열기
 │   ├── newtab.html           # 전체 화면 UI (슬라이드쇼 + 영상 자르기 탭)
 │   ├── newtab.css            # 스타일 (#FF5A00 포인트)
@@ -268,6 +268,7 @@ egomeo/
 
 ## 최근 완료 작업 (2026-05-30 기준)
 
+- 미디어툴 영상 자르기 ffmpeg.wasm 개선 — Canvas+MediaRecorder→libx264 CRF 압축 (CRF 28 기준, 동일 구간 대비 용량 대폭 감소)
 - 어드민 통계 탭 추가 (`StatsPanel.tsx`) — 공개/큐/숨김 현황, 플랫폼별 분포(공개+큐 기준), 영상·슬라이드 수, GA 대시보드 바로가기
 - Google Analytics 연동 — 측정 ID `G-6P979RX187`, `NEXT_PUBLIC_GA_ID` 환경변수, `app/layout.tsx`에 `next/script afterInteractive`로 삽입
 - 사이트명 전체 변경 — "이게머고?" → "참아야하느니라" (헤더/푸터/타이틀/메타/About/Privacy/Search/Admin/확장 프로그램 전체 적용)
@@ -335,9 +336,12 @@ egomeo/
 - [완료] 무한 스크롤 (`InfiniteProductGrid`) — 메인 피드 + 상세 페이지 하단, 12개씩 추가 로드, 하단 400px 전 미리 로드, 스피너
 - [완료] 상품 페이지네이션 API (`/api/products`) — page, limit, excludeId, category 파라미터
 - [완료] 공정위 고지 문구 추가 — 헤더 바로 아래 비고정(sticky 아님), 전 페이지 공통 적용 (`app/layout.tsx`)
-- [완료] 크롬 확장 프로그램 "이게머고? 미디어툴" 제작 (`chrome-extension/` 폴더, Manifest V3)
+- [완료] 크롬 확장 프로그램 "참아야하느니라 미디어툴" 제작 (`chrome-extension/` 폴더, Manifest V3)
   - 슬라이드쇼 만들기 탭: 알리 URL 입력 → 이미지 선택(체크박스) → 드래그 순서 조정 → 간격 설정(0.5~2초) → Canvas+MediaRecorder로 MP4/WebM 생성 + 다운로드
-  - 영상 자르기 탭: 영상 파일 업로드 → 타임라인 핸들로 구간 선택 → 자르기 + 다운로드
+  - 영상 자르기 탭: **ffmpeg.wasm 기반** (libx264 + CRF 압축, 품질 선택 high/medium/low → CRF 23/28/35, ultrafast preset, 로그 기반 진행률 표시)
+    - 로컬 번들: ffmpeg.js, ffmpeg-util.js, 814.ffmpeg.js (Worker 스크립트)
+    - 런타임 로드: @ffmpeg/core WASM을 unpkg CDN에서 fetch → blob URL로 변환해 Worker에 전달
+    - CSP: `wasm-unsafe-eval` 추가, host_permissions에 unpkg.com 추가
   - host_permissions으로 aliexpress.com/alicdn.com CORS 없이 직접 fetch
 - [완료] 크롬 확장 프로그램 "이게머고 소싱툴" 제작 (`sourcing-extension/` 폴더, Manifest V3)
   - Chrome Side Panel 방식: 탭 이동해도 닫히지 않음, `chrome.tabs.onActivated/onUpdated`로 자동 재파싱
