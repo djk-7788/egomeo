@@ -660,8 +660,7 @@ async function trimVideo() {
       "-c:v", "libx264",
       "-crf", crf,
       "-preset", "ultrafast",
-      "-c:a", "aac",
-      "-b:a", "96k",
+      "-an",
       "-movflags", "+faststart",
       "output.mp4",
     ]);
