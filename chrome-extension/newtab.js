@@ -636,8 +636,15 @@ async function trimVideo() {
     ffmpeg.on("progress", onProgress);
     ffmpeg.on("log", onLog);
 
-    // 품질 → CRF 매핑 (숫자 클수록 압축률↑ 화질↓)
-    const crf = { high: "23", medium: "28", low: "35" }[quality] || "28";
+    // 품질별 CRF + 해상도 상한 (min()으로 원본보다 크게 업스케일 안 함)
+    const QUALITY = {
+      high:   { crf: "26", maxH: 1080 },
+      medium: { crf: "30", maxH: 720  },
+      low:    { crf: "34", maxH: 480  },
+    };
+    const { crf, maxH } = QUALITY[quality] || QUALITY.medium;
+    const scaleFilter = `scale=-2:min(${maxH}\\,ih)`;
+
     const inputExt = (currentVideoFile.name.split(".").pop() || "mp4").toLowerCase();
     const inputName = `input.${inputExt}`;
 
@@ -649,11 +656,12 @@ async function trimVideo() {
       "-ss", trimStart.toFixed(3),
       "-i", inputName,
       "-t", segDuration.toFixed(3),
+      "-vf", scaleFilter,
       "-c:v", "libx264",
       "-crf", crf,
       "-preset", "ultrafast",
       "-c:a", "aac",
-      "-b:a", "128k",
+      "-b:a", "96k",
       "-movflags", "+faststart",
       "output.mp4",
     ]);
