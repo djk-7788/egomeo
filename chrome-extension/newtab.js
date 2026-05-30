@@ -558,29 +558,34 @@ endTimeInput.addEventListener("change", () => {
   updateTimeline();
 });
 
-/* ── ffmpeg.wasm 로딩 (최초 1회 캐싱) ── */
+/* ── ffmpeg.wasm 로딩 (최초 1회 캐싱, 로컬 번들 사용) ── */
 async function ensureFfmpeg(progressEl) {
   if (ffmpegReady && ffmpegInst) return ffmpegInst;
 
   if (!window.FFmpegWASM) {
-    throw new Error("ffmpeg.js 파일을 찾을 수 없습니다. 확장 폴더에 ffmpeg.js가 있는지 확인해주세요.");
+    throw new Error("ffmpeg.js 파일을 찾을 수 없습니다.");
   }
   if (!window.FFmpegUtil) {
-    throw new Error("ffmpeg-util.js 파일을 찾을 수 없습니다. 확장 폴더에 ffmpeg-util.js가 있는지 확인해주세요.");
+    throw new Error("ffmpeg-util.js 파일을 찾을 수 없습니다.");
   }
 
   ffmpegInst = new FFmpegWASM.FFmpeg();
-  progressEl.textContent = "FFmpeg WASM 로딩 중... (최초 1회 약 30초 소요)";
+  progressEl.textContent = "FFmpeg 초기화 중... (최초 1회, 잠시 기다려주세요)";
 
-  const baseURL = "https://unpkg.com/@ffmpeg/core@0.12.6/dist/umd";
   try {
-    await ffmpegInst.load({
-      coreURL: await FFmpegUtil.toBlobURL(`${baseURL}/ffmpeg-core.js`, "text/javascript"),
-      wasmURL: await FFmpegUtil.toBlobURL(`${baseURL}/ffmpeg-core.wasm`, "application/wasm"),
-    });
+    // 확장 폴더 내 로컬 파일을 blob URL로 변환 (CDN 불필요, 오프라인 동작)
+    const coreURL = await FFmpegUtil.toBlobURL(
+      chrome.runtime.getURL("ffmpeg-core.js"),
+      "text/javascript"
+    );
+    const wasmURL = await FFmpegUtil.toBlobURL(
+      chrome.runtime.getURL("ffmpeg-core.wasm"),
+      "application/wasm"
+    );
+    await ffmpegInst.load({ coreURL, wasmURL });
   } catch (e) {
     ffmpegInst = null;
-    throw new Error("FFmpeg 로딩 실패 (인터넷 연결 확인): " + e.message);
+    throw new Error("FFmpeg 초기화 실패: " + e.message);
   }
 
   ffmpegReady = true;

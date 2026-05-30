@@ -19,15 +19,18 @@
     "https://ae03.alicdn.com/*",
     "https://ae04.alicdn.com/*",
     "https://img.alicdn.com/*",
-    "https://cbu01.alicdn.com/*",
-    "https://unpkg.com/*"
+    "https://cbu01.alicdn.com/*"
   ],
   "content_security_policy": {
     "extension_pages": "script-src 'self' 'wasm-unsafe-eval'; object-src 'self'"
   },
   "web_accessible_resources": [
     {
-      "resources": ["newtab.html", "newtab.css", "newtab.js", "ffmpeg.js", "ffmpeg-util.js", "814.ffmpeg.js"],
+      "resources": [
+        "newtab.html", "newtab.css", "newtab.js",
+        "ffmpeg.js", "ffmpeg-util.js", "814.ffmpeg.js",
+        "ffmpeg-core.js", "ffmpeg-core.wasm"
+      ],
       "matches": ["<all_urls>"]
     }
   ]

@@ -268,6 +268,7 @@ egomeo/
 
 ## 최근 완료 작업 (2026-05-30 기준)
 
+- 미디어툴 ffmpeg-core 로컬 번들로 전환 — CDN 로드 대신 ffmpeg-core.js/wasm을 확장 폴더에 포함, CSP 문제 해결
 - 미디어툴 영상 자르기 ffmpeg.wasm 개선 — Canvas+MediaRecorder→libx264 CRF 압축 (CRF 28 기준, 동일 구간 대비 용량 대폭 감소)
 - 어드민 통계 탭 추가 (`StatsPanel.tsx`) — 공개/큐/숨김 현황, 플랫폼별 분포(공개+큐 기준), 영상·슬라이드 수, GA 대시보드 바로가기
 - Google Analytics 연동 — 측정 ID `G-6P979RX187`, `NEXT_PUBLIC_GA_ID` 환경변수, `app/layout.tsx`에 `next/script afterInteractive`로 삽입
@@ -340,8 +341,9 @@ egomeo/
   - 슬라이드쇼 만들기 탭: 알리 URL 입력 → 이미지 선택(체크박스) → 드래그 순서 조정 → 간격 설정(0.5~2초) → Canvas+MediaRecorder로 MP4/WebM 생성 + 다운로드
   - 영상 자르기 탭: **ffmpeg.wasm 기반** (libx264 + CRF 압축, 품질 선택 high/medium/low → CRF 23/28/35, ultrafast preset, 로그 기반 진행률 표시)
     - 로컬 번들: ffmpeg.js, ffmpeg-util.js, 814.ffmpeg.js (Worker 스크립트)
-    - 런타임 로드: @ffmpeg/core WASM을 unpkg CDN에서 fetch → blob URL로 변환해 Worker에 전달
-    - CSP: `wasm-unsafe-eval` 추가, host_permissions에 unpkg.com 추가
+    - 로컬 번들: ffmpeg-core.js (112KB) + ffmpeg-core.wasm (31MB) 확장 폴더 포함
+    - 로드 방식: `chrome.runtime.getURL()` → `toBlobURL()` → Worker에 blob URL 전달 (CDN 불필요, 오프라인 동작)
+    - CSP: `wasm-unsafe-eval` 추가 (unpkg host_permissions 제거)
   - host_permissions으로 aliexpress.com/alicdn.com CORS 없이 직접 fetch
 - [완료] 크롬 확장 프로그램 "이게머고 소싱툴" 제작 (`sourcing-extension/` 폴더, Manifest V3)
   - Chrome Side Panel 방식: 탭 이동해도 닫히지 않음, `chrome.tabs.onActivated/onUpdated`로 자동 재파싱
