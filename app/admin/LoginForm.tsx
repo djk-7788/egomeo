@@ -10,7 +10,7 @@ export default function LoginForm() {
     <div className="min-h-screen flex items-center justify-center bg-gray-50">
       <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-10 w-full max-w-sm">
         <h1 className="text-2xl font-black text-[#111111] mb-1">관리자</h1>
-        <p className="text-sm text-gray-400 mb-8">이게머고? 어드민</p>
+        <p className="text-sm text-gray-400 mb-8">참아야하느니라 어드민</p>
 
         <form action={formAction} className="flex flex-col gap-4">
           <input

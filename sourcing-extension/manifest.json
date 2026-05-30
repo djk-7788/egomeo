@@ -1,12 +1,12 @@
 {
   "manifest_version": 3,
-  "name": "이게머고 소싱툴",
+  "name": "참아야하느니라 소싱툴",
   "version": "1.1",
   "description": "알리익스프레스/쿠팡 상품 소싱 및 큐 관리",
   "permissions": ["activeTab", "tabs", "sidePanel"],
   "host_permissions": ["<all_urls>"],
   "action": {
-    "default_title": "이게머고 소싱툴"
+    "default_title": "참아야하느니라 소싱툴"
   },
   "side_panel": {
     "default_path": "sidepanel.html"

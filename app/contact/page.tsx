@@ -1,8 +1,8 @@
 ﻿import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "Contact | 이게머고?",
-  description: "이게머고? 문의하기",
+  title: "Contact | 참아야하느니라",
+  description: "참아야하느니라 문의하기",
 };
 
 export default function ContactPage() {

@@ -10,7 +10,7 @@ type Props = { searchParams: Promise<{ q?: string }> };
 export async function generateMetadata({ searchParams }: Props): Promise<Metadata> {
   const { q = "" } = await searchParams;
   return {
-    title: q ? `"${q}" 검색 결과 | 이게머고?` : "검색 | 이게머고?",
+    title: q ? `"${q}" 검색 결과 | 참아야하느니라` : "검색 | 참아야하느니라",
   };
 }
 

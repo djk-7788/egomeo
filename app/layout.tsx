@@ -10,8 +10,8 @@ const geistSans = Geist({
 });
 
 export const metadata: Metadata = {
-  title: "이게머고?",
-  description: "이게 대체 머고? 신기하고 별난 물건들을 모아봤습니다.",
+  title: "참아야하느니라",
+  description: "참아야하느니라 — 사면 안 되는데 손이 가는 별난 물건들.",
   verification: {
     yandex: "0f0bdf1351e0e1ac",
   },

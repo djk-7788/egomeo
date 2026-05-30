@@ -1,10 +1,10 @@
 {
   "manifest_version": 3,
-  "name": "이게머고? 미디어툴",
+  "name": "참아야하느니라 미디어툴",
   "version": "1.0.0",
   "description": "알리익스프레스 슬라이드쇼 생성 + 영상 자르기 도구",
   "action": {
-    "default_title": "이게머고? 미디어툴"
+    "default_title": "참아야하느니라 미디어툴"
   },
   "background": {
     "service_worker": "background.js"

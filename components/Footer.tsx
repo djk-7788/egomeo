@@ -8,7 +8,7 @@ export default function Footer() {
           이 사이트는 제휴 마케팅을 통해 수수료를 받을 수 있습니다.
         </p>
         <p className="text-xs text-gray-300">
-          © 이게머고?{" "}
+          © 참아야하느니라{" "}
           <span className="text-gray-200 mx-1">|</span>
           <Link href="/about" className="hover:text-[#F5A623] transition-colors">About</Link>
           <span className="text-gray-200 mx-1">|</span>

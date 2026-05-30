@@ -71,7 +71,7 @@ export default function HamburgerMenu() {
       >
         {/* 헤더 */}
         <div className="flex items-center justify-between px-5 h-14 border-b border-gray-100">
-          <span className="text-sm font-bold text-[#111111]">이게머고?</span>
+          <span className="text-sm font-bold text-[#111111]">참아야하느니라</span>
           <button
             onClick={() => setOpen(false)}
             aria-label="메뉴 닫기"

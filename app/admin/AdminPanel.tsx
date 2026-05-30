@@ -432,7 +432,7 @@ export default function AdminPanel() {
     <div className="min-h-screen bg-gray-50">
       {/* 상단 헤더 */}
       <div className="bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between">
-        <h1 className="text-lg font-black text-[#111111]">이게머고? 관리자</h1>
+        <h1 className="text-lg font-black text-[#111111]">참아야하느니라 관리자</h1>
         <div className="flex items-center gap-3">
           <button
             onClick={openAdd}
