@@ -159,11 +159,12 @@ egomeo/
 │   │   ├── page.tsx          # 쿠키 확인 → LoginForm or AdminPanel
 │   │   ├── actions.ts        # 로그인/로그아웃 서버 액션
 │   │   ├── LoginForm.tsx     # 비밀번호 입력 화면 (클라이언트)
-│   │   ├── AdminPanel.tsx    # 상품 CRUD 관리 패널 — 5개 탭 (상품목록/큐관리/URL불러오기/URL파싱/순서편집) + R2 업로드
+│   │   ├── AdminPanel.tsx    # 상품 CRUD 관리 패널 — 6개 탭 (상품목록/큐관리/순서편집/URL불러오기/URL파싱/통계) + R2 업로드
 │   │   ├── QueueManager.tsx  # 큐 관리 탭 (is_queued 상품, 드래그 앤 드롭, 공개하기/전체공개)
 │   │   ├── AliexpressSearch.tsx  # URL 불러오기 탭 (알리/쿠팡 플랫폼 탭, URL 입력 → 이미지 선택)
 │   │   ├── UrlParser.tsx     # URL 파싱 탭 (쿠팡/아마존 URL → 이미지/상품명 추출, 봇 차단으로 제한적)
-│   │   └── OrderEditor.tsx   # 순서 편집 탭 (drag & drop, sort_order 저장, 🎬 영상/슬라이드 배지)
+│   │   ├── OrderEditor.tsx   # 순서 편집 탭 (drag & drop, sort_order 저장, 🎬 영상/슬라이드 배지)
+│   │   └── StatsPanel.tsx    # 통계 탭 (공개/큐/숨김 현황, 플랫폼 분포, 미디어 타입, GA 바로가기)
 │   ├── api/
 │   │   ├── upload/
 │   │   │   └── route.ts      # R2 파일 업로드 (이미지/영상, admin_auth 쿠키 필요)
@@ -267,6 +268,7 @@ egomeo/
 
 ## 최근 완료 작업 (2026-05-30 기준)
 
+- 어드민 통계 탭 추가 (`StatsPanel.tsx`) — 공개/큐/숨김 현황, 플랫폼별 분포(공개+큐 기준), 영상·슬라이드 수, GA 대시보드 바로가기
 - Google Analytics 연동 — 측정 ID `G-6P979RX187`, `NEXT_PUBLIC_GA_ID` 환경변수, `app/layout.tsx`에 `next/script afterInteractive`로 삽입
 - 사이트명 전체 변경 — "이게머고?" → "참아야하느니라" (헤더/푸터/타이틀/메타/About/Privacy/Search/Admin/확장 프로그램 전체 적용)
 

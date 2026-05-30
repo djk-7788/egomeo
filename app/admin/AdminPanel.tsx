@@ -7,6 +7,7 @@ import AliexpressSearch, { AliProduct } from "./AliexpressSearch";
 import UrlParser, { ParsedProduct } from "./UrlParser";
 import OrderEditor from "./OrderEditor";
 import QueueManager from "./QueueManager";
+import StatsPanel from "./StatsPanel";
 
 type Platform = "amazon_us" | "amazon_jp" | "aliexpress" | "coupang" | "etc" | null;
 
@@ -58,7 +59,7 @@ const categoryLabel = {
 };
 
 export default function AdminPanel() {
-  const [activeTab, setActiveTab] = useState<"list" | "queue" | "order" | "search" | "parse">("list");
+  const [activeTab, setActiveTab] = useState<"list" | "queue" | "order" | "search" | "parse" | "stats">("list");
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
@@ -514,6 +515,16 @@ export default function AdminPanel() {
         >
           🔗 URL 파싱 (쿠팡/아마존)
         </button>
+        <button
+          onClick={() => setActiveTab("stats")}
+          className={`text-sm font-semibold px-4 py-3 border-b-2 transition-colors ${
+            activeTab === "stats"
+              ? "border-[#F5A623] text-[#F5A623]"
+              : "border-transparent text-gray-400 hover:text-gray-600"
+          }`}
+        >
+          📊 통계
+        </button>
       </div>
 
       {/* 큐 관리 탭 */}
@@ -531,6 +542,9 @@ export default function AdminPanel() {
       {activeTab === "parse" && (
         <UrlParser onSelect={handleUrlSelect} />
       )}
+
+      {/* 통계 탭 */}
+      {activeTab === "stats" && <StatsPanel products={products} />}
 
       {/* 상품 목록 탭 */}
       {activeTab === "list" && (
