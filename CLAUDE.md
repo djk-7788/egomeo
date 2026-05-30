@@ -268,6 +268,7 @@ egomeo/
 
 ## 최근 완료 작업 (2026-05-30 기준)
 
+- 미디어툴 ffmpeg Worker importScripts CSP 오류 수정 — toBlobURL 제거, chrome.runtime.getURL 직접 전달로 'self' 정책 통과
 - 미디어툴 ffmpeg-core 로컬 번들로 전환 — CDN 로드 대신 ffmpeg-core.js/wasm을 확장 폴더에 포함, CSP 문제 해결
 - 미디어툴 영상 자르기 ffmpeg.wasm 개선 — Canvas+MediaRecorder→libx264 CRF 압축 (CRF 28 기준, 동일 구간 대비 용량 대폭 감소)
 - 어드민 통계 탭 추가 (`StatsPanel.tsx`) — 공개/큐/숨김 현황, 플랫폼별 분포(공개+큐 기준), 영상·슬라이드 수, GA 대시보드 바로가기

@@ -573,19 +573,17 @@ async function ensureFfmpeg(progressEl) {
   progressEl.textContent = "FFmpeg 초기화 중... (최초 1회, 잠시 기다려주세요)";
 
   try {
-    // 확장 폴더 내 로컬 파일을 blob URL로 변환 (CDN 불필요, 오프라인 동작)
-    const coreURL = await FFmpegUtil.toBlobURL(
-      chrome.runtime.getURL("ffmpeg-core.js"),
-      "text/javascript"
-    );
-    const wasmURL = await FFmpegUtil.toBlobURL(
-      chrome.runtime.getURL("ffmpeg-core.wasm"),
-      "application/wasm"
-    );
-    await ffmpegInst.load({ coreURL, wasmURL });
+    // chrome.runtime.getURL → chrome-extension://[id]/파일명 직접 전달
+    // blob URL 거치지 않고 extension origin URL을 그대로 넘겨야
+    // Worker 내부 importScripts()가 CSP 'self' 정책을 통과함
+    await ffmpegInst.load({
+      coreURL: chrome.runtime.getURL("ffmpeg-core.js"),
+      wasmURL: chrome.runtime.getURL("ffmpeg-core.wasm"),
+    });
   } catch (e) {
     ffmpegInst = null;
-    throw new Error("FFmpeg 초기화 실패: " + e.message);
+    // Worker는 에러를 문자열로 전파하므로 e.message 대신 String(e) 사용
+    throw new Error("FFmpeg 초기화 실패: " + String(e));
   }
 
   ffmpegReady = true;
