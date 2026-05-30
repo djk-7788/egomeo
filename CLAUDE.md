@@ -30,6 +30,7 @@
 
 ### 로컬 (`.env.local`) — git에 올라가지 않음
 ```
+NEXT_PUBLIC_GA_ID=G-6P979RX187
 NEXT_PUBLIC_SUPABASE_URL=https://akcpwirzkjdmdrajntum.supabase.co
 NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
 ADMIN_PASSWORD=egomeo1234
@@ -46,6 +47,7 @@ CLOUDFLARE_R2_PUBLIC_URL=https://퍼블릭도메인
 ### Vercel — 대시보드에서 직접 설정됨 (Production + Preview)
 | 변수명 | 비고 |
 |---|---|
+| `NEXT_PUBLIC_GA_ID` | Google Analytics 측정 ID (`G-6P979RX187`) |
 | `NEXT_PUBLIC_SUPABASE_URL` | Supabase 프로젝트 URL |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Supabase anon 키 |
 | `ADMIN_PASSWORD` | 관리자 페이지 비밀번호 (`egomeo1234`) |
@@ -265,6 +267,7 @@ egomeo/
 
 ## 최근 완료 작업 (2026-05-30 기준)
 
+- Google Analytics 연동 — 측정 ID `G-6P979RX187`, `NEXT_PUBLIC_GA_ID` 환경변수, `app/layout.tsx`에 `next/script afterInteractive`로 삽입
 - 사이트명 전체 변경 — "이게머고?" → "참아야하느니라" (헤더/푸터/타이틀/메타/About/Privacy/Search/Admin/확장 프로그램 전체 적용)
 
 ## 이전 완료 작업 (2026-05-29 기준)
