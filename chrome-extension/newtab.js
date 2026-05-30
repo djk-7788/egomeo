@@ -392,6 +392,9 @@ async function makeSlideshow() {
       await new Promise((resolve) => setTimeout(resolve, intervalMs));
     }
 
+    // ④ 마지막 이미지를 재드로우 → captureStream이 T=총시간에 프레임을 방출
+    //    (이 없으면 마지막 이미지는 captureStream에 1프레임~33ms만 기록됨)
+    renderFrame(ctx, imgEls[imgEls.length - 1], canvasW, canvasH);
     recorder.stop();
 
     await new Promise((resolve) => { recorder.onstop = resolve; });
