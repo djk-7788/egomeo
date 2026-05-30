@@ -274,6 +274,7 @@ egomeo/
 
 ## 최근 완료 작업 (2026-05-30 기준)
 
+- 미디어툴 슬라이드쇼 드래그 앤 드롭 버그 수정 — `sortableImages` 초기화를 renderSortableList에서 toStep3 클릭으로 이동, img에 `draggable="false"` 추가
 - 미디어툴 1:1 크롭 오버레이 추가 — 영상 위 드래그 이동·SE핸들 리사이즈, 기본값 중앙 최대 정사각형, ffmpeg `crop=W:W:X:Y,scale` 필터 적용
 - 미디어툴 영상 자르기 오디오 트랙 제거 — `-an` 옵션 (사이트 muted 재생 환경)
 - 미디어툴 압축 설정 튜닝 — 품질별 CRF·해상도 차등: 고품질(CRF 26·1080p) / 중간(CRF 30·720p) / 저용량(CRF 34·480p)

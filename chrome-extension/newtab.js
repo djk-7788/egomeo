@@ -273,6 +273,7 @@ document.getElementById("deselect-all-btn").addEventListener("click", () => {
 
 document.getElementById("back-to-step1").addEventListener("click", () => showStep(1));
 toStep3Btn.addEventListener("click", () => {
+  sortableImages = [...selectedImages]; // step3 진입 시에만 초기화
   renderSortableList();
   showStep(3);
 });
@@ -282,7 +283,7 @@ let sortableImages = [];
 let dragSrc = null;
 
 function renderSortableList() {
-  sortableImages = [...selectedImages];
+  // sortableImages는 toStep3Btn 핸들러에서만 초기화 — 여기서 리셋하면 drop 후 재정렬이 사라짐
   const list = document.getElementById("sortable-list");
   list.innerHTML = "";
 
@@ -291,8 +292,9 @@ function renderSortableList() {
     item.className = "sortable-item";
     item.draggable = true;
     item.dataset.idx = idx;
+    // img에 draggable="false" — 이미지 자체 드래그가 sortable-item 드래그를 가로채지 않도록
     item.innerHTML = `
-      <img src="${img.blobUrl}" alt="이미지 ${idx + 1}" />
+      <img src="${img.blobUrl}" alt="이미지 ${idx + 1}" draggable="false" />
       <div class="item-num">${idx + 1}</div>
     `;
 
