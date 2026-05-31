@@ -39,17 +39,17 @@ export default function ProductCard({
         href={link}
         target="_blank"
         rel="noopener noreferrer"
-        className="relative w-full aspect-square overflow-hidden block bg-black"
+        className="relative w-full aspect-square overflow-hidden block bg-white"
       >
         {videoUrl ? (
-          <VideoPlayer src={videoUrl} className="w-full h-full object-cover" />
+          <VideoPlayer src={videoUrl} className="w-full h-full object-contain" />
         ) : hasSlide ? (
           <ImageSlider images={imageUrls!} alt={title} mode="auto" className="w-full h-full" />
         ) : (
           <img
             src={imageUrl}
             alt={title}
-            className="w-full h-full object-contain"
+            className="w-full h-full object-contain bg-white"
           />
         )}
       </a>

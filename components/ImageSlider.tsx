@@ -46,7 +46,7 @@ export default function ImageSlider({ images, alt, mode, className }: Props) {
       <img
         src={images[current]}
         alt={alt}
-        className="w-full h-full object-cover"
+        className="w-full h-full object-contain"
       />
       {mode === "manual" && images.length > 1 && (
         <>
