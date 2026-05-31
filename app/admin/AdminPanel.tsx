@@ -195,7 +195,12 @@ export default function AdminPanel() {
   async function uploadImageToR2(file: File): Promise<string> {
     const fd = new FormData();
     fd.append("file", file);
-    const res = await fetch("/api/upload", { method: "POST", body: fd });
+    const res = await fetch("/api/upload", { method: "POST", body: fd, credentials: "include" });
+    if (res.status === 401) {
+      alert("로그인이 만료되었습니다. 다시 로그인해 주세요.");
+      window.location.reload();
+      throw new Error("세션 만료");
+    }
     const body = await res.json().catch(() => ({}));
     if (!res.ok) throw new Error(body.error || `서버 오류 (${res.status})`);
     return body.url;
@@ -209,7 +214,13 @@ export default function AdminPanel() {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ filename: file.name, contentType: file.type }),
+        credentials: "include",
       });
+      if (presignRes.status === 401) {
+        alert("로그인이 만료되었습니다. 다시 로그인해 주세요.");
+        window.location.reload();
+        throw new Error("세션 만료");
+      }
       const presignBody = await presignRes.json().catch(() => ({}));
       if (!presignRes.ok) throw new Error(presignBody.error || `Presign 실패 (${presignRes.status})`);
 

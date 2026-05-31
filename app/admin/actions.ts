@@ -11,7 +11,8 @@ export async function login(prevState: { error: string }, formData: FormData) {
     cookieStore.set("admin_auth", "true", {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
-      maxAge: 60 * 60 * 24, // 24시간
+      sameSite: "lax",
+      maxAge: 60 * 60 * 24 * 7, // 7일
       path: "/",
     });
     redirect("/admin");
