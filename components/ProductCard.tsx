@@ -49,7 +49,7 @@ export default function ProductCard({
           <img
             src={imageUrl}
             alt={title}
-            className="w-full h-full object-cover hover:scale-105 transition-transform duration-300"
+            className="w-full h-full object-contain"
           />
         )}
       </a>
