@@ -12,7 +12,7 @@ export async function login(prevState: { error: string }, formData: FormData) {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
       sameSite: "lax",
-      maxAge: 60 * 60 * 24 * 7, // 7일
+      maxAge: 60 * 60 * 24 * 30, // 30일
       path: "/",
     });
     redirect("/admin");
