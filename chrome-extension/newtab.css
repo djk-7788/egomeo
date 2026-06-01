@@ -572,3 +572,142 @@ input[type="range"] {
   border-radius: var(--radius);
   padding: 24px;
 }
+
+/* ── 슬라이드쇼 step1: 소스 섹션 ── */
+.source-section { margin-bottom: 4px; }
+.source-label {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-muted);
+  margin-bottom: 10px;
+}
+
+.source-divider {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 20px 0;
+  color: var(--text-muted);
+  font-size: 13px;
+  font-weight: 600;
+}
+.source-divider::before,
+.source-divider::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: var(--border);
+}
+
+/* ── 이미지 드롭존 ── */
+.img-dropzone {
+  position: relative;
+  border: 2px dashed var(--border);
+  border-radius: var(--radius);
+  padding: 20px 24px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+  background: #fff;
+}
+.img-dropzone:hover,
+.img-dropzone.drag-over {
+  border-color: var(--accent);
+  background: #fff8f5;
+}
+.img-dropzone input[type="file"] {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  cursor: pointer;
+  width: 100%;
+  height: 100%;
+}
+.img-dropzone p { font-size: 14px; color: var(--text-muted); line-height: 1.6; }
+.img-dropzone .hint { font-size: 12px; margin-top: 4px; }
+
+/* ── 이미지 풀 미리보기 ── */
+.pool-preview {
+  margin-top: 20px;
+  padding: 16px;
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+.pool-preview.hidden { display: none; }
+.pool-preview-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+.pool-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.pool-thumb {
+  position: relative;
+  width: 72px;
+  height: 72px;
+  border-radius: 6px;
+  overflow: hidden;
+  border: 1.5px solid var(--border);
+  flex-shrink: 0;
+}
+.pool-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.pool-thumb-remove {
+  position: absolute;
+  top: 3px;
+  right: 3px;
+  width: 18px;
+  height: 18px;
+  background: rgba(0,0,0,0.6);
+  color: #fff;
+  border: none;
+  border-radius: 50%;
+  font-size: 9px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+  transition: background 0.1s;
+}
+.pool-thumb-remove:hover { background: #e53e3e; }
+.pool-source-tag {
+  position: absolute;
+  bottom: 2px;
+  left: 0;
+  right: 0;
+  font-size: 10px;
+  text-align: center;
+  background: rgba(0,0,0,0.45);
+  color: #fff;
+  padding: 1px 0;
+  line-height: 1.4;
+}
+
+/* ── 불러오기 성공 메시지 ── */
+.fetch-success {
+  margin-top: 8px;
+  font-size: 13px;
+  color: #38a169;
+  font-weight: 600;
+}
+.fetch-success.hidden { display: none; }
+
+/* ── step2 소스 배지 ── */
+.img-source-badge {
+  position: absolute;
+  bottom: 5px;
+  left: 5px;
+  font-size: 11px;
+  background: rgba(0,0,0,0.45);
+  border-radius: 4px;
+  padding: 1px 4px;
+  line-height: 1.5;
+  pointer-events: none;
+}

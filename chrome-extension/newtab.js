@@ -16,8 +16,9 @@ document.querySelectorAll(".tab-btn").forEach((btn) => {
 /* ══════════════════════════════════════════════════════
    슬라이드쇼 탭
 ══════════════════════════════════════════════════════ */
-let fetchedImages = []; // { url, blobUrl }
-let selectedImages = []; // { url, blobUrl }
+let fetchedImages = []; // { url, blobUrl, source: 'ali'|'local' }
+let selectedImages = []; // { url, blobUrl, source }
+let poolIdCounter = 0;
 
 const aliUrlInput = document.getElementById("ali-url");
 const aliUrlClear = document.getElementById("ali-url-clear");
@@ -110,15 +111,19 @@ async function fetchAliImages() {
 
     // [3단계] 이미지 blob 변환
     const resolved = await Promise.allSettled(imageUrls.map(fetchImageAsBlob));
-    fetchedImages = resolved.filter((r) => r.status === "fulfilled").map((r) => r.value);
+    const newImages = resolved.filter((r) => r.status === "fulfilled").map((r) => ({ ...r.value, source: "ali" }));
 
-    if (fetchedImages.length === 0) {
+    if (newImages.length === 0) {
       const firstErr = resolved.find((r) => r.status === "rejected")?.reason?.message ?? "unknown";
       throw new Error(`[3단계] 이미지 로드 실패 (${imageUrls.length}개 URL 발견). 오류: ${firstErr}`);
     }
 
-    renderImageGrid();
-    showStep(2);
+    fetchedImages = [...fetchedImages, ...newImages];
+    updatePoolPreview();
+    const fetchSuccess = document.getElementById("fetch-success");
+    fetchSuccess.textContent = `✓ ${newImages.length}개 이미지 추가됨`;
+    fetchSuccess.classList.remove("hidden");
+    setTimeout(() => fetchSuccess.classList.add("hidden"), 3000);
   } catch (err) {
     fetchError.textContent = err.message || "알 수 없는 오류가 발생했습니다.";
     fetchError.classList.remove("hidden");
@@ -237,6 +242,7 @@ function renderImageGrid() {
     card.innerHTML = `
       <img src="${img.blobUrl}" alt="이미지 ${idx + 1}" loading="lazy" />
       <div class="check-overlay"></div>
+      ${img.source === "local" ? '<div class="img-source-badge">📁</div>' : ""}
     `;
     card.addEventListener("click", () => toggleImageSelect(card, img));
     imageGrid.appendChild(card);
@@ -272,6 +278,81 @@ document.getElementById("deselect-all-btn").addEventListener("click", () => {
 });
 
 document.getElementById("back-to-step1").addEventListener("click", () => showStep(1));
+
+/* ── 로컬 파일 업로드 ── */
+const imgDropzone = document.getElementById("img-dropzone");
+const imgFileInput = document.getElementById("img-file-input");
+
+imgDropzone.addEventListener("dragover", (e) => {
+  e.preventDefault();
+  imgDropzone.classList.add("drag-over");
+});
+imgDropzone.addEventListener("dragleave", () => imgDropzone.classList.remove("drag-over"));
+imgDropzone.addEventListener("drop", (e) => {
+  e.preventDefault();
+  imgDropzone.classList.remove("drag-over");
+  handleLocalFiles(e.dataTransfer.files);
+});
+imgFileInput.addEventListener("change", () => {
+  handleLocalFiles(imgFileInput.files);
+  imgFileInput.value = ""; // 같은 파일 재선택 허용
+});
+
+function handleLocalFiles(files) {
+  const imageFiles = Array.from(files).filter((f) => f.type.startsWith("image/"));
+  if (imageFiles.length === 0) return;
+  const newImages = imageFiles.map((file) => ({
+    url: `local_${++poolIdCounter}_${file.name}`,
+    blobUrl: URL.createObjectURL(file),
+    source: "local",
+  }));
+  fetchedImages = [...fetchedImages, ...newImages];
+  updatePoolPreview();
+}
+
+function updatePoolPreview() {
+  const poolPreview = document.getElementById("pool-preview");
+  const poolCount = document.getElementById("pool-count");
+  const poolGrid = document.getElementById("pool-grid");
+  const gotoStep2Btn = document.getElementById("goto-step2-btn");
+
+  if (fetchedImages.length === 0) {
+    poolPreview.classList.add("hidden");
+    gotoStep2Btn.disabled = true;
+    return;
+  }
+
+  poolPreview.classList.remove("hidden");
+  poolCount.textContent = `${fetchedImages.length}개 추가됨`;
+  gotoStep2Btn.disabled = false;
+
+  poolGrid.innerHTML = "";
+  fetchedImages.forEach((img, idx) => {
+    const thumb = document.createElement("div");
+    thumb.className = "pool-thumb";
+    thumb.innerHTML = `
+      <img src="${img.blobUrl}" alt="" />
+      <button class="pool-thumb-remove" title="삭제">✕</button>
+      <span class="pool-source-tag">${img.source === "local" ? "📁" : "🛒"}</span>
+    `;
+    thumb.querySelector(".pool-thumb-remove").addEventListener("click", () => {
+      fetchedImages.splice(idx, 1);
+      updatePoolPreview();
+    });
+    poolGrid.appendChild(thumb);
+  });
+}
+
+document.getElementById("goto-step2-btn").addEventListener("click", () => {
+  renderImageGrid();
+  showStep(2);
+});
+
+document.getElementById("clear-pool-btn").addEventListener("click", () => {
+  fetchedImages = [];
+  updatePoolPreview();
+});
+
 toStep3Btn.addEventListener("click", () => {
   sortableImages = [...selectedImages]; // step3 진입 시에만 초기화
   renderSortableList();
@@ -850,6 +931,187 @@ async function trimVideo() {
       ffmpegInst.off("log", onLog);
     }
   }
+}
+
+/* ══════════════════════════════════════════════════════
+   포맷 변환 탭 (GIF / Animated WebP → MP4)
+══════════════════════════════════════════════════════ */
+const cvtUploadArea = document.getElementById("cvt-upload-area");
+const cvtFileInput  = document.getElementById("cvt-file");
+const cvtPreview    = document.getElementById("cvt-preview");
+const cvtControls   = document.getElementById("cvt-controls");
+const cvtEmpty      = document.getElementById("cvt-empty");
+const cvtBtn        = document.getElementById("cvt-btn");
+
+let currentCvtFile = null;
+
+cvtUploadArea.addEventListener("dragover", (e) => {
+  e.preventDefault();
+  cvtUploadArea.classList.add("drag-over");
+});
+cvtUploadArea.addEventListener("dragleave", () => cvtUploadArea.classList.remove("drag-over"));
+cvtUploadArea.addEventListener("drop", (e) => {
+  e.preventDefault();
+  cvtUploadArea.classList.remove("drag-over");
+  const file = e.dataTransfer.files[0];
+  if (file && (file.type === "image/gif" || file.type === "image/webp")) loadCvtFile(file);
+});
+cvtFileInput.addEventListener("change", () => {
+  if (cvtFileInput.files[0]) loadCvtFile(cvtFileInput.files[0]);
+});
+
+function loadCvtFile(file) {
+  currentCvtFile = file;
+  cvtPreview.src = URL.createObjectURL(file);
+  cvtPreview.classList.remove("hidden");
+  cvtUploadArea.style.display = "none";
+  cvtControls.classList.remove("hidden");
+  cvtEmpty.style.display = "none";
+  document.getElementById("cvt-error").classList.add("hidden");
+}
+
+cvtBtn.addEventListener("click", convertMedia);
+
+async function convertMedia() {
+  const cvtLoading  = document.getElementById("cvt-loading");
+  const cvtError    = document.getElementById("cvt-error");
+  const cvtProgress = document.getElementById("cvt-progress");
+  const quality     = document.getElementById("cvt-quality").value;
+
+  if (!currentCvtFile) {
+    alert("GIF 또는 Animated WebP 파일을 먼저 불러와주세요.");
+    return;
+  }
+
+  const QUALITY = {
+    high:   { crf: "26", maxH: 1080 },
+    medium: { crf: "30", maxH: 720  },
+    low:    { crf: "34", maxH: 480  },
+  };
+  const { crf, maxH } = QUALITY[quality] || QUALITY.medium;
+  const baseName = currentCvtFile.name.replace(/\.[^.]+$/, "");
+
+  cvtBtn.disabled = true;
+  cvtError.classList.add("hidden");
+  cvtLoading.classList.remove("hidden");
+  cvtProgress.textContent = "준비 중...";
+
+  try {
+    if (currentCvtFile.type === "image/gif") {
+      // GIF → ffmpeg (내장 GIF 디코더 정상 동작)
+      await convertGifFfmpeg(cvtProgress, crf, maxH, baseName);
+    } else {
+      // Animated WebP → ImageDecoder + Canvas + MediaRecorder
+      // (이 빌드의 ffmpeg webp 디코더가 ANIM/ANMF 청크 미지원)
+      const { blob, ext } = await convertWebPCanvas(cvtProgress, maxH);
+      downloadBlob(blob, `${baseName}.${ext}`);
+    }
+  } catch (err) {
+    cvtError.textContent = "변환 실패: " + (err.message || "알 수 없는 오류");
+    cvtError.classList.remove("hidden");
+  } finally {
+    cvtBtn.disabled = false;
+    cvtLoading.classList.add("hidden");
+  }
+}
+
+async function convertGifFfmpeg(cvtProgress, crf, maxH, baseName) {
+  const logs = [];
+  function onLog({ message }) {
+    logs.push(message);
+    if (message.match(/time=(\d+):(\d+):(\d+\.\d+)/)) cvtProgress.textContent = "인코딩 중...";
+  }
+  const ffmpeg = await ensureFfmpeg(cvtProgress);
+  ffmpeg.on("log", onLog);
+  try {
+    const vf = `fps=15,scale=-2:min(${maxH},ih),format=yuv420p`;
+    cvtProgress.textContent = "파일 읽는 중...";
+    await ffmpeg.writeFile("cvt_in.gif", await FFmpegUtil.fetchFile(currentCvtFile));
+    cvtProgress.textContent = "인코딩 시작...";
+    await ffmpeg.exec([
+      "-ignore_loop", "1",
+      "-i", "cvt_in.gif",
+      "-t", "600",
+      "-vf", vf,
+      "-c:v", "libx264",
+      "-crf", crf,
+      "-preset", "ultrafast",
+      "-an",
+      "-movflags", "+faststart",
+      "cvt_out.mp4",
+    ]);
+    cvtProgress.textContent = "파일 저장 중...";
+    const data = await ffmpeg.readFile("cvt_out.mp4");
+    if (data.length === 0) throw new Error("변환 결과가 비어있습니다.");
+    downloadBlob(new Blob([data.buffer], { type: "video/mp4" }), `${baseName}.mp4`);
+    await ffmpeg.deleteFile("cvt_in.gif").catch(() => {});
+    await ffmpeg.deleteFile("cvt_out.mp4").catch(() => {});
+  } finally {
+    ffmpeg.off("log", onLog);
+  }
+}
+
+async function convertWebPCanvas(cvtProgress, maxH) {
+  // ImageDecoder API: Chrome 94+에서 지원, 크롬 확장 환경에서 사용 가능
+  if (!window.ImageDecoder) {
+    throw new Error("ImageDecoder API를 지원하지 않는 환경입니다 (Chrome 94 이상 필요).");
+  }
+
+  cvtProgress.textContent = "프레임 디코딩 중...";
+  const arrayBuffer = await currentCvtFile.arrayBuffer();
+  const decoder = new ImageDecoder({ data: arrayBuffer, type: "image/webp" });
+  await decoder.tracks.ready;
+
+  const track = decoder.tracks.selectedTrack;
+  const frameCount = track.frameCount;
+  if (!frameCount) throw new Error("애니메이션 프레임을 찾을 수 없습니다.");
+
+  // 첫 프레임으로 원본 크기 파악
+  const firstResult = await decoder.decode({ frameIndex: 0 });
+  const origW = firstResult.image.displayWidth;
+  const origH = firstResult.image.displayHeight;
+  firstResult.image.close?.();
+
+  // maxH 기준 스케일 (짝수 보장, libx264 요구사항)
+  const scale = origH > maxH ? maxH / origH : 1;
+  const outW = Math.floor(origW * scale / 2) * 2;
+  const outH = Math.floor(origH * scale / 2) * 2;
+
+  const canvas = document.createElement("canvas");
+  canvas.width  = outW;
+  canvas.height = outH;
+  const ctx = canvas.getContext("2d");
+
+  const mimeType = getSupportedMime();
+  const stream   = canvas.captureStream(30);
+  const recorder = new MediaRecorder(stream, { mimeType, videoBitsPerSecond: 8_000_000 });
+  const chunks   = [];
+  recorder.ondataavailable = (e) => { if (e.data.size > 0) chunks.push(e.data); };
+
+  // 첫 프레임 그려두고 녹화 시작 (검은 화면 방지)
+  const firstFrame = (await decoder.decode({ frameIndex: 0 })).image;
+  ctx.drawImage(firstFrame, 0, 0, outW, outH);
+  firstFrame.close?.();
+  recorder.start();
+
+  for (let i = 0; i < frameCount; i++) {
+    cvtProgress.textContent = `프레임 녹화 중... (${i + 1}/${frameCount})`;
+    const result = await decoder.decode({ frameIndex: i });
+    const frame  = result.image;
+    ctx.drawImage(frame, 0, 0, outW, outH);
+    // VideoFrame.duration은 마이크로초 단위, 없으면 100ms 기본값
+    const durationMs = (frame.duration ?? 100_000) / 1000;
+    frame.close?.();
+    await new Promise((r) => setTimeout(r, durationMs));
+  }
+
+  // 마지막 프레임 captureStream 처리 대기 후 종료
+  await new Promise((r) => setTimeout(r, 200));
+  recorder.stop();
+  await new Promise((r) => { recorder.onstop = r; });
+
+  const ext = mimeType.includes("mp4") ? "mp4" : "webm";
+  return { blob: new Blob(chunks, { type: mimeType }), ext };
 }
 
 /* ══════════════════════════════════════════════════════
