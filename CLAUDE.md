@@ -195,9 +195,9 @@ egomeo/
 ├── chrome-extension/         # 크롬 확장 프로그램 "참아야하느니라 미디어툴" (Manifest V3)
 │   ├── manifest.json         # MV3 설정 (host_permissions: aliexpress/alicdn, CSP: wasm-unsafe-eval)
 │   ├── background.js         # 아이콘 클릭 → 새 탭 열기
-│   ├── newtab.html           # 전체 화면 UI (슬라이드쇼 + 영상 자르기 탭)
-│   ├── newtab.css            # 스타일 (#F5A623 포인트, 크롭 오버레이 포함)
-│   ├── newtab.js             # 알리 이미지 fetch, Canvas+MediaRecorder 슬라이드쇼, ffmpeg.wasm 영상 자르기 (1:1크롭·CRF압축)
+│   ├── newtab.html           # 전체 화면 UI (슬라이드쇼 + 영상 자르기 + 포맷 변환 탭)
+│   ├── newtab.css            # 스타일 (#F5A623 포인트, 크롭 오버레이, 포맷 변환 UI 포함)
+│   ├── newtab.js             # 알리 이미지 fetch + 로컬 파일 업로드, Canvas+MediaRecorder 슬라이드쇼, ffmpeg.wasm 영상 자르기 (1:1크롭·CRF압축), GIF/WebP→MP4 포맷 변환
 │   ├── ffmpeg.js             # @ffmpeg/ffmpeg UMD 번들 (로컬)
 │   ├── ffmpeg-util.js        # @ffmpeg/util UMD 번들 (fetchFile, toBlobURL)
 │   ├── 814.ffmpeg.js         # ffmpeg.wasm Worker 스크립트 (ffmpeg.js가 로드)
@@ -229,7 +229,7 @@ egomeo/
 
 ### 관리자 페이지 (`/admin`)
 - 비밀번호: `ADMIN_PASSWORD` 환경변수 (현재 `egomeo1234`)
-- 인증: HttpOnly 쿠키 기반, 24시간 유지
+- 인증: HttpOnly 쿠키 기반, 30일 유지 (만료 시 401 반환 → 자동 로그아웃)
 - **탭 1 — 상품 목록**: 등록/수정/삭제, 노출/숨김 토글, 미리보기 링크, 미디어 타입 표시
   - "☁️ Supabase → R2 마이그레이션" 버튼 (Supabase Storage URL → R2 URL 일괄 변환)
   - "🖼️ 알리 이미지 고화질 교체" 버튼 — platform=aliexpress이고 image_url이 R2 주소인 상품들의 이미지를 AliExpress API로 재조회 후 R2 재업로드 (스트리밍 진행 로그 표시, `/api/admin/refresh-ali-images`)
@@ -263,7 +263,7 @@ egomeo/
 - **상품 등록/수정 모달**:
   - 이미지 업로드 → R2 저장 (`/api/upload`)
   - 영상 업로드 (선택) → R2 저장, `video_url` 컬럼에 저장
-  - **추가 이미지 (슬라이드용)**: URL 입력 + 추가 버튼으로 `image_urls` 배열 관리 (썸네일 미리보기, ↑↓ 순서변경, 🗑️ 삭제)
+  - **추가 이미지 (슬라이드용)**: URL 입력 또는 파일 직접 업로드(R2 저장)로 `image_urls` 배열 관리 (썸네일 미리보기, ↑↓ 순서변경, 🗑️ 삭제, URL 입력과 파일 업로드 혼용 가능)
   - 제휴 링크 입력 시 platform 자동 감지: 알리/쿠팡은 URL로 자동, 아마존(amazon.com/amzn.to/amazon.co.jp)은 지역 라디오 버튼 표시 (🇺🇸 미국 기본 / 🇯🇵 일본), 그 외 URL은 'etc' 자동 저장
   - URL 불러오기 탭에서 불러오면 platform 자동 설정 (aliexpress/coupang)
   - **공개 상태 라디오**: "바로 공개" (is_active=true, is_queued=false) / "큐에 저장" (is_active=false, is_queued=true) — **기본값: 큐에 저장**
@@ -272,8 +272,15 @@ egomeo/
 
 ---
 
-## 최근 완료 작업 (2026-05-30 기준)
+## 최근 완료 작업 (2026-06-02 기준)
 
+- 어드민 쿠키 만료 시 401 처리 추가 + 유효기간 30일로 연장 (`app/admin/actions.ts`, `AdminPanel.tsx`)
+- 미디어툴 포맷 변환 탭 추가 — GIF/Animated WebP → MP4 변환 (GIF는 ffmpeg 방식, WebP는 Canvas+MediaRecorder 방식), 드래그 앤 드롭 지원
+- 미디어툴 슬라이드쇼 탭에 이미지 파일 직접 업로드 기능 추가 — 로컬 파일 선택·드래그 앤 드롭, 알리 URL 입력과 혼용 가능
+- 미디어툴 슬라이드쇼 마지막 프레임 captureStream 처리 대기 추가 — 마지막 이미지 버그 수정
+- 메인 피드 카드 이미지·영상 `object-fit: contain` + 흰색 배경으로 변경 (이전: cover)
+- 어드민 모달 추가 이미지(image_urls) 파일 직접 업로드 지원 — R2 저장, URL 입력과 혼용 가능
+- 알리 URL 파싱 시 상품 정보 없을 때 빈 화면 대신 에러 메시지 반환 (`/api/aliexpress/parse`)
 - 미디어툴 슬라이드쇼 이미지 지속 시간 오차 버그 수정 — 녹화 전 전체 이미지 병렬 프리로드, renderFrame을 동기 draw 함수로 분리, 루프에서 순수 setTimeout만 사용
 - 미디어툴 슬라이드쇼 드래그 앤 드롭 버그 수정 — `sortableImages` 초기화를 renderSortableList에서 toStep3 클릭으로 이동, img에 `draggable="false"` 추가
 - 미디어툴 1:1 크롭 오버레이 추가 — 영상 위 드래그 이동·SE핸들 리사이즈, 기본값 중앙 최대 정사각형, ffmpeg `crop=W:W:X:Y,scale` 필터 적용
@@ -288,13 +295,16 @@ egomeo/
 
 ---
 
-## 어필리에이트 현황 (2026-05-23 기준)
+## 어필리에이트 현황 (2026-06-02 기준)
 
 | 플랫폼 | 상태 | 비고 |
 |---|---|---|
 | 쿠팡파트너스 | 가입 신청 중 / 예정 | 링크 발급 후 즉시 적용 가능. 소싱툴에서는 수동 입력 방식으로 처리 예정 |
 | 알리익스프레스 | **API 연동 완료** | APP_KEY/SECRET/TRACKING_ID Vercel 등록 완료. 소싱툴 큐 추가 시 `link.generate`로 자동 변환 |
 | 아마존 어소시에이트 | **보류** | 현재 계획 없음 |
+| Involve Asia | **심사 중** | 2026-05-28 신청 (4일 경과), 문의 메일 발송. 승인 시 다양한 해외 어필리에이트 네트워크 접근 가능 |
+| Rakuten Advertising | **재시도 필요** | 계정 생성 시도 시 서버 타임아웃 발생. 나중에 재시도. 엣시 입점 목적 |
+| 엣시 | **대기 중** | Rakuten 계정 생성 완료 후 신청 예정 |
 
 ---
 
@@ -381,7 +391,7 @@ egomeo/
 - [완료] 알리 이미지 일괄 고화질 교체 (`/api/admin/refresh-ali-images`) — AliExpress API 재조회 → R2 재업로드 → DB 업데이트, 스트리밍 NDJSON 진행 로그
 - [완료] 소싱툴 이미지 URL 복사 버튼 — `type='url'` 이미지 호버 시 우상단 "URL" 버튼, 클릭 시 클립보드 복사 후 "✓" 피드백
 - [완료] 스크롤 북마크 확장 UX 개선 — '여기까지 봤다' 덮어쓰기 확인 팝업, 이동 버튼 비활성화 시 🔄 새로고침 버튼 자동 표시
-- [완료] 상품 200개 등록 완료
+- [완료] 상품 463개 등록 완료
 - [완료] About 페이지 추가 (`app/about/page.tsx`) — 운영자/문의 정보
 - [완료] Privacy Policy 페이지 추가 (`app/privacy/page.tsx`) — 개인정보 미수집 고지, 제휴 마케팅 고지
 - [완료] Contact 페이지 추가 (`app/contact/page.tsx`) — 이메일 문의 안내
@@ -423,6 +433,13 @@ egomeo/
 - [완료] 미디어툴 ffmpeg-core 로컬 번들 — ffmpeg-core.js(112KB)+wasm(31MB), CDN 불필요
 - [완료] 미디어툴 압축 설정 튜닝 — CRF 26/30/34 + 1080p/720p/480p 해상도 차등, 오디오 제거(-an)
 - [완료] 미디어툴 1:1 크롭 오버레이 — 드래그 이동+SE핸들 리사이즈, ffmpeg crop+scale 필터 연계
+- [완료] 미디어툴 슬라이드쇼 마지막 프레임 captureStream 처리 대기 추가 (마지막 이미지 잘리는 버그 수정)
+- [완료] 어드민 쿠키 만료 시 401 처리 + 유효기간 30일로 연장
+- [완료] 미디어툴 포맷 변환 탭 추가 — GIF / Animated WebP → MP4 (GIF: ffmpeg 방식, WebP: Canvas+MediaRecorder 방식, 드래그 앤 드롭 지원)
+- [완료] 미디어툴 슬라이드쇼 로컬 파일 업로드 기능 추가 — 파일 선택·드래그 앤 드롭, 알리 URL 입력과 혼용 가능
+- [완료] 메인 피드 카드 이미지·영상 `object-fit: contain` + 흰색 배경으로 변경
+- [완료] 알리 URL 파싱 상품 정보 없을 때 에러 반환 (`/api/aliexpress/parse` — 빈 화면 대신 에러 메시지)
+- [완료] 어드민 모달 추가 이미지(image_urls) 파일 직접 업로드 지원 (R2 저장, URL 입력과 혼용 가능)
 
 ---
 
