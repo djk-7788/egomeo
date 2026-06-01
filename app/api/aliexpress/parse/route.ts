@@ -202,16 +202,14 @@ export async function GET(req: NextRequest) {
   }
 
   // ── 결과 조합 ────────────────────────────────────────────────────────────
-  if (!affiliateLink && !productInfo) {
+  if (!productInfo) {
     return NextResponse.json(
-      { error: `상품 조회 실패. 어필리에이트 프로그램에 등록된 상품인지 확인하세요. (ID: ${productId})` },
+      { error: `상품 정보를 불러올 수 없습니다. 어필리에이트 앱에 등록된 상품인지 확인하세요. (ID: ${productId})` },
       { status: 400 }
     );
   }
 
-  // link.generate가 실패한 경우 productdetail의 promotion_link를 사용하되
-  // 그마저 없으면 에러
-  const finalAffiliateLink = affiliateLink ?? productInfo?.affiliate_link ?? "";
+  const finalAffiliateLink = affiliateLink ?? productInfo.affiliate_link ?? "";
   if (!finalAffiliateLink) {
     return NextResponse.json(
       { error: `어필리에이트 링크 생성 실패. 해당 상품이 프로모션 대상인지 확인하세요. (ID: ${productId})` },
@@ -221,8 +219,8 @@ export async function GET(req: NextRequest) {
 
   return NextResponse.json({
     product_id: productId,
-    title: productInfo?.title ?? "",
-    images: productInfo?.images ?? [],
+    title: productInfo.title,
+    images: productInfo.images,
     affiliate_link: finalAffiliateLink,
   });
 }
