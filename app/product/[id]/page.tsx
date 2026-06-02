@@ -32,7 +32,10 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     openGraph: {
       title: `${product.title} | 참아야하느니라`,
       description: `이게 대체 머고?`,
-      images: [{ url: product.image_url }],
+      url: `https://www.igemugo.com/product/${id}`,
+      siteName: "참아야하느니라",
+      images: [{ url: product.image_url, width: 800, height: 800, alt: product.title }],
+      type: "website",
     },
   };
 }
