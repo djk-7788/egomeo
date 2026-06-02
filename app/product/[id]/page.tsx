@@ -18,15 +18,6 @@ const categoryLabel: Record<string, string> = {
 
 const PAGE_SIZE = 12;
 
-function isBlockedByBot(url: string | null | undefined): boolean {
-  if (!url) return true;
-  return (
-    url.includes("media-amazon.com") ||
-    url.includes("amazon.com/images") ||
-    url.includes("amazon.co.jp/images")
-  );
-}
-
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { id } = await params;
   const { data: product } = await supabase
@@ -37,15 +28,12 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
   if (!product) return { title: "참아야하느니라" };
 
-  // 카카오봇이 접근 가능한 이미지 URL 결정
-  // 우선순위: image_url (봇 차단 아닌 경우) → image_urls[0] (봇 차단 아닌 경우) → null
-  let ogImageUrl: string | null = null;
-  if (!isBlockedByBot(product.image_url)) {
-    ogImageUrl = product.image_url;
-  } else if (Array.isArray(product.image_urls) && product.image_urls.length > 0) {
-    const fallback = product.image_urls.find((u: string) => !isBlockedByBot(u));
-    ogImageUrl = fallback ?? null;
-  }
+  // image_url 없으면 image_urls[0] 폴백
+  const ogImageUrl: string | null =
+    product.image_url ||
+    (Array.isArray(product.image_urls) && product.image_urls.length > 0
+      ? product.image_urls[0]
+      : null);
 
   return {
     title: `${product.title} | 참아야하느니라`,
