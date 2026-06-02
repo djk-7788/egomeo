@@ -18,20 +18,34 @@ const categoryLabel: Record<string, string> = {
 
 const PAGE_SIZE = 12;
 
+function isBlockedByBot(url: string | null | undefined): boolean {
+  if (!url) return true;
+  return (
+    url.includes("media-amazon.com") ||
+    url.includes("amazon.com/images") ||
+    url.includes("amazon.co.jp/images")
+  );
+}
+
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { id } = await params;
   const { data: product } = await supabase
     .from("products")
-    .select("title, image_url")
+    .select("title, image_url, image_urls")
     .eq("id", id)
     .single();
 
   if (!product) return { title: "참아야하느니라" };
 
-  // 아마존 이미지는 Amazon CDN이 외부 봇 접근을 차단 → og:image에 넣어도 카카오봇이 못 읽음
-  const isAmazonImage =
-    product.image_url?.includes("media-amazon.com") ||
-    product.image_url?.includes("amazon.com/images");
+  // 카카오봇이 접근 가능한 이미지 URL 결정
+  // 우선순위: image_url (봇 차단 아닌 경우) → image_urls[0] (봇 차단 아닌 경우) → null
+  let ogImageUrl: string | null = null;
+  if (!isBlockedByBot(product.image_url)) {
+    ogImageUrl = product.image_url;
+  } else if (Array.isArray(product.image_urls) && product.image_urls.length > 0) {
+    const fallback = product.image_urls.find((u: string) => !isBlockedByBot(u));
+    ogImageUrl = fallback ?? null;
+  }
 
   return {
     title: `${product.title} | 참아야하느니라`,
@@ -41,9 +55,9 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       description: `이게 대체 머고?`,
       url: `https://www.igemugo.com/product/${id}`,
       siteName: "참아야하느니라",
-      images: isAmazonImage
-        ? []
-        : [{ url: product.image_url, width: 800, height: 800, alt: product.title }],
+      images: ogImageUrl
+        ? [{ url: ogImageUrl, width: 800, height: 800, alt: product.title }]
+        : [],
       type: "website",
     },
   };
