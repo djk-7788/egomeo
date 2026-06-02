@@ -6,6 +6,8 @@ import ImageSlider from "@/components/ImageSlider";
 import ShareButton from "@/components/ShareButton";
 import InfiniteProductGrid from "@/components/InfiniteProductGrid";
 
+export const dynamic = "force-dynamic";
+
 type Props = { params: Promise<{ id: string }> };
 
 const categoryLabel: Record<string, string> = {
@@ -26,6 +28,11 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
   if (!product) return { title: "참아야하느니라" };
 
+  // 아마존 이미지는 Amazon CDN이 외부 봇 접근을 차단 → og:image에 넣어도 카카오봇이 못 읽음
+  const isAmazonImage =
+    product.image_url?.includes("media-amazon.com") ||
+    product.image_url?.includes("amazon.com/images");
+
   return {
     title: `${product.title} | 참아야하느니라`,
     description: `이게 대체 머고?`,
@@ -34,7 +41,9 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       description: `이게 대체 머고?`,
       url: `https://www.igemugo.com/product/${id}`,
       siteName: "참아야하느니라",
-      images: [{ url: product.image_url, width: 800, height: 800, alt: product.title }],
+      images: isAmazonImage
+        ? []
+        : [{ url: product.image_url, width: 800, height: 800, alt: product.title }],
       type: "website",
     },
   };
