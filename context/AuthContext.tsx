@@ -84,19 +84,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setLoading(false);
       }
     }).catch((err) => {
-      // getSession 자체가 실패한 경우
       console.error("[AuthProvider] getSession 실패:", err);
       setProfileLoaded(true);
       setLoading(false);
     });
 
-    // 로그인/로그아웃 상태 변경 감지
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (_event, session) => {
+      async (event, session) => {
         try {
           const u = session?.user ?? null;
           setUser(u);
+
           if (u) {
+            // TOKEN_REFRESHED: 토큰만 갱신됐을 뿐 프로필 변경 없음
+            //   → profiles 재조회 스킵 (이걸 하면 optimistic update가 덮어씌워지거나
+            //     DB 응답 지연으로 profileLoaded=false에 오래 갇히는 문제 발생)
+            if (event === "TOKEN_REFRESHED") {
+              return;
+            }
+            // 로그인 등 실제 인증 이벤트에서만 profiles 재조회
             setProfileLoaded(false);
             const p = await fetchProfile(u);
             setProfile(p);
@@ -121,17 +127,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       await supabase.auth.signOut();
     } catch (err) {
       console.error("[signOut 실패]", err);
-      // 실패해도 로컬 상태 초기화
+      // 실패해도 로컬 상태 강제 초기화
       setUser(null);
       setProfile(null);
       setProfileLoaded(true);
+      setLoading(false);
     }
   };
 
-  // profiles 테이블에 upsert하고 로컬 상태 즉시 반영
+  // 낙관적 업데이트: 로컬 상태를 먼저 반영하고, 그 다음 DB upsert
+  // DB 성공/실패 무관하게 로컬 상태는 항상 업데이트됨
   const updateProfile = async (data: Partial<Profile>): Promise<{ error: string | null }> => {
     if (!user) return { error: "로그인이 필요합니다." };
 
+    // 1) 로컬 상태 즉시 반영 (낙관적 업데이트)
+    setProfile((prev) => ({
+      nickname: prev?.nickname ?? null,
+      avatar_url: prev?.avatar_url ?? null,
+      ...data,
+    }));
+
+    // 2) DB upsert (실패해도 로컬 상태는 유지)
     try {
       const { error } = await supabase.from("profiles").upsert({
         id: user.id,
@@ -140,16 +156,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       });
 
       if (error) {
-        console.error("[updateProfile 실패]", error.message);
+        console.error("[updateProfile DB 실패]", error.message);
         return { error: error.message };
       }
 
-      setProfile((prev) => ({
-        nickname: null,
-        avatar_url: null,
-        ...prev,
-        ...data,
-      }));
       return { error: null };
     } catch (err) {
       const msg = err instanceof Error ? err.message : "알 수 없는 오류";
