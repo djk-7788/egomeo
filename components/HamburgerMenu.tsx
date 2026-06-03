@@ -105,6 +105,14 @@ export default function HamburgerMenu() {
 
         {/* 메뉴 항목 */}
         <nav className="flex flex-col py-3">
+          {user && (
+            <Link
+              href="/mypage"
+              className="px-5 py-3 text-sm font-medium text-[#111111] hover:text-[#F5A623] hover:bg-gray-50 transition-colors"
+            >
+              마이페이지
+            </Link>
+          )}
           {MENU_ITEMS.map(({ label, href }) => (
             <Link
               key={href}
