@@ -30,7 +30,7 @@ export default function ProductCard({
       {/* 1층: 드립형 제목 */}
       <div className="px-3 pt-3 pb-2 h-[5rem] flex items-center justify-center">
         <h2
-          className="text-[1.3125rem] font-semibold text-[#111111] leading-snug line-clamp-2 text-center"
+          className="text-[1.3125rem] font-semibold text-[#222222] leading-snug line-clamp-2 text-center"
           style={{ fontFamily: "'Noto Serif KR', serif" }}
         >
           {title}
