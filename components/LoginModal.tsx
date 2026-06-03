@@ -31,6 +31,9 @@ export default function LoginModal({ onClose }: Props) {
       options: {
         redirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(window.location.href)}`,
         scopes: "profile_nickname profile_image",
+        queryParams: {
+          scope: "profile_nickname profile_image",
+        },
       },
     });
   };
