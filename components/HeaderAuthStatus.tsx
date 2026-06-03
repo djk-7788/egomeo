@@ -4,14 +4,20 @@ import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 
 export default function HeaderAuthStatus() {
-  const { user, loading } = useAuth();
+  const { user, loading, profile } = useAuth();
   const router = useRouter();
 
   if (loading || !user) return null;
 
-  const meta = user.user_metadata ?? {};
-  const avatarUrl: string | null = meta.avatar_url || null;
-  const initial = (meta.name || meta.full_name || user.email || "U").trim()[0].toUpperCase();
+  // profiles 테이블 값 우선, 없으면 OAuth 메타데이터 폴백
+  const avatarUrl = profile?.avatar_url ?? null;
+  const initial = (
+    profile?.nickname ||
+    user.user_metadata?.name ||
+    user.user_metadata?.full_name ||
+    user.email ||
+    "U"
+  ).trim()[0].toUpperCase();
 
   return (
     <button

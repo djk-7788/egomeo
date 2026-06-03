@@ -14,7 +14,7 @@ type LikeRow = {
 };
 
 export default function MyPage() {
-  const { user, loading, signOut } = useAuth();
+  const { user, loading, profile, profileLoaded, signOut, updateProfile } = useAuth();
   const { likedIds } = useLikes();
   const router = useRouter();
 
@@ -22,15 +22,13 @@ export default function MyPage() {
   const [likedProducts, setLikedProducts] = useState<GridProduct[]>([]);
   const [loadingProducts, setLoadingProducts] = useState(true);
 
-  // 닉네임
-  const [nickname, setNickname] = useState("");
+  // 닉네임 편집
   const [editingNick, setEditingNick] = useState(false);
   const [nickInput, setNickInput] = useState("");
   const [savingNick, setSavingNick] = useState(false);
   const [nickError, setNickError] = useState("");
 
   // 아바타
-  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const [avatarError, setAvatarError] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -47,15 +45,12 @@ export default function MyPage() {
     }
   }, [loading, user, router]);
 
-  // 사용자 메타데이터 동기화
+  // profile이 로드되면 닉네임 입력창 초기화
   useEffect(() => {
-    if (!user) return;
-    const meta = user.user_metadata ?? {};
-    const name = meta.name || meta.full_name || "";
-    setNickname(name);
-    setNickInput(name);
-    setAvatarUrl(meta.avatar_url || null);
-  }, [user]);
+    if (profile) {
+      setNickInput(profile.nickname || "");
+    }
+  }, [profile]);
 
   // 찜한 상품 로드
   useEffect(() => {
@@ -82,25 +77,21 @@ export default function MyPage() {
   // likedIds가 바뀌면 찜 해제된 상품 즉시 제거
   const visibleProducts = likedProducts.filter((p) => likedIds.has(p.id));
 
-  // 닉네임 저장
+  // 닉네임 저장 → profiles 테이블에 upsert
   const saveNickname = async () => {
-    if (!user) return;
     const trimmed = nickInput.trim().slice(0, 20);
     setSavingNick(true);
     setNickError("");
-    const { error } = await supabase.auth.updateUser({
-      data: { name: trimmed, full_name: trimmed },
-    });
+    const { error } = await updateProfile({ nickname: trimmed });
     if (error) {
       setNickError("저장에 실패했습니다. 다시 시도해주세요.");
     } else {
-      setNickname(trimmed);
       setEditingNick(false);
     }
     setSavingNick(false);
   };
 
-  // 아바타 업로드 — label의 onChange로 호출됨
+  // 아바타 업로드 → R2 저장 → profiles 테이블에 upsert
   const handleAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -120,7 +111,6 @@ export default function MyPage() {
 
     setUploadingAvatar(true);
     try {
-      // 현재 세션 토큰 가져오기
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) {
         setAvatarError("로그인 세션이 만료되었습니다. 다시 로그인해주세요.");
@@ -142,18 +132,11 @@ export default function MyPage() {
         return;
       }
 
-      // Supabase auth 메타데이터에 avatar_url 저장
-      const { error: updateError } = await supabase.auth.updateUser({
-        data: { avatar_url: json.url },
-      });
-
-      if (updateError) {
-        setAvatarError("프로필 저장에 실패했습니다: " + updateError.message);
-        return;
+      // profiles 테이블에 저장 (auth.updateUser 사용 안 함 — 재로그인 시 OAuth가 덮어쓰는 것 방지)
+      const { error } = await updateProfile({ avatar_url: json.url });
+      if (error) {
+        setAvatarError("프로필 저장에 실패했습니다: " + error);
       }
-
-      // 즉시 UI 반영
-      setAvatarUrl(json.url);
     } catch (err) {
       setAvatarError("업로드 중 오류가 발생했습니다.");
       console.error("[Avatar upload error]", err);
@@ -187,7 +170,6 @@ export default function MyPage() {
       });
 
       const json = await res.json().catch(() => ({ error: "서버 오류가 발생했습니다." }));
-
       if (!res.ok) {
         setDeleteError(json.error || "탈퇴 처리에 실패했습니다.");
         return;
@@ -204,8 +186,10 @@ export default function MyPage() {
 
   if (loading || !user) return null;
 
-  const displayName = nickname || user.email?.split("@")[0] || "사용자";
-  const initial = displayName.trim()[0].toUpperCase();
+  // profiles 테이블 우선, 없으면 OAuth 메타데이터 폴백
+  const currentNickname = profile?.nickname || user.user_metadata?.name || user.user_metadata?.full_name || "";
+  const currentAvatar = profile?.avatar_url || null;
+  const initial = (currentNickname || user.email?.split("@")[0] || "U").trim()[0].toUpperCase();
 
   return (
     <div className="max-w-screen-xl mx-auto">
@@ -214,108 +198,118 @@ export default function MyPage() {
         <h1 className="text-2xl font-black text-[#111111] mb-6">마이페이지</h1>
 
         <div className="bg-white border border-gray-100 rounded-2xl p-6 shadow-sm">
-          {/* 아바타 — label로 file input 직접 트리거 (button + ref.click() 방식 대신) */}
-          <div className="flex flex-col items-center gap-2 mb-6">
-            <label
-              className={`relative w-20 h-20 rounded-full cursor-pointer block ${uploadingAvatar ? "opacity-60 pointer-events-none" : ""}`}
-              title="프로필 사진 변경"
-            >
-              {/* 아바타 이미지 또는 이니셜 */}
-              <div className="w-20 h-20 rounded-full overflow-hidden bg-[#F5A623] flex items-center justify-center text-white text-2xl font-bold">
-                {avatarUrl ? (
-                  <img src={avatarUrl} alt="프로필" className="w-full h-full object-cover" />
+          {/* 프로필 로딩 중 */}
+          {!profileLoaded ? (
+            <div className="flex justify-center py-10">
+              <div className="w-7 h-7 border-[3px] border-[#F5A623] border-t-transparent rounded-full animate-spin" />
+            </div>
+          ) : (
+            <>
+              {/* 아바타 */}
+              <div className="flex flex-col items-center gap-2 mb-6">
+                <label
+                  className={`relative w-20 h-20 rounded-full cursor-pointer block ${uploadingAvatar ? "opacity-60 pointer-events-none" : ""}`}
+                  title="프로필 사진 변경"
+                >
+                  <div className="w-20 h-20 rounded-full overflow-hidden bg-[#F5A623] flex items-center justify-center text-white text-2xl font-bold">
+                    {currentAvatar ? (
+                      <img src={currentAvatar} alt="프로필" className="w-full h-full object-cover" />
+                    ) : (
+                      initial
+                    )}
+                  </div>
+                  <span className="absolute bottom-0 right-0 w-6 h-6 bg-white border-2 border-gray-100 rounded-full flex items-center justify-center text-gray-500 text-xs shadow-sm">
+                    ✎
+                  </span>
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept=".jpg,.jpeg,.png,.webp"
+                    className="hidden"
+                    onChange={handleAvatarChange}
+                  />
+                </label>
+
+                {uploadingAvatar && <p className="text-xs text-gray-400">업로드 중...</p>}
+                {avatarError && <p className="text-xs text-red-500 text-center">{avatarError}</p>}
+                <p className="text-xs text-gray-400">사진 클릭하여 변경</p>
+              </div>
+
+              {/* 닉네임 */}
+              <div className="mb-4">
+                <label className="text-xs text-gray-400 font-medium block mb-1.5">닉네임</label>
+                {editingNick ? (
+                  <div className="flex flex-col gap-1.5">
+                    <div className="flex gap-2">
+                      <input
+                        type="text"
+                        value={nickInput}
+                        maxLength={20}
+                        onChange={(e) => setNickInput(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") saveNickname();
+                          if (e.key === "Escape") {
+                            setNickInput(currentNickname);
+                            setEditingNick(false);
+                            setNickError("");
+                          }
+                        }}
+                        autoFocus
+                        className="flex-1 border border-[#F5A623] rounded-lg px-3 py-2 text-sm outline-none"
+                      />
+                      <button
+                        onClick={saveNickname}
+                        disabled={savingNick}
+                        className="text-xs font-bold text-white bg-[#F5A623] px-3 py-2 rounded-lg hover:bg-[#d8921f] transition-colors disabled:opacity-50 shrink-0"
+                      >
+                        저장
+                      </button>
+                      <button
+                        onClick={() => {
+                          setNickInput(currentNickname);
+                          setEditingNick(false);
+                          setNickError("");
+                        }}
+                        className="text-xs text-gray-400 hover:text-gray-600 px-2 transition-colors shrink-0"
+                      >
+                        취소
+                      </button>
+                    </div>
+                    {nickError && <p className="text-xs text-red-500">{nickError}</p>}
+                  </div>
                 ) : (
-                  initial
+                  <div className="flex items-center justify-between border border-gray-200 rounded-lg px-3 py-2">
+                    <span className="text-sm text-[#111111]">
+                      {currentNickname || (
+                        <span className="text-gray-400 italic">닉네임 없음</span>
+                      )}
+                    </span>
+                    <button
+                      onClick={() => {
+                        setNickInput(currentNickname);
+                        setEditingNick(true);
+                      }}
+                      className="text-xs text-gray-400 hover:text-[#F5A623] transition-colors ml-3 shrink-0"
+                    >
+                      수정
+                    </button>
+                  </div>
                 )}
               </div>
-              {/* 편집 아이콘 뱃지 */}
-              <span className="absolute bottom-0 right-0 w-6 h-6 bg-white border-2 border-gray-100 rounded-full flex items-center justify-center text-gray-500 text-xs shadow-sm">
-                ✎
-              </span>
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept=".jpg,.jpeg,.png,.webp"
-                className="hidden"
-                onChange={handleAvatarChange}
-              />
-            </label>
 
-            {uploadingAvatar && (
-              <p className="text-xs text-gray-400">업로드 중...</p>
-            )}
-            {avatarError && (
-              <p className="text-xs text-red-500 text-center">{avatarError}</p>
-            )}
-            <p className="text-xs text-gray-400">사진 클릭하여 변경</p>
-          </div>
-
-          {/* 닉네임 */}
-          <div className="mb-4">
-            <label className="text-xs text-gray-400 font-medium block mb-1.5">닉네임</label>
-            {editingNick ? (
-              <div className="flex flex-col gap-1.5">
-                <div className="flex gap-2">
-                  <input
-                    type="text"
-                    value={nickInput}
-                    maxLength={20}
-                    onChange={(e) => setNickInput(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter") saveNickname();
-                      if (e.key === "Escape") {
-                        setNickInput(nickname);
-                        setEditingNick(false);
-                        setNickError("");
-                      }
-                    }}
-                    autoFocus
-                    className="flex-1 border border-[#F5A623] rounded-lg px-3 py-2 text-sm outline-none"
-                  />
-                  <button
-                    onClick={saveNickname}
-                    disabled={savingNick}
-                    className="text-xs font-bold text-white bg-[#F5A623] px-3 py-2 rounded-lg hover:bg-[#d8921f] transition-colors disabled:opacity-50 shrink-0"
-                  >
-                    저장
-                  </button>
-                  <button
-                    onClick={() => { setNickInput(nickname); setEditingNick(false); setNickError(""); }}
-                    className="text-xs text-gray-400 hover:text-gray-600 px-2 transition-colors shrink-0"
-                  >
-                    취소
-                  </button>
+              {/* 이메일 */}
+              {user.email && (
+                <div className="mb-6">
+                  <label className="text-xs text-gray-400 font-medium block mb-1.5">이메일</label>
+                  <div className="border border-gray-100 bg-gray-50 rounded-lg px-3 py-2">
+                    <span className="text-sm text-gray-500">{user.email}</span>
+                  </div>
                 </div>
-                {nickError && <p className="text-xs text-red-500">{nickError}</p>}
-              </div>
-            ) : (
-              <div className="flex items-center justify-between border border-gray-200 rounded-lg px-3 py-2">
-                <span className="text-sm text-[#111111]">
-                  {nickname || (
-                    <span className="text-gray-400 italic">닉네임 없음</span>
-                  )}
-                </span>
-                <button
-                  onClick={() => setEditingNick(true)}
-                  className="text-xs text-gray-400 hover:text-[#F5A623] transition-colors ml-3 shrink-0"
-                >
-                  수정
-                </button>
-              </div>
-            )}
-          </div>
-
-          {/* 이메일 */}
-          {user.email && (
-            <div className="mb-6">
-              <label className="text-xs text-gray-400 font-medium block mb-1.5">이메일</label>
-              <div className="border border-gray-100 bg-gray-50 rounded-lg px-3 py-2">
-                <span className="text-sm text-gray-500">{user.email}</span>
-              </div>
-            </div>
+              )}
+            </>
           )}
 
-          {/* 로그아웃 / 탈퇴 */}
+          {/* 로그아웃 / 탈퇴 — 프로필 로딩과 무관하게 항상 표시 */}
           <div className="flex flex-col gap-2 pt-4 border-t border-gray-100">
             <button
               onClick={handleSignOut}
