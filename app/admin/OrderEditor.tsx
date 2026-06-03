@@ -33,103 +33,72 @@ function getPlatformColor(platform: string | null): string {
   return "bg-gray-50 text-gray-400";
 }
 
-// 2단계 알고리즘: 영상 위치를 먼저 균등 분산 계산 후 플랫폼 다양성 적용
+// 랜덤 셔플 + 페널티 기반 배치 알고리즘
 function optimizeOrder(items: OrderItem[]): { result: OrderItem[]; warnings: string[] } {
-  const warnSet = new Set<string>();
   const N = items.length;
   if (N === 0) return { result: [], warnings: [] };
 
-  const videos = items.filter(i => i.video_url);
-  const nonVideos = items.filter(i => !i.video_url);
-  const V = videos.length;
-
-  // ── 1단계: 영상 위치 계산 ─────────────────────────────────────────
-  // N/(V+1) 간격으로 균등 분산 + 랜덤 지터 ±2 (최소 4칸 보장)
-  const videoSlots = new Set<number>();
-
-  if (V > 0) {
-    const spacing = N / (V + 1);
-    let lastPos = -999;
-
-    for (let vi = 0; vi < V; vi++) {
-      const idealPos = Math.round(spacing * (vi + 1)) - 1; // 0-indexed 이상적 위치
-      const jitter = Math.floor(Math.random() * 5) - 2;    // -2 ~ +2 랜덤 지터
-
-      // 최소 4칸 보장 + 남은 영상들이 들어갈 공간 확보
-      const minValid = Math.max(lastPos + 4, 0);
-      const maxValid = N - 1 - (V - vi - 1) * 4;
-
-      if (minValid > maxValid) {
-        warnSet.add("일부 영상 간격이 4칸 미만입니다 (영상이 너무 많음).");
-        break;
-      }
-
-      // idealPos+jitter를 유효 범위로 클램프
-      const chosen = Math.max(minValid, Math.min(maxValid, idealPos + jitter));
-      videoSlots.add(chosen);
-      lastPos = chosen;
-    }
+  // 1단계: 완전 랜덤 셔플 (날짜 클러스터 해소)
+  const pool = [...items];
+  for (let i = pool.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [pool[i], pool[j]] = [pool[j], pool[i]];
   }
 
-  // ── 2단계: 플랫폼별 큐 구성 ──────────────────────────────────────
-  const mkQueues = (lst: OrderItem[]) => {
-    const m = new Map<string | null, OrderItem[]>();
-    for (const item of lst) {
-      if (!m.has(item.platform)) m.set(item.platform, []);
-      m.get(item.platform)!.push(item);
+  const isRichMedia = (item: OrderItem) =>
+    !!item.video_url || (item.image_urls != null && item.image_urls.length >= 2);
+
+  const getDateStr = (item: OrderItem) =>
+    item.created_at ? item.created_at.slice(0, 10) : "";
+
+  const WINDOW = 8;
+  const SAMPLE = 10;
+
+  // 2단계: 페널티 점수 계산 후 최적 후보 선택 (직전 8개 윈도우 기준)
+  // - 같은 플랫폼 × 3점, 영상/슬라이드 × 2점, 같은 날짜 × 2점
+  const calcPenalty = (candidate: OrderItem, window: OrderItem[]): number => {
+    let score = 0;
+    const candidateIsRich = isRichMedia(candidate);
+    const candidateDate = getDateStr(candidate);
+    for (const prev of window) {
+      if (prev.platform !== null && prev.platform === candidate.platform) score += 3;
+      if (candidateIsRich && isRichMedia(prev)) score += 2;
+      if (candidateDate !== "" && getDateStr(prev) === candidateDate) score += 2;
     }
-    return m;
+    return score;
   };
 
-  const vq = mkQueues(videos);
-  const nvq = mkQueues(nonVideos);
-  const hasAny = (m: Map<string | null, OrderItem[]>) =>
-    [...m.values()].some(q => q.length > 0);
-
-  // 가장 많이 남은 플랫폼부터 시도, 직전과 다른 플랫폼 우선
-  const pickBest = (
-    queues: Map<string | null, OrderItem[]>,
-    lastPlatform: string | null,
-    isFirst: boolean
-  ): { item: OrderItem; platform: string | null } | null => {
-    const pool = [...queues.entries()]
-      .filter(([, q]) => q.length > 0)
-      .sort((a, b) => b[1].length - a[1].length);
-    if (!pool.length) return null;
-
-    for (const [p, q] of pool) {
-      if (!isFirst && p === lastPlatform) continue;
-      return { item: q.shift()!, platform: p };
-    }
-
-    // 동일 플랫폼 폴백
-    warnSet.add("일부 구간에서 연속 동일 플랫폼이 발생합니다.");
-    const [p, q] = pool[0];
-    return { item: q.shift()!, platform: p };
-  };
-
-  // ── 3단계: 위치별 배치 ───────────────────────────────────────────
-  // 영상 슬롯 → 영상 큐, 나머지 → 비영상 큐 (소진 시 반대 큐로 폴백)
   const result: OrderItem[] = [];
-  let lastPlatform: string | null = null;
-  let isFirst = true;
+  const remaining = [...pool];
 
-  for (let pos = 0; pos < N; pos++) {
-    const isVideoSlot = videoSlots.has(pos);
-    const primaryQ = isVideoSlot ? vq : nvq;
-    const fallbackQ = isVideoSlot ? nvq : vq;
-    const activeQ = hasAny(primaryQ) ? primaryQ : fallbackQ;
-    if (!hasAny(activeQ)) continue;
+  while (remaining.length > 0) {
+    const window = result.slice(-WINDOW);
+    const sampleSize = Math.min(SAMPLE, remaining.length);
 
-    const picked = pickBest(activeQ, lastPlatform, isFirst);
-    if (!picked) continue;
+    // 남은 후보 중 랜덤으로 sampleSize개 샘플링
+    const indices = Array.from({ length: remaining.length }, (_, i) => i);
+    for (let i = indices.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [indices[i], indices[j]] = [indices[j], indices[i]];
+    }
+    const sampleIndices = indices.slice(0, sampleSize);
 
-    result.push(picked.item);
-    lastPlatform = picked.platform;
-    isFirst = false;
+    // 페널티 최소 후보 선택
+    let bestIdx = sampleIndices[0];
+    let bestPenalty = calcPenalty(remaining[sampleIndices[0]], window);
+    for (let k = 1; k < sampleIndices.length; k++) {
+      const penalty = calcPenalty(remaining[sampleIndices[k]], window);
+      if (penalty < bestPenalty) {
+        bestPenalty = penalty;
+        bestIdx = sampleIndices[k];
+      }
+    }
+
+    result.push(remaining[bestIdx]);
+    remaining.splice(bestIdx, 1);
   }
 
-  return { result, warnings: [...warnSet] };
+  return { result, warnings: [] };
 }
 
 export default function OrderEditor() {
@@ -285,10 +254,11 @@ export default function OrderEditor() {
           <h3 className="text-sm font-black text-[#111111]">정렬 최적화</h3>
         </div>
         <p className="text-xs text-gray-400 mb-4">
-          지정 범위의 상품을{" "}
-          <span className="font-semibold text-gray-500">플랫폼 분산</span>{" "}+{" "}
-          <span className="font-semibold text-gray-500">영상 4칸 간격</span>{" "}
-          규칙에 따라 자동 재배치합니다. 범위 밖 상품은 절대 변경되지 않습니다.
+          지정 범위를 완전 랜덤 셔플 후{" "}
+          <span className="font-semibold text-gray-500">플랫폼 분산</span>{" "}·{" "}
+          <span className="font-semibold text-gray-500">영상/슬라이드 분산</span>{" "}·{" "}
+          <span className="font-semibold text-gray-500">날짜 클러스터 해소</span>{" "}
+          페널티 기반으로 재배치합니다. 범위 밖 상품은 절대 변경되지 않습니다.
         </p>
 
         <div className="flex flex-wrap items-center gap-3 mb-4">
