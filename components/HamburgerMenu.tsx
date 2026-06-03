@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
+import { useAuth } from "@/context/AuthContext";
 
 const MENU_ITEMS = [
   { label: "About", href: "/about" },
@@ -16,6 +17,7 @@ export default function HamburgerMenu() {
   const pathname = usePathname();
   const router = useRouter();
   const inputRef = useRef<HTMLInputElement>(null);
+  const { user, openLoginModal, signOut } = useAuth();
 
   useEffect(() => {
     setOpen(false);
@@ -113,6 +115,30 @@ export default function HamburgerMenu() {
             </Link>
           ))}
         </nav>
+
+        {/* 로그인/로그아웃 */}
+        <div className="absolute bottom-0 left-0 right-0 px-5 py-4 border-t border-gray-100">
+          {user ? (
+            <div className="flex items-center justify-between">
+              <span className="text-xs text-gray-500 truncate max-w-[160px]" title={user.email}>
+                {user.email}
+              </span>
+              <button
+                onClick={() => { signOut(); setOpen(false); }}
+                className="text-xs text-gray-400 hover:text-[#111111] transition-colors ml-3 shrink-0"
+              >
+                로그아웃
+              </button>
+            </div>
+          ) : (
+            <button
+              onClick={() => { setOpen(false); openLoginModal(); }}
+              className="w-full py-2.5 text-sm font-bold text-white bg-[#F5A623] rounded-xl hover:bg-[#d8921f] transition-colors"
+            >
+              로그인
+            </button>
+          )}
+        </div>
       </div>
     </>
   );
