@@ -33,72 +33,87 @@ function getPlatformColor(platform: string | null): string {
   return "bg-gray-50 text-gray-400";
 }
 
-// 랜덤 셔플 + 페널티 기반 배치 알고리즘
+// 플랫폼별 버킷 인터리빙 + 영상 후처리 알고리즘
 function optimizeOrder(items: OrderItem[]): { result: OrderItem[]; warnings: string[] } {
+  const warnSet = new Set<string>();
   const N = items.length;
   if (N === 0) return { result: [], warnings: [] };
 
-  // 1단계: 완전 랜덤 셔플 (날짜 클러스터 해소)
-  const pool = [...items];
-  for (let i = pool.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [pool[i], pool[j]] = [pool[j], pool[i]];
-  }
+  const shuffle = <T,>(arr: T[]): void => {
+    for (let i = arr.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [arr[i], arr[j]] = [arr[j], arr[i]];
+    }
+  };
 
   const isRichMedia = (item: OrderItem) =>
     !!item.video_url || (item.image_urls != null && item.image_urls.length >= 2);
 
-  const getDateStr = (item: OrderItem) =>
-    item.created_at ? item.created_at.slice(0, 10) : "";
-
-  const WINDOW = 8;
-  const SAMPLE = 10;
-
-  // 2단계: 페널티 점수 계산 후 최적 후보 선택 (직전 8개 윈도우 기준)
-  // - 같은 플랫폼 × 3점, 영상/슬라이드 × 2점, 같은 날짜 × 2점
-  const calcPenalty = (candidate: OrderItem, window: OrderItem[]): number => {
-    let score = 0;
-    const candidateIsRich = isRichMedia(candidate);
-    const candidateDate = getDateStr(candidate);
-    for (const prev of window) {
-      if (prev.platform !== null && prev.platform === candidate.platform) score += 3;
-      if (candidateIsRich && isRichMedia(prev)) score += 2;
-      if (candidateDate !== "" && getDateStr(prev) === candidateDate) score += 2;
-    }
-    return score;
+  // Step 1: 플랫폼별 버킷 분리 + 내부 랜덤 셔플
+  const normalizePlatform = (p: string | null): string => {
+    if (p === "aliexpress" || p === "coupang" || p === "amazon_us" || p === "amazon_jp") return p;
+    return "etc";
   };
 
+  const buckets = new Map<string, OrderItem[]>();
+  const platformKeys: string[] = [];
+  for (const item of items) {
+    const key = normalizePlatform(item.platform);
+    if (!buckets.has(key)) { buckets.set(key, []); platformKeys.push(key); }
+    buckets.get(key)!.push(item);
+  }
+  for (const key of platformKeys) shuffle(buckets.get(key)!);
+
+  // Step 2: 비율 기반 인터리빙 — Deficit 알고리즘 + ±0.3 jitter 노이즈
   const result: OrderItem[] = [];
-  const remaining = [...pool];
+  const deficits = new Map<string, number>();
+  for (const key of platformKeys) deficits.set(key, 0);
 
-  while (remaining.length > 0) {
-    const window = result.slice(-WINDOW);
-    const sampleSize = Math.min(SAMPLE, remaining.length);
+  for (let pos = 0; pos < N; pos++) {
+    const available = platformKeys.filter(k => buckets.get(k)!.length > 0);
+    if (available.length === 0) break;
 
-    // 남은 후보 중 랜덤으로 sampleSize개 샘플링
-    const indices = Array.from({ length: remaining.length }, (_, i) => i);
-    for (let i = indices.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [indices[i], indices[j]] = [indices[j], indices[i]];
-    }
-    const sampleIndices = indices.slice(0, sampleSize);
-
-    // 페널티 최소 후보 선택
-    let bestIdx = sampleIndices[0];
-    let bestPenalty = calcPenalty(remaining[sampleIndices[0]], window);
-    for (let k = 1; k < sampleIndices.length; k++) {
-      const penalty = calcPenalty(remaining[sampleIndices[k]], window);
-      if (penalty < bestPenalty) {
-        bestPenalty = penalty;
-        bestIdx = sampleIndices[k];
-      }
+    const totalRemaining = available.reduce((s, k) => s + buckets.get(k)!.length, 0);
+    for (const k of available) {
+      deficits.set(k, deficits.get(k)! + buckets.get(k)!.length / totalRemaining);
     }
 
-    result.push(remaining[bestIdx]);
-    remaining.splice(bestIdx, 1);
+    // 각 버킷에 노이즈 점수 부여 후 최고 점수 버킷 선택
+    const best = available
+      .map(k => ({ k, score: deficits.get(k)! + (Math.random() - 0.5) * 0.6 }))
+      .reduce((a, b) => a.score >= b.score ? a : b).k;
+
+    result.push(buckets.get(best)!.shift()!);
+    deficits.set(best, deficits.get(best)! - 1);
   }
 
-  return { result, warnings: [] };
+  // Step 3: 영상/슬라이드 후처리 — 연속 시 최소 4칸 간격 보장
+  let swapped = true;
+  let pass = 0;
+  while (swapped && pass < 20) {
+    swapped = false;
+    pass++;
+    let lastRichPos = -999;
+    for (let i = 0; i < result.length; i++) {
+      if (!isRichMedia(result[i])) continue;
+      if (i - lastRichPos >= 4) { lastRichPos = i; continue; }
+      // 너무 가까움 — i 이후 가장 가까운 비영상과 스왑
+      let swapTarget = -1;
+      for (let j = i + 1; j < result.length; j++) {
+        if (!isRichMedia(result[j])) { swapTarget = j; break; }
+      }
+      if (swapTarget !== -1) {
+        [result[i], result[swapTarget]] = [result[swapTarget], result[i]];
+        swapped = true;
+        break;
+      } else {
+        warnSet.add("영상/슬라이드 비율이 너무 높아 4칸 간격을 완전히 보장할 수 없습니다.");
+        lastRichPos = i;
+      }
+    }
+  }
+
+  return { result, warnings: [...warnSet] };
 }
 
 export default function OrderEditor() {
@@ -254,11 +269,11 @@ export default function OrderEditor() {
           <h3 className="text-sm font-black text-[#111111]">정렬 최적화</h3>
         </div>
         <p className="text-xs text-gray-400 mb-4">
-          지정 범위를 완전 랜덤 셔플 후{" "}
-          <span className="font-semibold text-gray-500">플랫폼 분산</span>{" "}·{" "}
-          <span className="font-semibold text-gray-500">영상/슬라이드 분산</span>{" "}·{" "}
-          <span className="font-semibold text-gray-500">날짜 클러스터 해소</span>{" "}
-          페널티 기반으로 재배치합니다. 범위 밖 상품은 절대 변경되지 않습니다.
+          플랫폼별 버킷으로 나눠{" "}
+          <span className="font-semibold text-gray-500">비율 인터리빙</span>으로 섞고,
+          영상/슬라이드는{" "}
+          <span className="font-semibold text-gray-500">최소 4칸 간격</span>을 후처리로 보장합니다.
+          범위 밖 상품은 절대 변경되지 않습니다.
         </p>
 
         <div className="flex flex-wrap items-center gap-3 mb-4">
