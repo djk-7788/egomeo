@@ -27,6 +27,7 @@ export default function MyPage() {
   const [editingNick, setEditingNick] = useState(false);
   const [nickInput, setNickInput] = useState("");
   const [savingNick, setSavingNick] = useState(false);
+  const [nickError, setNickError] = useState("");
 
   // 아바타
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
@@ -37,6 +38,7 @@ export default function MyPage() {
   // 회원 탈퇴
   const [deleteConfirm, setDeleteConfirm] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState("");
 
   // 비로그인 → 메인으로 리다이렉트
   useEffect(() => {
@@ -58,7 +60,6 @@ export default function MyPage() {
   // 찜한 상품 로드
   useEffect(() => {
     if (!user) return;
-
     supabase
       .from("likes")
       .select(
@@ -78,7 +79,7 @@ export default function MyPage() {
       });
   }, [user]);
 
-  // likedIds가 바뀌면 화면에서 즉시 제거 (찜 해제 시)
+  // likedIds가 바뀌면 찜 해제된 상품 즉시 제거
   const visibleProducts = likedProducts.filter((p) => likedIds.has(p.id));
 
   // 닉네임 저장
@@ -86,17 +87,20 @@ export default function MyPage() {
     if (!user) return;
     const trimmed = nickInput.trim().slice(0, 20);
     setSavingNick(true);
+    setNickError("");
     const { error } = await supabase.auth.updateUser({
       data: { name: trimmed, full_name: trimmed },
     });
-    if (!error) {
+    if (error) {
+      setNickError("저장에 실패했습니다. 다시 시도해주세요.");
+    } else {
       setNickname(trimmed);
       setEditingNick(false);
     }
     setSavingNick(false);
   };
 
-  // 아바타 변경
+  // 아바타 업로드 — label의 onChange로 호출됨
   const handleAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -105,43 +109,57 @@ export default function MyPage() {
 
     if (!["image/jpeg", "image/png", "image/webp"].includes(file.type)) {
       setAvatarError("jpg, png, webp 파일만 업로드 가능합니다.");
+      e.target.value = "";
       return;
     }
     if (file.size > 2 * 1024 * 1024) {
       setAvatarError("파일 크기는 2MB 이하만 가능합니다.");
+      e.target.value = "";
       return;
     }
 
     setUploadingAvatar(true);
     try {
-      const { data: sessionData } = await supabase.auth.getSession();
-      const token = sessionData.session?.access_token;
+      // 현재 세션 토큰 가져오기
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        setAvatarError("로그인 세션이 만료되었습니다. 다시 로그인해주세요.");
+        return;
+      }
 
       const formData = new FormData();
       formData.append("file", file);
 
       const res = await fetch("/api/user/upload-avatar", {
         method: "POST",
-        headers: { Authorization: `Bearer ${token}` },
+        headers: { Authorization: `Bearer ${session.access_token}` },
         body: formData,
       });
 
       const json = await res.json();
       if (!res.ok) {
-        setAvatarError(json.error || "업로드 실패");
+        setAvatarError(json.error || "이미지 업로드에 실패했습니다.");
         return;
       }
 
-      const { error } = await supabase.auth.updateUser({
+      // Supabase auth 메타데이터에 avatar_url 저장
+      const { error: updateError } = await supabase.auth.updateUser({
         data: { avatar_url: json.url },
       });
 
-      if (!error) setAvatarUrl(json.url);
-    } catch {
+      if (updateError) {
+        setAvatarError("프로필 저장에 실패했습니다: " + updateError.message);
+        return;
+      }
+
+      // 즉시 UI 반영
+      setAvatarUrl(json.url);
+    } catch (err) {
       setAvatarError("업로드 중 오류가 발생했습니다.");
+      console.error("[Avatar upload error]", err);
     } finally {
       setUploadingAvatar(false);
-      if (fileInputRef.current) fileInputRef.current.value = "";
+      e.target.value = "";
     }
   };
 
@@ -155,19 +173,30 @@ export default function MyPage() {
   const handleDelete = async () => {
     if (!user) return;
     setDeleting(true);
+    setDeleteError("");
     try {
-      const { data: sessionData } = await supabase.auth.getSession();
-      const token = sessionData.session?.access_token;
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        setDeleteError("로그인 세션이 만료되었습니다. 다시 로그인해주세요.");
+        return;
+      }
 
-      const res = await fetch("/api/user/delete", {
+      const res = await fetch("/api/delete-account", {
         method: "POST",
-        headers: { Authorization: `Bearer ${token}` },
+        headers: { Authorization: `Bearer ${session.access_token}` },
       });
 
-      if (res.ok) {
-        await signOut();
-        router.replace("/");
+      const json = await res.json().catch(() => ({ error: "서버 오류가 발생했습니다." }));
+
+      if (!res.ok) {
+        setDeleteError(json.error || "탈퇴 처리에 실패했습니다.");
+        return;
       }
+
+      await signOut();
+      router.replace("/");
+    } catch {
+      setDeleteError("네트워크 오류가 발생했습니다. 다시 시도해주세요.");
     } finally {
       setDeleting(false);
     }
@@ -185,73 +214,86 @@ export default function MyPage() {
         <h1 className="text-2xl font-black text-[#111111] mb-6">마이페이지</h1>
 
         <div className="bg-white border border-gray-100 rounded-2xl p-6 shadow-sm">
-          {/* 아바타 */}
+          {/* 아바타 — label로 file input 직접 트리거 (button + ref.click() 방식 대신) */}
           <div className="flex flex-col items-center gap-2 mb-6">
-            <button
-              onClick={() => fileInputRef.current?.click()}
-              disabled={uploadingAvatar}
+            <label
+              className={`relative w-20 h-20 rounded-full cursor-pointer block ${uploadingAvatar ? "opacity-60 pointer-events-none" : ""}`}
               title="프로필 사진 변경"
-              className="relative w-20 h-20 rounded-full overflow-hidden bg-[#F5A623] flex items-center justify-center text-white text-2xl font-bold hover:opacity-90 transition-opacity"
             >
-              {avatarUrl ? (
-                <img src={avatarUrl} alt="프로필" className="w-full h-full object-cover" />
-              ) : (
-                initial
-              )}
-              <span className="absolute inset-0 bg-black/0 hover:bg-black/10 transition-colors rounded-full flex items-end justify-center pb-1">
-                <span className="text-white text-[10px] opacity-0 hover:opacity-100 font-medium">변경</span>
+              {/* 아바타 이미지 또는 이니셜 */}
+              <div className="w-20 h-20 rounded-full overflow-hidden bg-[#F5A623] flex items-center justify-center text-white text-2xl font-bold">
+                {avatarUrl ? (
+                  <img src={avatarUrl} alt="프로필" className="w-full h-full object-cover" />
+                ) : (
+                  initial
+                )}
+              </div>
+              {/* 편집 아이콘 뱃지 */}
+              <span className="absolute bottom-0 right-0 w-6 h-6 bg-white border-2 border-gray-100 rounded-full flex items-center justify-center text-gray-500 text-xs shadow-sm">
+                ✎
               </span>
-            </button>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept=".jpg,.jpeg,.png,.webp"
+                className="hidden"
+                onChange={handleAvatarChange}
+              />
+            </label>
+
             {uploadingAvatar && (
               <p className="text-xs text-gray-400">업로드 중...</p>
             )}
             {avatarError && (
-              <p className="text-xs text-red-500">{avatarError}</p>
+              <p className="text-xs text-red-500 text-center">{avatarError}</p>
             )}
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept=".jpg,.jpeg,.png,.webp"
-              className="hidden"
-              onChange={handleAvatarChange}
-            />
+            <p className="text-xs text-gray-400">사진 클릭하여 변경</p>
           </div>
 
           {/* 닉네임 */}
           <div className="mb-4">
             <label className="text-xs text-gray-400 font-medium block mb-1.5">닉네임</label>
             {editingNick ? (
-              <div className="flex gap-2">
-                <input
-                  type="text"
-                  value={nickInput}
-                  maxLength={20}
-                  onChange={(e) => setNickInput(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") saveNickname();
-                    if (e.key === "Escape") { setNickInput(nickname); setEditingNick(false); }
-                  }}
-                  autoFocus
-                  className="flex-1 border border-[#F5A623] rounded-lg px-3 py-2 text-sm outline-none"
-                />
-                <button
-                  onClick={saveNickname}
-                  disabled={savingNick}
-                  className="text-xs font-bold text-white bg-[#F5A623] px-3 py-2 rounded-lg hover:bg-[#d8921f] transition-colors disabled:opacity-50"
-                >
-                  저장
-                </button>
-                <button
-                  onClick={() => { setNickInput(nickname); setEditingNick(false); }}
-                  className="text-xs text-gray-400 hover:text-gray-600 px-2 transition-colors"
-                >
-                  취소
-                </button>
+              <div className="flex flex-col gap-1.5">
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={nickInput}
+                    maxLength={20}
+                    onChange={(e) => setNickInput(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") saveNickname();
+                      if (e.key === "Escape") {
+                        setNickInput(nickname);
+                        setEditingNick(false);
+                        setNickError("");
+                      }
+                    }}
+                    autoFocus
+                    className="flex-1 border border-[#F5A623] rounded-lg px-3 py-2 text-sm outline-none"
+                  />
+                  <button
+                    onClick={saveNickname}
+                    disabled={savingNick}
+                    className="text-xs font-bold text-white bg-[#F5A623] px-3 py-2 rounded-lg hover:bg-[#d8921f] transition-colors disabled:opacity-50 shrink-0"
+                  >
+                    저장
+                  </button>
+                  <button
+                    onClick={() => { setNickInput(nickname); setEditingNick(false); setNickError(""); }}
+                    className="text-xs text-gray-400 hover:text-gray-600 px-2 transition-colors shrink-0"
+                  >
+                    취소
+                  </button>
+                </div>
+                {nickError && <p className="text-xs text-red-500">{nickError}</p>}
               </div>
             ) : (
               <div className="flex items-center justify-between border border-gray-200 rounded-lg px-3 py-2">
                 <span className="text-sm text-[#111111]">
-                  {nickname || <span className="text-gray-400 italic">닉네임 없음</span>}
+                  {nickname || (
+                    <span className="text-gray-400 italic">닉네임 없음</span>
+                  )}
                 </span>
                 <button
                   onClick={() => setEditingNick(true)}
@@ -282,7 +324,7 @@ export default function MyPage() {
               로그아웃
             </button>
             <button
-              onClick={() => setDeleteConfirm(true)}
+              onClick={() => { setDeleteConfirm(true); setDeleteError(""); }}
               className="w-full py-1.5 text-xs text-gray-400 hover:text-red-500 transition-colors"
             >
               회원 탈퇴
@@ -330,13 +372,19 @@ export default function MyPage() {
         <div className="fixed inset-0 z-[200] bg-black/40 flex items-center justify-center px-4">
           <div className="bg-white rounded-2xl shadow-xl w-80 p-6">
             <h3 className="font-bold text-[#111111] text-center mb-2">정말 탈퇴하시겠습니까?</h3>
-            <p className="text-xs text-gray-400 text-center mb-6">
+            <p className="text-xs text-gray-400 text-center mb-4">
               찜한 상품 목록이 모두 삭제되며 복구할 수 없습니다.
             </p>
+            {deleteError && (
+              <p className="text-xs text-red-500 text-center mb-4 bg-red-50 rounded-lg px-3 py-2">
+                {deleteError}
+              </p>
+            )}
             <div className="flex gap-2">
               <button
-                onClick={() => setDeleteConfirm(false)}
-                className="flex-1 py-2.5 text-sm font-medium border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors"
+                onClick={() => { setDeleteConfirm(false); setDeleteError(""); }}
+                disabled={deleting}
+                className="flex-1 py-2.5 text-sm font-medium border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors disabled:opacity-50"
               >
                 취소
               </button>
