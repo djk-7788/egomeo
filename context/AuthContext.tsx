@@ -101,18 +101,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => subscription.unsubscribe();
   }, []);
 
-  // signOut은 profiles 조회 실패와 완전히 독립적으로 동작
   const signOut = async () => {
-    try {
-      await supabase.auth.signOut();
-    } catch (err) {
-      console.error("[signOut 실패]", err);
-      // 실패해도 로컬 상태 강제 초기화
-      setUser(null);
-      setProfile(null);
-      setProfileLoaded(true);
-      setLoading(false);
-    }
+    // 로컬 상태를 onAuthStateChange 없이 즉시 초기화
+    // → 로그아웃 버튼 클릭 즉시 화면 반응, profileLoaded 갇힘 방지
+    setUser(null);
+    setProfile(null);
+    setProfileLoaded(true);
+    setLoading(false);
+
+    // 서버 세션 취소는 백그라운드 처리 (실패해도 로컬 상태는 이미 초기화됨)
+    supabase.auth.signOut().catch((err) => {
+      console.error("[signOut 서버 오류]", err);
+    });
   };
 
   // 낙관적 업데이트: 로컬 상태를 먼저 반영하고, 그 다음 DB upsert

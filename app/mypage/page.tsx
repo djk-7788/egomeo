@@ -39,6 +39,7 @@ export default function MyPage() {
   const [deleteError, setDeleteError] = useState("");
 
   // 비로그인 → 메인으로 리다이렉트
+  // signOut()이 loading=false, user=null을 즉시 설정하므로 바로 발동됨
   useEffect(() => {
     if (!loading && !user) {
       router.replace("/");
