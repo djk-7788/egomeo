@@ -80,6 +80,7 @@ export default function AdminPanel() {
   const [searchQuery, setSearchQuery] = useState("");
   const [imageUrlInput, setImageUrlInput] = useState("");
   const [brokenImages, setBrokenImages] = useState<Set<string>>(new Set());
+  const [fetchError, setFetchError] = useState<string | null>(null);
 
   useEffect(() => {
     fetchProducts();
@@ -87,13 +88,22 @@ export default function AdminPanel() {
 
   async function fetchProducts() {
     setLoading(true);
-    const { data } = await supabase
-      .from("products")
-      .select("*")
-      .order("sort_order", { ascending: true, nullsFirst: false })
-      .order("created_at", { ascending: false });
-    setProducts(data || []);
-    setLoading(false);
+    setFetchError(null);
+    try {
+      const { data, error } = await supabase
+        .from("products")
+        .select("*")
+        .order("sort_order", { ascending: true, nullsFirst: false })
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      setProducts(data || []);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      setFetchError(msg);
+      console.error("[AdminPanel] fetchProducts 실패:", err);
+    } finally {
+      setLoading(false);
+    }
   }
 
   function openAdd() {
@@ -663,6 +673,13 @@ export default function AdminPanel() {
 
         {loading ? (
           <p className="text-center text-gray-400 py-20">불러오는 중...</p>
+        ) : fetchError ? (
+          <div className="text-center py-20">
+            <p className="text-red-500 font-semibold mb-2">데이터를 불러오지 못했습니다</p>
+            <p className="text-xs text-gray-400 font-mono bg-gray-50 border border-gray-200 rounded px-3 py-2 inline-block max-w-lg break-all">{fetchError}</p>
+            <br />
+            <button onClick={fetchProducts} className="mt-4 text-sm text-[#F5A623] underline">다시 시도</button>
+          </div>
         ) : products.length === 0 ? (
           <p className="text-center text-gray-400 py-20">
             등록된 상품이 없습니다.

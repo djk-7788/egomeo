@@ -35,6 +35,7 @@ function getPlatformColor(platform: string | null): string {
 export default function QueueManager({ onPublished }: { onPublished?: () => void }) {
   const [items, setItems] = useState<QueueItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [fetchError, setFetchError] = useState<string | null>(null);
   const [publishing, setPublishing] = useState<string | null>(null);
   const [publishingAll, setPublishingAll] = useState(false);
   const [publishingSelected, setPublishingSelected] = useState(false);
@@ -50,15 +51,24 @@ export default function QueueManager({ onPublished }: { onPublished?: () => void
 
   async function fetchItems() {
     setLoading(true);
-    const { data } = await supabase
-      .from("products")
-      .select("id, title, image_url, image_urls, video_url, sort_order, created_at, platform")
-      .eq("is_queued", true)
-      .order("sort_order", { ascending: true, nullsFirst: false })
-      .order("created_at", { ascending: false });
-    setItems(data || []);
-    setSelectedIds(new Set());
-    setLoading(false);
+    setFetchError(null);
+    try {
+      const { data, error } = await supabase
+        .from("products")
+        .select("id, title, image_url, image_urls, video_url, sort_order, created_at, platform")
+        .eq("is_queued", true)
+        .order("sort_order", { ascending: true, nullsFirst: false })
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      setItems(data || []);
+      setSelectedIds(new Set());
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      setFetchError(msg);
+      console.error("[QueueManager] fetchItems 실패:", err);
+    } finally {
+      setLoading(false);
+    }
   }
 
   function toggleSelect(id: string) {
@@ -170,6 +180,17 @@ export default function QueueManager({ onPublished }: { onPublished?: () => void
 
   if (loading) {
     return <p className="text-center text-gray-400 py-20">불러오는 중...</p>;
+  }
+
+  if (fetchError) {
+    return (
+      <div className="text-center py-20">
+        <p className="text-red-500 font-semibold mb-2">데이터를 불러오지 못했습니다</p>
+        <p className="text-xs text-gray-400 font-mono bg-gray-50 border border-gray-200 rounded px-3 py-2 inline-block max-w-lg break-all">{fetchError}</p>
+        <br />
+        <button onClick={fetchItems} className="mt-4 text-sm text-[#F5A623] underline">다시 시도</button>
+      </div>
+    );
   }
 
   return (
