@@ -31,7 +31,7 @@ export default function ProductCard({
       <div className="px-3 pt-3 pb-2 h-[5rem] flex items-center justify-center">
         <h2
           className="text-[1.3125rem] font-semibold text-[#111111] leading-snug line-clamp-2 text-center"
-          style={{ fontFamily: "'Pretendard Variable', Pretendard, sans-serif" }}
+          style={{ fontFamily: "'Noto Serif KR', serif" }}
         >
           {title}
         </h2>
