@@ -368,7 +368,8 @@ export default function MyPage() {
           <div className="bg-white rounded-2xl shadow-xl w-80 p-6">
             <h3 className="font-bold text-[#111111] text-center mb-2">정말 탈퇴하시겠습니까?</h3>
             <p className="text-xs text-gray-400 text-center mb-4">
-              찜한 상품 목록이 모두 삭제되며 복구할 수 없습니다.
+              프로필 사진, 닉네임, 찜한 상품 목록이 모두 삭제되며 복구할 수 없습니다.<br />
+              재로그인 시 새 계정으로 가입됩니다.
             </p>
             {deleteError && (
               <p className="text-xs text-red-500 text-center mb-4 bg-red-50 rounded-lg px-3 py-2">
