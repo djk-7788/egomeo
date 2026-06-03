@@ -30,6 +30,7 @@ export default function LoginModal({ onClose }: Props) {
       provider: "kakao",
       options: {
         redirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(window.location.href)}`,
+        scopes: "profile_nickname profile_image",
       },
     });
   };
