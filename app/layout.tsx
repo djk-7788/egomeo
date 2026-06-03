@@ -5,6 +5,7 @@ import "./globals.css";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import { AuthProvider } from "@/context/AuthContext";
+import { LikesProvider } from "@/context/LikesContext";
 
 const GA_ID = process.env.NEXT_PUBLIC_GA_ID;
 
@@ -50,6 +51,7 @@ export default function RootLayout({
       )}
       <body className="min-h-screen bg-white text-[#111111]">
         <AuthProvider>
+          <LikesProvider>
           <Header />
           <p className="text-center text-xs text-gray-400 px-4 py-2 border-b border-gray-100">
             이 사이트는 쿠팡파트너스·알리익스프레스·아마존 제휴 활동의 일환으로 소정의 수수료를 제공받습니다. 수수료는 제품 구매 가격에 영향을 주지 않으니 안심하고 즐겨주세요 :)
@@ -58,6 +60,7 @@ export default function RootLayout({
             {children}
           </main>
           <Footer />
+          </LikesProvider>
         </AuthProvider>
       </body>
     </html>

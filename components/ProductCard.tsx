@@ -60,7 +60,7 @@ export default function ProductCard({
 
       {/* 3층: 하트 + 공유 버튼 */}
       <div className="px-3 pt-3 flex items-center justify-between">
-        <CardLikeButton />
+        <CardLikeButton productId={id} />
         <CardShareButton id={id} />
       </div>
 
