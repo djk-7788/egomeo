@@ -28,8 +28,11 @@ export default function ProductCard({
   return (
     <div className="flex flex-col bg-white border border-gray-100 rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-shadow">
       {/* 1층: 드립형 제목 */}
-      <div className="px-3 pt-3 pb-2 h-[3.5rem] flex items-center justify-center">
-        <h2 className="text-sm font-bold text-[#111111] leading-snug line-clamp-2 text-center">
+      <div className="px-3 pt-3 pb-2 h-[5rem] flex items-center justify-center">
+        <h2
+          className="text-[1.3125rem] font-semibold text-[#111111] leading-snug line-clamp-2 text-center"
+          style={{ fontFamily: "'Pretendard Variable', Pretendard, sans-serif" }}
+        >
           {title}
         </h2>
       </div>
@@ -55,7 +58,7 @@ export default function ProductCard({
       </a>
 
       {/* 3층: 하트 + 공유 버튼 */}
-      <div className="px-3 pt-1 flex items-center justify-between">
+      <div className="px-3 pt-3 flex items-center justify-between">
         <button
           title="찜하기"
           className="shrink-0 w-9 h-9 flex items-center justify-center rounded-lg border border-gray-200 bg-white text-gray-400 transition-colors text-lg"
@@ -66,7 +69,7 @@ export default function ProductCard({
       </div>
 
       {/* 4층: 외부링크 버튼 */}
-      <div className="px-3 pt-1 pb-3 mt-auto">
+      <div className="px-3 pt-3 pb-3 mt-auto">
         <a
           href={link}
           target="_blank"
