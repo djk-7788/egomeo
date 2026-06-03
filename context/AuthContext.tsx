@@ -30,19 +30,34 @@ const AuthContext = createContext<AuthContextType>({
   updateProfile: async () => ({ error: null }),
 });
 
+// profiles 조회 실패 시 항상 OAuth 폴백 반환 — 절대 throw하지 않음
 async function fetchProfile(user: User): Promise<Profile> {
-  const { data } = await supabase
-    .from("profiles")
-    .select("nickname, avatar_url")
-    .eq("id", user.id)
-    .maybeSingle();
-
-  // profiles 테이블 값 우선, 없으면 OAuth 메타데이터 폴백
   const meta = user.user_metadata ?? {};
-  return {
-    nickname: data?.nickname ?? meta.name ?? meta.full_name ?? null,
-    avatar_url: data?.avatar_url ?? meta.avatar_url ?? meta.picture ?? null,
+  const oauthFallback: Profile = {
+    nickname: meta.name ?? meta.full_name ?? null,
+    avatar_url: meta.avatar_url ?? meta.picture ?? null,
   };
+
+  try {
+    const { data, error } = await supabase
+      .from("profiles")
+      .select("nickname, avatar_url")
+      .eq("id", user.id)
+      .maybeSingle();
+
+    if (error) {
+      console.warn("[fetchProfile] profiles 조회 실패, OAuth 폴백 사용:", error.message);
+      return oauthFallback;
+    }
+
+    return {
+      nickname: data?.nickname ?? oauthFallback.nickname,
+      avatar_url: data?.avatar_url ?? oauthFallback.avatar_url,
+    };
+  } catch (err) {
+    console.warn("[fetchProfile] 예외 발생, OAuth 폴백 사용:", err);
+    return oauthFallback;
+  }
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
@@ -53,14 +68,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [modalOpen, setModalOpen] = useState(false);
 
   useEffect(() => {
-    // 초기 세션 로드
+    // 초기 세션 로드 — 실패해도 반드시 loading=false로 끝남
     supabase.auth.getSession().then(async ({ data: { session } }) => {
-      const u = session?.user ?? null;
-      setUser(u);
-      if (u) {
-        const p = await fetchProfile(u);
-        setProfile(p);
+      try {
+        const u = session?.user ?? null;
+        setUser(u);
+        if (u) {
+          const p = await fetchProfile(u);
+          setProfile(p);
+        }
+      } catch (err) {
+        console.error("[AuthProvider] 초기 세션 처리 실패:", err);
+      } finally {
+        setProfileLoaded(true);
+        setLoading(false);
       }
+    }).catch((err) => {
+      // getSession 자체가 실패한 경우
+      console.error("[AuthProvider] getSession 실패:", err);
       setProfileLoaded(true);
       setLoading(false);
     });
@@ -68,50 +93,69 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // 로그인/로그아웃 상태 변경 감지
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (_event, session) => {
-        const u = session?.user ?? null;
-        setUser(u);
-        if (u) {
-          setProfileLoaded(false);
-          const p = await fetchProfile(u);
-          setProfile(p);
+        try {
+          const u = session?.user ?? null;
+          setUser(u);
+          if (u) {
+            setProfileLoaded(false);
+            const p = await fetchProfile(u);
+            setProfile(p);
+          } else {
+            setProfile(null);
+          }
+        } catch (err) {
+          console.error("[AuthProvider] onAuthStateChange 처리 실패:", err);
+        } finally {
           setProfileLoaded(true);
-        } else {
-          setProfile(null);
-          setProfileLoaded(true);
+          setLoading(false);
         }
-        setLoading(false);
       }
     );
 
     return () => subscription.unsubscribe();
   }, []);
 
+  // signOut은 profiles 조회 실패와 완전히 독립적으로 동작
   const signOut = async () => {
-    await supabase.auth.signOut();
+    try {
+      await supabase.auth.signOut();
+    } catch (err) {
+      console.error("[signOut 실패]", err);
+      // 실패해도 로컬 상태 초기화
+      setUser(null);
+      setProfile(null);
+      setProfileLoaded(true);
+    }
   };
 
   // profiles 테이블에 upsert하고 로컬 상태 즉시 반영
   const updateProfile = async (data: Partial<Profile>): Promise<{ error: string | null }> => {
     if (!user) return { error: "로그인이 필요합니다." };
 
-    const { error } = await supabase.from("profiles").upsert({
-      id: user.id,
-      ...data,
-      updated_at: new Date().toISOString(),
-    });
+    try {
+      const { error } = await supabase.from("profiles").upsert({
+        id: user.id,
+        ...data,
+        updated_at: new Date().toISOString(),
+      });
 
-    if (error) {
-      console.error("[updateProfile 실패]", error.message);
-      return { error: error.message };
+      if (error) {
+        console.error("[updateProfile 실패]", error.message);
+        return { error: error.message };
+      }
+
+      setProfile((prev) => ({
+        nickname: null,
+        avatar_url: null,
+        ...prev,
+        ...data,
+      }));
+      return { error: null };
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "알 수 없는 오류";
+      console.error("[updateProfile 예외]", msg);
+      return { error: msg };
     }
-
-    setProfile((prev) => ({
-      nickname: null,
-      avatar_url: null,
-      ...prev,
-      ...data,
-    }));
-    return { error: null };
   };
 
   return (
