@@ -50,6 +50,7 @@ CLOUDFLARE_R2_PUBLIC_URL=https://퍼블릭도메인
 | `NEXT_PUBLIC_GA_ID` | Google Analytics 측정 ID (`G-6P979RX187`) |
 | `NEXT_PUBLIC_SUPABASE_URL` | Supabase 프로젝트 URL |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Supabase anon 키 |
+| `SUPABASE_SERVICE_ROLE_KEY` | Supabase 서비스 롤 키 — 서버 전용, 회원 탈퇴·서버사이드 JWT 검증에 사용 |
 | `ADMIN_PASSWORD` | 관리자 페이지 비밀번호 (`egomeo1234`) |
 | `ALIEXPRESS_APP_KEY` | 알리 Open Platform 앱 키 (6자리) |
 | `ALIEXPRESS_APP_SECRET` | 알리 Open Platform 앱 시크릿 (32자리) |
@@ -88,7 +89,33 @@ button_text   text          -- 카드/상세 페이지 버튼 텍스트 커스�
 > **button_text 컬럼 추가** — 2026-05-29 `ALTER TABLE products ADD COLUMN IF NOT EXISTS button_text text;` 실행 완료
 
 **RLS**: 비활성화됨 (`alter table products disable row level security`)
-→ 나중에 Supabase Auth 연동 시 RLS 정책 재설정 필요
+
+### `likes` 테이블
+```sql
+id          uuid DEFAULT gen_random_uuid() PRIMARY KEY
+user_id     uuid REFERENCES auth.users(id) ON DELETE CASCADE
+product_id  uuid REFERENCES products(id) ON DELETE CASCADE
+created_at  timestamp with time zone DEFAULT now()
+UNIQUE(user_id, product_id)
+```
+**RLS 활성화됨**
+- SELECT: `auth.uid() = user_id` (본인 likes만 조회)
+- INSERT: `auth.uid() = user_id`
+- DELETE: `auth.uid() = user_id`
+
+### `profiles` 테이블
+```sql
+id          uuid REFERENCES auth.users(id) ON DELETE CASCADE PRIMARY KEY
+nickname    text
+avatar_url  text
+updated_at  timestamp with time zone DEFAULT now()
+```
+**RLS 활성화됨**
+- SELECT: `auth.uid() = id`
+- ALL (INSERT/UPDATE/DELETE): `auth.uid() = id`
+
+> **목적**: 닉네임·아바타를 OAuth 메타데이터 대신 여기에 저장해 재로그인 시 OAuth가 덮어쓰는 것을 방지.
+> 조회 우선순위: profiles 테이블 → OAuth user_metadata 폴백
 
 ### Storage
 - 버킷명: `product-images` (퍼블릭) — 기존 레거시. 신규 업로드는 R2로만
@@ -115,7 +142,7 @@ button_text   text          -- 카드/상세 페이지 버튼 텍스트 커스�
 ┌─────────────────────────┐
 │ 1층: 드립형 제목 (2줄, 가운데 정렬, 고정 높이) │
 │ 2층: 1:1 영상/슬라이드/이미지                 │  ← 우선순위: video_url > image_urls(2장↑, 1초 자동슬라이드) > image_url
-│ 3층: [♡]              [🔗]                  │  ← 왼쪽 하트(UI only), 오른쪽 🔗 클릭 시 상세페이지 URL 복사
+│ 3층: [♡]              [🔗]                  │  ← 왼쪽 하트(찜하기, 로그인 필요), 오른쪽 🔗 클릭 시 상세페이지 URL 복사
 │ 4층: [구경하러 가기]                          │  ← 쿠팡/알리 링크 새 창 (button_text 커스터마이징 가능)
 └─────────────────────────┘
 ```
@@ -152,9 +179,11 @@ button_text   text          -- 카드/상세 페이지 버튼 텍스트 커스�
 ```
 egomeo/
 ├── app/
-│   ├── layout.tsx            # 전체 레이아웃 (Header + main + Footer)
+│   ├── layout.tsx            # 전체 레이아웃 (Header + main + Footer, AuthProvider + LikesProvider)
 │   ├── page.tsx              # 메인 페이지 — Supabase에서 상품 목록 fetch
 │   ├── globals.css           # 전역 스타일 (색상 변수 포함)
+│   ├── mypage/
+│   │   └── page.tsx          # 마이페이지 — 프로필(아바타/닉네임/이메일), 찜 목록, 로그아웃, 회원탈퇴
 │   ├── admin/
 │   │   ├── page.tsx          # 쿠키 확인 → LoginForm or AdminPanel
 │   │   ├── actions.ts        # 로그인/로그아웃 서버 액션
@@ -168,6 +197,13 @@ egomeo/
 │   ├── api/
 │   │   ├── upload/
 │   │   │   └── route.ts      # R2 파일 업로드 (이미지/영상, admin_auth 쿠키 필요)
+│   │   ├── delete-account/
+│   │   │   └── route.ts      # 회원 탈퇴 (서비스 롤 클라이언트로 JWT 검증 + auth.admin.deleteUser)
+│   │   ├── user/
+│   │   │   ├── upload-avatar/
+│   │   │   │   └── route.ts  # 프로필 사진 R2 업로드 (Bearer 토큰 인증, profiles/{user_id}.{ext})
+│   │   │   └── delete/
+│   │   │       └── route.ts  # 회원 탈퇴 구 경로 (delete-account로 대체됨)
 │   │   ├── migrate-to-r2/
 │   │   │   └── route.ts      # Supabase Storage → R2 일괄 마이그레이션 (maxDuration 300s)
 │   │   ├── aliexpress/
@@ -177,20 +213,30 @@ egomeo/
 │   │   │       └── route.ts  # 알리 URL → 상품 ID 추출 → API 조회
 │   │   └── parse-url/
 │   │       └── route.ts      # 쿠팡/아마존 URL 파싱 (봇 차단으로 제한적)
+│   ├── auth/
+│   │   └── callback/
+│   │       └── page.tsx      # OAuth 콜백 처리 (PKCE 교환 → 리다이렉트)
 │   ├── search/
 │   │   └── page.tsx          # 검색 결과 페이지 (`/search?q=키워드`, ilike 검색, 카드 그리드)
 │   └── product/
 │       └── [id]/
 │           └── page.tsx      # 상품 상세 페이지 (공유 링크용, 영상 지원)
 ├── components/
-│   ├── Header.tsx            # 상단 고정 헤더 + 카테고리 네비
+│   ├── Header.tsx            # 상단 고정 헤더 + 카테고리 네비 (로고 Next.js Link로 소프트 네비게이션)
 │   ├── Footer.tsx            # 쿠팡파트너스 고지 문구 + 저작권
-│   ├── ProductCard.tsx       # 4층 카드 컴포넌트 (제목→이미지→하트+공유→버튼, video > image_urls 슬라이드 > image_url 우선순위)
+│   ├── HeaderAuthStatus.tsx  # 로그인 시 헤더 우측 아바타 버튼 → /mypage 이동
+│   ├── ProductCard.tsx       # 4층 카드 컴포넌트 (제목→이미지→하트+공유→버튼)
+│   ├── CardLikeButton.tsx    # 찜하기 버튼 (로그인 시 토글, 비로그인 시 로그인 모달)
 │   ├── ImageSlider.tsx       # 이미지 슬라이더 (auto: IntersectionObserver 1초 자동, manual: 화살표)
 │   ├── CardShareButton.tsx   # 카드 내 공유 버튼 (클라이언트)
+│   ├── HamburgerMenu.tsx     # 우측 사이드 드로어 (검색, 마이페이지·About·Privacy·Contact 링크)
 │   └── ShareButton.tsx       # 상세 페이지 공유 버튼 (클라이언트)
+├── context/
+│   ├── AuthContext.tsx       # 인증 상태 전역 관리 (user, profile, profileLoaded, signOut, updateProfile)
+│   └── LikesContext.tsx      # 찜 목록 전역 관리 (likedIds Set, toggleLike — 낙관적 업데이트)
 ├── lib/
-│   ├── supabase.ts           # Supabase 클라이언트 싱글톤
+│   ├── supabase.ts           # Supabase 브라우저 클라이언트 싱글톤
+│   ├── supabase-admin.ts     # Supabase 서비스 롤 클라이언트 (서버 전용, getSupabaseAdmin())
 │   └── r2.ts                 # Cloudflare R2 S3 클라이언트 (endpoint/bucket/publicUrl export)
 ├── chrome-extension/         # 크롬 확장 프로그램 "참아야하느니라 미디어툴" (Manifest V3)
 │   ├── manifest.json         # MV3 설정 (host_permissions: aliexpress/alicdn, CSP: wasm-unsafe-eval)
@@ -226,6 +272,14 @@ egomeo/
 - 상단: 해당 상품 크게 표시 (영상 또는 이미지 + 카테고리 + 제목 + 구경하러가기 버튼 + 공유 버튼)
 - 하단: 다른 상품 그리드 ("이건 또 머고?" 섹션)
 - OG 태그 포함 → 카톡/SNS 공유 시 미리보기 표시
+
+### 마이페이지 (`/mypage`)
+- 비로그인 접근 시 `/`로 자동 리다이렉트
+- **프로필 섹션**: 아바타 사진(label 클릭 → 파일 선택 → R2 업로드 → profiles 테이블 저장), 닉네임 인라인 편집(최대 20자), 이메일 표시(수정 불가)
+- **찜한 상품**: likes 테이블 기반, 3열 그리드, 하트 해제 시 즉시 사라짐
+- **로그아웃**: 클릭 즉시 로컬 상태 초기화 → 메인 이동 (서버 세션 취소는 백그라운드)
+- **회원 탈퇴**: 확인 팝업 → `/api/delete-account` → Supabase admin.deleteUser → 메인 이동
+- 헤더 아바타 버튼 클릭 또는 햄버거 메뉴 "마이페이지" 링크로 진입
 
 ### 관리자 페이지 (`/admin`)
 - 비밀번호: `ADMIN_PASSWORD` 환경변수 (현재 `egomeo1234`)
@@ -272,8 +326,22 @@ egomeo/
 
 ---
 
-## 최근 완료 작업 (2026-06-02 기준)
+## 최근 완료 작업 (2026-06-03 기준)
 
+- 카카오 로그인 scope에서 `account_email` 제거 — `profile_nickname profile_image`만 요청, `queryParams.scope`도 명시적으로 설정 (`LoginModal.tsx`)
+- 찜하기 기능 구현 — `likes` 테이블(RLS 활성화), `LikesContext`(전역 관리+낙관적 업데이트), `CardLikeButton` 연결 (로그인 시 토글, 비로그인 시 로그인 모달)
+- 마이페이지 구현 (`/mypage`) — 프로필 사진/닉네임 편집, 찜 목록 그리드, 로그아웃, 회원 탈퇴
+- 헤더 `HeaderAuthStatus` 컴포넌트 — 로그인 시 아바타 버튼 표시, 클릭 시 `/mypage` 이동
+- 햄버거 메뉴에 "마이페이지" 링크 추가 (로그인 시만 표시)
+- 서버사이드 JWT 검증을 브라우저 클라이언트 대신 서비스 롤 클라이언트로 교체 (`/api/user/upload-avatar`, `/api/user/delete`, `/api/delete-account`)
+- `profiles` 테이블 도입 — 닉네임/아바타를 OAuth 메타데이터와 분리 저장, 재로그인 시 덮어쓰기 방지
+- `AuthContext` 전면 개편:
+  - `profile` 상태 + `updateProfile()` 함수 추가 (낙관적 업데이트, profiles 테이블 upsert)
+  - `fetchProfile()` try-catch 추가 — 실패 시 OAuth 폴백, 절대 throw하지 않음
+  - `onAuthStateChange`에서 `TOKEN_REFRESHED` 이벤트 시 profiles 재조회 스킵 (optimistic update 보호)
+  - `getSession()` 제거 → `onAuthStateChange(INITIAL_SESSION)` 단일 경로로 통일 (경쟁 조건 제거)
+  - `signOut()` 즉시 로컬 상태 초기화 (로그아웃 반응 즉시, profileLoaded 갇힘 방지)
+- 헤더 로고 `<a href="/">` → `<Link href="/">` 변경 — 소프트 네비게이션으로 AuthProvider 리마운트 방지
 - 어드민 쿠키 만료 시 401 처리 추가 + 유효기간 30일로 연장 (`app/admin/actions.ts`, `AdminPanel.tsx`)
 - 미디어툴 포맷 변환 탭 추가 — GIF/Animated WebP → MP4 변환 (GIF는 ffmpeg 방식, WebP는 Canvas+MediaRecorder 방식), 드래그 앤 드롭 지원
 - 미디어툴 슬라이드쇼 탭에 이미지 파일 직접 업로드 기능 추가 — 로컬 파일 선택·드래그 앤 드롭, 알리 URL 입력과 혼용 가능
@@ -425,7 +493,7 @@ egomeo/
 - [완료] 전체 포인트 색상 변경 — `#FF5A00` → `#F5A623`, 호버색 `#e04e00` → `#d8921f` (23개 파일 일괄 적용)
 - [완료] 메인 카드 구조 변경 — 카테고리 뱃지 제거, 5층 → 4층 (제목→이미지→하트+공유→버튼 순)
 - [완료] 카드 제목 스타일 개선 — 가운데 정렬, 최대 2줄 말줄임, 고정 높이(`h-[3.5rem]`)로 카드 균일화
-- [완료] 카드 하트 아이콘(♡) 추가 — 공유버튼 좌측 대칭 배치, UI only (찜하기 기능 추후 연결 예정)
+- [완료] 카드 하트 아이콘(♡) 추가 → 찜하기 기능 완전 연결 (로그인 토글, 비로그인 시 로그인 모달)
 - [완료] 사이트명 전체 변경 — "이게머고?" → "참아야하느니라" (헤더/푸터/메타/어드민/확장 전체)
 - [완료] Google Analytics 연동 (`G-6P979RX187`, `NEXT_PUBLIC_GA_ID`, `next/script afterInteractive`)
 - [완료] 어드민 통계 탭 (`StatsPanel.tsx`) — 공개/큐/숨김, 플랫폼 분포, 미디어 타입, GA 바로가기
@@ -440,6 +508,17 @@ egomeo/
 - [완료] 메인 피드 카드 이미지·영상 `object-fit: contain` + 흰색 배경으로 변경
 - [완료] 알리 URL 파싱 상품 정보 없을 때 에러 반환 (`/api/aliexpress/parse` — 빈 화면 대신 에러 메시지)
 - [완료] 어드민 모달 추가 이미지(image_urls) 파일 직접 업로드 지원 (R2 저장, URL 입력과 혼용 가능)
+- [완료] 소셜 로그인 구현 — 구글/카카오 (Supabase Auth OAuth, `/auth/callback` PKCE 처리)
+- [완료] 카카오 로그인 scope 수정 — `account_email` 제거, `profile_nickname profile_image`만 요청 (비즈앱 아님)
+- [완료] 찜하기 기능 구현 — `likes` 테이블(RLS), `LikesContext`(전역+낙관적 업데이트), `CardLikeButton` DB 연결
+- [완료] 마이페이지 구현 (`/mypage`) — 프로필 사진/닉네임 편집, 찜 목록, 로그아웃, 회원 탈퇴
+- [완료] `profiles` 테이블 도입 — 닉네임/아바타 분리 저장, OAuth 재로그인 덮어쓰기 방지
+- [완료] `lib/supabase-admin.ts` 생성 — 서비스 롤 클라이언트 (`getSupabaseAdmin()`)
+- [완료] `/api/delete-account` 생성 — 서비스 롤 클라이언트로 JWT 검증 + 계정 삭제
+- [완료] `/api/user/upload-avatar` 생성 — Bearer 토큰 인증, R2 업로드 (`profiles/{user_id}.ext`)
+- [완료] `AuthContext` 전면 개편 — profile 상태, updateProfile, fetchProfile 방어 처리, TOKEN_REFRESHED 스킵, getSession 제거, signOut 즉시 초기화
+- [완료] 헤더 로고 `<a>` → `<Link>` 변경 (소프트 네비게이션, AuthProvider 리마운트 방지)
+- [완료] `HeaderAuthStatus` 컴포넌트 추가 — 로그인 시 아바타 버튼, profiles 테이블 기반 아바타/이니셜
 
 ---
 
@@ -450,8 +529,7 @@ egomeo/
 3. **크롬 확장 슬라이드쇼 이미지 추출 개선** — 알리 페이지가 JS 렌더링 전용이면 정적 HTML에서 이미지 못 찾는 문제 해결 필요 (content script 방식 검토)
 4. **쿠팡 URL 파싱 개선** — 현재 봇 차단으로 제한적. Puppeteer/플레이라이트 서버리스 또는 별도 파싱 서비스 검토 필요 (아마존은 보류)
 5. **알리 트래킹 ID 교체** — 포털에서 전용 ID 생성 후 `ALIEXPRESS_TRACKING_ID` 환경변수 교체 + `sourcing-extension/config.js`도 동일하게 업데이트
-6. **소셜 로그인** — Supabase Auth (구글/카카오/네이버)
-7. **찜하기** — 카드 하트 버튼 UI는 완료. 실제 찜 기능(로그인+DB 저장+마이페이지)은 소셜 로그인 구현 후 연결
+6. **네이버 소셜 로그인** — 구글/카카오는 완료. 네이버는 미구현
 
 ---
 
@@ -473,6 +551,11 @@ egomeo/
 | 소싱툴 확장에서 X-Admin-Key 헤더 인증 | 확장에서는 HttpOnly 쿠키 접근 불가. X-Admin-Key 헤더로 동일한 ADMIN_PASSWORD 값 검증 |
 | 아마존 지역만 수동 선택, 나머지는 URL 자동판별 | 알리/쿠팡은 URL 패턴이 명확해 자동 감지 가능. 아마존만 amzn.to 단축 URL 사용 시 JP/US 구분 불가능해 라디오로 명시 선택 |
 | **아마존 이미지는 R2 저장 절대 금지** | 아마존 이미지는 저작권 문제로 R2에 업로드하지 않음. 관리자 모달에서 이미지 URL 직접 입력 방식만 사용. PA API 승인 받은 이후에도 동일 원칙 유지 |
+| 닉네임/아바타를 profiles 테이블에 저장 | OAuth 재로그인 시 `user_metadata`가 구글/카카오 프로필로 덮어써짐. profiles 테이블을 소스 오브 트루스로 사용하고 user_metadata는 폴백으로만 사용 |
+| 서버사이드 JWT 검증에 서비스 롤 클라이언트 사용 | `lib/supabase.ts`의 브라우저 클라이언트를 API Route(Node.js)에서 `getUser(jwt)` 호출하면 실패. `getSupabaseAdmin()`(서비스 롤)을 사용해야 정상 동작 |
+| `onAuthStateChange`만 사용, `getSession()` 제거 | 둘 다 쓰면 INITIAL_SESSION 이벤트와 getSession()이 fetchProfile을 동시 호출해 경쟁 조건 발생. onAuthStateChange의 INITIAL_SESSION 하나로 통일 |
+| TOKEN_REFRESHED 이벤트 시 profiles 재조회 스킵 | 토큰 갱신은 프로필 변경과 무관. 재조회하면 DB 지연 시 profileLoaded=false에 오래 갇히고 optimistic update가 덮어씌워짐 |
+| signOut() 즉시 로컬 상태 초기화 | `supabase.auth.signOut()` 완료를 기다리면 반응이 느리거나 onAuthStateChange 타이밍에 따라 profileLoaded가 false에 갇힐 수 있음. 상태 초기화는 동기적으로, 서버 세션 취소는 백그라운드 |
 
 ---
 
