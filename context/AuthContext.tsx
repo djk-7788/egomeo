@@ -68,27 +68,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [modalOpen, setModalOpen] = useState(false);
 
   useEffect(() => {
-    // 초기 세션 로드 — 실패해도 반드시 loading=false로 끝남
-    supabase.auth.getSession().then(async ({ data: { session } }) => {
-      try {
-        const u = session?.user ?? null;
-        setUser(u);
-        if (u) {
-          const p = await fetchProfile(u);
-          setProfile(p);
-        }
-      } catch (err) {
-        console.error("[AuthProvider] 초기 세션 처리 실패:", err);
-      } finally {
-        setProfileLoaded(true);
-        setLoading(false);
-      }
-    }).catch((err) => {
-      console.error("[AuthProvider] getSession 실패:", err);
-      setProfileLoaded(true);
-      setLoading(false);
-    });
-
+    // getSession()을 별도로 호출하지 않음.
+    // onAuthStateChange가 구독 직후 INITIAL_SESSION 이벤트를 발생시켜
+    // 현재 세션 상태를 전달해 주므로, 두 경로를 함께 쓰면 경쟁 조건이 생김.
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
         try {
@@ -96,13 +78,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setUser(u);
 
           if (u) {
-            // TOKEN_REFRESHED: 토큰만 갱신됐을 뿐 프로필 변경 없음
-            //   → profiles 재조회 스킵 (이걸 하면 optimistic update가 덮어씌워지거나
-            //     DB 응답 지연으로 profileLoaded=false에 오래 갇히는 문제 발생)
+            // TOKEN_REFRESHED: 토큰만 바뀐 것, 프로필 변경 없음 → 재조회 스킵
             if (event === "TOKEN_REFRESHED") {
-              return;
+              return; // finally는 항상 실행됨
             }
-            // 로그인 등 실제 인증 이벤트에서만 profiles 재조회
+            // SIGNED_IN, INITIAL_SESSION 등 실제 인증 이벤트에서만 profiles 조회
             setProfileLoaded(false);
             const p = await fetchProfile(u);
             setProfile(p);

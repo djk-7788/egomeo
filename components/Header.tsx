@@ -1,4 +1,5 @@
 import { Suspense } from "react";
+import Link from "next/link";
 import CategoryNav from "./CategoryNav";
 import HamburgerMenu from "./HamburgerMenu";
 import HeaderAuthStatus from "./HeaderAuthStatus";
@@ -7,9 +8,9 @@ export default function Header() {
   return (
     <header className="w-full border-b border-gray-200 bg-white sticky top-0 z-40">
       <div className="max-w-screen-xl mx-auto px-4 h-14 flex items-center justify-between">
-        <a href="/" className="text-xl font-black tracking-tight text-[#111111]">
+        <Link href="/" className="text-xl font-black tracking-tight text-[#111111]">
           참아야하느니라
-        </a>
+        </Link>
         <div className="flex items-center gap-3">
           <Suspense
             fallback={
