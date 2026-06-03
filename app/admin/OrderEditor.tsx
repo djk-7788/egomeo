@@ -33,87 +33,91 @@ function getPlatformColor(platform: string | null): string {
   return "bg-gray-50 text-gray-400";
 }
 
-// 플랫폼별 버킷 인터리빙 + 영상 후처리 알고리즘
+function shuffleArray<T,>(arr: T[]): T[] {
+  const a = [...arr];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
 function optimizeOrder(items: OrderItem[]): { result: OrderItem[]; warnings: string[] } {
-  const warnSet = new Set<string>();
-  const N = items.length;
-  if (N === 0) return { result: [], warnings: [] };
+  const total = items.length;
+  if (total === 0) return { result: [], warnings: [] };
 
-  const shuffle = <T,>(arr: T[]): void => {
-    for (let i = arr.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [arr[i], arr[j]] = [arr[j], arr[i]];
+  const videoProducts = shuffleArray(
+    items.filter(p => p.video_url || (p.image_urls && p.image_urls.length >= 2))
+  );
+  const staticProducts = items.filter(
+    p => !p.video_url && !(p.image_urls && p.image_urls.length >= 2)
+  );
+
+  const videoSlots = new Set<number>();
+  const videoCount = videoProducts.length;
+  if (videoCount > 0) {
+    const interval = total / videoCount;
+    for (let i = 0; i < videoCount; i++) {
+      let slot = Math.round(i * interval + interval / 2);
+      const jitter = Math.floor(Math.random() * 3) - 1;
+      slot = Math.max(0, Math.min(total - 1, slot + jitter));
+      while (videoSlots.has(slot)) slot = (slot + 1) % total;
+      videoSlots.add(slot);
     }
-  };
-
-  const isRichMedia = (item: OrderItem) =>
-    !!item.video_url || (item.image_urls != null && item.image_urls.length >= 2);
-
-  // Step 1: 플랫폼별 버킷 분리 + 내부 랜덤 셔플
-  const normalizePlatform = (p: string | null): string => {
-    if (p === "aliexpress" || p === "coupang" || p === "amazon_us" || p === "amazon_jp") return p;
-    return "etc";
-  };
-
-  const buckets = new Map<string, OrderItem[]>();
-  const platformKeys: string[] = [];
-  for (const item of items) {
-    const key = normalizePlatform(item.platform);
-    if (!buckets.has(key)) { buckets.set(key, []); platformKeys.push(key); }
-    buckets.get(key)!.push(item);
-  }
-  for (const key of platformKeys) shuffle(buckets.get(key)!);
-
-  // Step 2: 비율 기반 인터리빙 — Deficit 알고리즘 + ±0.3 jitter 노이즈
-  const result: OrderItem[] = [];
-  const deficits = new Map<string, number>();
-  for (const key of platformKeys) deficits.set(key, 0);
-
-  for (let pos = 0; pos < N; pos++) {
-    const available = platformKeys.filter(k => buckets.get(k)!.length > 0);
-    if (available.length === 0) break;
-
-    const totalRemaining = available.reduce((s, k) => s + buckets.get(k)!.length, 0);
-    for (const k of available) {
-      deficits.set(k, deficits.get(k)! + buckets.get(k)!.length / totalRemaining);
-    }
-
-    // 각 버킷에 노이즈 점수 부여 후 최고 점수 버킷 선택
-    const best = available
-      .map(k => ({ k, score: deficits.get(k)! + (Math.random() - 0.5) * 0.6 }))
-      .reduce((a, b) => a.score >= b.score ? a : b).k;
-
-    result.push(buckets.get(best)!.shift()!);
-    deficits.set(best, deficits.get(best)! - 1);
   }
 
-  // Step 3: 영상/슬라이드 후처리 — 연속 시 최소 4칸 간격 보장
-  let swapped = true;
-  let pass = 0;
-  while (swapped && pass < 20) {
-    swapped = false;
-    pass++;
-    let lastRichPos = -999;
-    for (let i = 0; i < result.length; i++) {
-      if (!isRichMedia(result[i])) continue;
-      if (i - lastRichPos >= 4) { lastRichPos = i; continue; }
-      // 너무 가까움 — i 이후 가장 가까운 비영상과 스왑
-      let swapTarget = -1;
-      for (let j = i + 1; j < result.length; j++) {
-        if (!isRichMedia(result[j])) { swapTarget = j; break; }
+  const nonVideoSlots: number[] = [];
+  for (let i = 0; i < total; i++) {
+    if (!videoSlots.has(i)) nonVideoSlots.push(i);
+  }
+
+  const platforms = ['aliexpress', 'coupang', 'amazon_us', 'amazon_jp', 'etc'];
+  const buckets: Record<string, OrderItem[]> = {};
+  platforms.forEach(p => {
+    buckets[p] = shuffleArray(
+      staticProducts.filter(s => (s.platform || 'etc') === p)
+    );
+  });
+  buckets['etc'].push(
+    ...shuffleArray(staticProducts.filter(s => !s.platform || !platforms.includes(s.platform as string)))
+  );
+
+  const staticTotal = nonVideoSlots.length;
+  const totalStatic = staticProducts.length;
+  const orderedStatic: OrderItem[] = [];
+  const counters: Record<string, { count: number; index: number }> = {};
+  platforms.forEach(p => {
+    counters[p] = { count: buckets[p].length, index: 0 };
+  });
+
+  for (let i = 0; i < staticTotal; i++) {
+    let bestPlatform: string | null = null;
+    let bestScore = -Infinity;
+    platforms.forEach(p => {
+      const c = counters[p];
+      if (c.index >= c.count) return;
+      const expected = (i + 1) * (c.count / totalStatic);
+      const score = expected - c.index;
+      if (score > bestScore) {
+        bestScore = score;
+        bestPlatform = p;
       }
-      if (swapTarget !== -1) {
-        [result[i], result[swapTarget]] = [result[swapTarget], result[i]];
-        swapped = true;
-        break;
-      } else {
-        warnSet.add("영상/슬라이드 비율이 너무 높아 4칸 간격을 완전히 보장할 수 없습니다.");
-        lastRichPos = i;
-      }
+    });
+    if (bestPlatform) {
+      orderedStatic.push(buckets[bestPlatform][counters[bestPlatform].index]);
+      counters[bestPlatform].index++;
     }
   }
 
-  return { result, warnings: [...warnSet] };
+  const resultArr: (OrderItem | undefined)[] = new Array(total).fill(undefined);
+  [...videoSlots].sort((a, b) => a - b).forEach((slot, i) => {
+    resultArr[slot] = videoProducts[i];
+  });
+  nonVideoSlots.forEach((slot, i) => {
+    resultArr[slot] = orderedStatic[i];
+  });
+
+  return { result: resultArr.filter((x): x is OrderItem => x !== undefined), warnings: [] };
 }
 
 export default function OrderEditor() {
@@ -269,10 +273,10 @@ export default function OrderEditor() {
           <h3 className="text-sm font-black text-[#111111]">정렬 최적화</h3>
         </div>
         <p className="text-xs text-gray-400 mb-4">
-          플랫폼별 버킷으로 나눠{" "}
-          <span className="font-semibold text-gray-500">비율 인터리빙</span>으로 섞고,
-          영상/슬라이드는{" "}
-          <span className="font-semibold text-gray-500">최소 4칸 간격</span>을 후처리로 보장합니다.
+          영상/슬라이드를{" "}
+          <span className="font-semibold text-gray-500">균등 간격</span>으로 먼저 배치하고,
+          나머지를 플랫폼별{" "}
+          <span className="font-semibold text-gray-500">비율 인터리빙</span>으로 채웁니다.
           범위 밖 상품은 절대 변경되지 않습니다.
         </p>
 
