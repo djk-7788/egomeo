@@ -89,12 +89,22 @@ export default function AdminPanel() {
   async function fetchProducts() {
     setLoading(true);
     setFetchError(null);
+    console.log("[AdminPanel] fetchProducts 시작, Supabase URL:", process.env.NEXT_PUBLIC_SUPABASE_URL?.slice(0, 30) + "...");
+
+    const timeout = new Promise<never>((_, reject) =>
+      setTimeout(() => reject(new Error("요청 시간 초과 (10초) — Supabase에 연결할 수 없습니다. 프로젝트가 일시정지됐거나 네트워크 문제일 수 있습니다.")), 10000)
+    );
+
     try {
-      const { data, error } = await supabase
+      const query = supabase
         .from("products")
         .select("*")
         .order("sort_order", { ascending: true, nullsFirst: false })
         .order("created_at", { ascending: false });
+
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { data, error } = await Promise.race([query, timeout]) as any;
+      console.log("[AdminPanel] fetchProducts 완료, 데이터 수:", data?.length ?? 0, "에러:", error?.message ?? "없음");
       if (error) throw error;
       setProducts(data || []);
     } catch (err) {
