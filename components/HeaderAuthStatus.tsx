@@ -13,7 +13,7 @@ export default function HeaderAuthStatus() {
     return (
       <button
         onClick={() => openLoginModal()}
-        className="text-sm font-medium text-[#555555] hover:text-[#111111] transition-colors"
+        className="text-sm font-medium text-[#555555] hover:text-[#111111] transition-colors whitespace-nowrap shrink-0"
       >
         로그인
       </button>
