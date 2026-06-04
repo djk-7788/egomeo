@@ -1,7 +1,6 @@
 ﻿"use client";
 
 import { useState, useEffect, useRef } from "react";
-import { supabase } from "@/lib/supabase";
 
 type OrderItem = {
   id: string;
@@ -194,34 +193,35 @@ export default function OrderEditor() {
     if (!confirm(`${preview.after.length}개 상품의 순서를 변경합니다. 범위 밖 상품은 영향 없습니다. 계속할까요?`)) return;
     setApplying(true);
     setApplyProgress({ done: 0, total: preview.after.length });
-    const errors: string[] = [];
     const BATCH_SIZE = 50;
     const total = preview.after.length;
 
     for (let i = 0; i < total; i += BATCH_SIZE) {
       const batch = preview.after.slice(i, i + BATCH_SIZE);
-      await Promise.all(
-        batch.map(async (item, j) => {
-          const newOrder = preview.startRank + i + j;
-          const { error } = await supabase
-            .from("products")
-            .update({ sort_order: newOrder })
-            .eq("id", item.id);
-          if (error) errors.push(`[${i + j + 1}번] ${error.message}`);
-        })
-      );
+      const updates = batch.map((item, j) => ({
+        id: item.id,
+        sort_order: preview.startRank + i + j,
+      }));
+      const res = await fetch("/api/admin/products", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ updates }),
+      });
+      if (!res.ok) {
+        const { error } = await res.json().catch(() => ({ error: "서버 오류" }));
+        setApplying(false);
+        setApplyProgress(null);
+        alert(`저장 실패: ${error}`);
+        return;
+      }
       setApplyProgress({ done: Math.min(i + BATCH_SIZE, total), total });
     }
 
     setApplying(false);
     setApplyProgress(null);
-    if (errors.length > 0) {
-      alert(`저장 실패 (${errors.length}건):\n${errors[0]}`);
-    } else {
-      setApplyDone(true);
-      setPreview(null);
-      await fetchItems();
-    }
+    setApplyDone(true);
+    setPreview(null);
+    await fetchItems();
   }
 
   function handleDragStart(index: number) {
@@ -255,23 +255,27 @@ export default function OrderEditor() {
   async function handleSave() {
     setSaving(true);
     setSaved(false);
-    const errors: string[] = [];
-    await Promise.all(
-      items.map(async (item, index) => {
-        const { error } = await supabase
-          .from("products")
-          .update({ sort_order: index + 1 })
-          .eq("id", item.id);
-        if (error) errors.push(error.message);
-      })
-    );
-    setSaving(false);
-    if (errors.length > 0) {
-      alert("저장 실패: " + errors[0]);
-    } else {
-      setSaved(true);
-      setTimeout(() => setSaved(false), 2500);
+    const BATCH_SIZE = 50;
+    const allUpdates = items.map((item, index) => ({ id: item.id, sort_order: index + 1 }));
+
+    for (let i = 0; i < allUpdates.length; i += BATCH_SIZE) {
+      const updates = allUpdates.slice(i, i + BATCH_SIZE);
+      const res = await fetch("/api/admin/products", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ updates }),
+      });
+      if (!res.ok) {
+        const { error } = await res.json().catch(() => ({ error: "서버 오류" }));
+        setSaving(false);
+        alert("저장 실패: " + error);
+        return;
+      }
     }
+
+    setSaving(false);
+    setSaved(true);
+    setTimeout(() => setSaved(false), 2500);
   }
 
   if (loading) {
