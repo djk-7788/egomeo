@@ -42,7 +42,7 @@ export default function Header() {
 
   return (
     <header ref={headerRef} className="w-full border-b border-gray-200 bg-white sticky top-0 z-40">
-      <div className="max-w-screen-xl mx-auto pl-0.5 pr-3 sm:pl-1 sm:pr-4 h-[74px] flex items-center justify-between">
+      <div className="max-w-screen-xl mx-auto pl-0 pr-3 sm:pl-0 sm:pr-4 h-[74px] flex items-center justify-between">
         <Link href="/">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src="/이게_머고.png" alt="이게머고?" style={{ height: "66px", width: "auto" }} />

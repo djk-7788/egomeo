@@ -2,7 +2,8 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
+import { useAuth } from "@/context/AuthContext";
 
 const MENU_ITEMS = [
   { label: "About", href: "/about" },
@@ -13,6 +14,14 @@ const MENU_ITEMS = [
 export default function HamburgerMenu() {
   const [open, setOpen] = useState(false);
   const pathname = usePathname();
+  const router = useRouter();
+  const { user, signOut } = useAuth();
+
+  async function handleSignOut() {
+    setOpen(false);
+    await signOut();
+    router.push("/");
+  }
 
   useEffect(() => {
     setOpen(false);
@@ -70,6 +79,17 @@ export default function HamburgerMenu() {
               {label}
             </Link>
           ))}
+          {user && (
+            <>
+              <div className="mx-5 my-2 border-t border-gray-100" />
+              <button
+                onClick={handleSignOut}
+                className="px-5 py-3 text-sm text-gray-400 hover:text-[#111111] hover:bg-gray-50 transition-colors text-left"
+              >
+                로그아웃
+              </button>
+            </>
+          )}
         </nav>
       </div>
     </>
