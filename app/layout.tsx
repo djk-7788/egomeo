@@ -16,8 +16,8 @@ const geistSans = Geist({
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://www.igemugo.com"),
-  title: "참아야하느니라",
-  description: "참아야하느니라 — 사면 안 되는데 손이 가는 별난 물건들.",
+  title: "이게머고?",
+  description: "이게머고? — 사면 안 되는데 손이 가는 별난 물건들.",
   verification: {
     yandex: "0f0bdf1351e0e1ac",
   },

@@ -26,7 +26,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     .eq("id", id)
     .single();
 
-  if (!product) return { title: "참아야하느니라" };
+  if (!product) return { title: "이게머고?" };
 
   // image_url 없으면 image_urls[0] 폴백
   const ogImageUrl: string | null =
@@ -36,13 +36,13 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       : null);
 
   return {
-    title: `${product.title} | 참아야하느니라`,
+    title: `${product.title} | 이게머고?`,
     description: `이게 대체 머고?`,
     openGraph: {
-      title: `${product.title} | 참아야하느니라`,
+      title: `${product.title} | 이게머고?`,
       description: `이게 대체 머고?`,
       url: `https://www.igemugo.com/product/${id}`,
-      siteName: "참아야하느니라",
+      siteName: "이게머고?",
       images: ogImageUrl
         ? [{ url: ogImageUrl, width: 800, height: 800, alt: product.title }]
         : [],

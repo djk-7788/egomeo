@@ -8,8 +8,9 @@ export default function Header() {
   return (
     <header className="w-full border-b border-gray-200 bg-white sticky top-0 z-40">
       <div className="max-w-screen-xl mx-auto px-4 h-14 flex items-center justify-between">
-        <Link href="/" className="text-xl font-black tracking-tight text-[#111111]">
-          참아야하느니라
+        <Link href="/">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/이게_머고.png" alt="이게머고?" style={{ height: "44px", width: "auto" }} />
         </Link>
         <div className="flex items-center gap-3">
           <Suspense
