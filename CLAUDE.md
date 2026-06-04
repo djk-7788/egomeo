@@ -1,4 +1,4 @@
-# 참아야하느니라 프로젝트 — 작업 인수인계 문서
+# 이게머고? 프로젝트 — 작업 인수인계 문서
 
 새 채팅창에서 처음 보는 사람도 바로 이어서 작업할 수 있도록 작성됨.
 
@@ -6,7 +6,7 @@
 
 ## 프로젝트 개요
 
-- **사이트명**: 참아야하느니라
+- **사이트명**: 이게머고?
 - **성격**: 신기하고 별난 물건 큐레이션 사이트 (thisiswhyimbroke.com 벤치마크)
 - **타겟**: 20~40대, 밈 친화적, 얼리어답터
 - **톤**: 힙하고 위트있는 긱 스페이스, 촌철살인 드립
@@ -132,7 +132,8 @@ updated_at  timestamp with time zone DEFAULT now()
   - 모바일 (< 640px): 1열
   - 태블릿 (640px ~): 2열
   - 데스크톱 (768px ~): 3열
-- **헤더**: sticky, 흰 배경, 하단 border
+- **헤더**: sticky, 흰 배경, 하단 border, 높이 74px
+- **헤더 아이콘/버튼**: `#555555` (돋보기, 로그인, 햄버거 3줄)
 
 ---
 
@@ -206,6 +207,11 @@ egomeo/
 │   │   │       └── route.ts  # 회원 탈퇴 구 경로 (delete-account로 대체됨)
 │   │   ├── migrate-to-r2/
 │   │   │   └── route.ts      # Supabase Storage → R2 일괄 마이그레이션 (maxDuration 300s)
+│   │   ├── admin/
+│   │   │   ├── products/
+│   │   │   │   └── route.ts  # 어드민 상품 서버사이드 fetch (?type=all|queued|active, admin_auth 쿠키 인증)
+│   │   │   └── refresh-ali-images/
+│   │   │       └── route.ts  # 알리 이미지 고화질 일괄 교체 (스트리밍 NDJSON)
 │   │   ├── aliexpress/
 │   │   │   ├── search/
 │   │   │   │   └── route.ts  # 알리 키워드 검색 (MD5 서명, KRW 변환, 최대 50개)
@@ -222,14 +228,14 @@ egomeo/
 │       └── [id]/
 │           └── page.tsx      # 상품 상세 페이지 (공유 링크용, 영상 지원)
 ├── components/
-│   ├── Header.tsx            # 상단 고정 헤더 + 카테고리 네비 (로고 Next.js Link로 소프트 네비게이션)
+│   ├── Header.tsx            # 상단 고정 헤더 (클라이언트 컴포넌트) — 로고(/public/2.png, 66px) + 돋보기(검색팝업) + HeaderAuthStatus + HamburgerMenu
 │   ├── Footer.tsx            # 쿠팡파트너스 고지 문구 + 저작권
-│   ├── HeaderAuthStatus.tsx  # 로그인 시 헤더 우측 아바타 버튼 → /mypage 이동
+│   ├── HeaderAuthStatus.tsx  # 비로그인: "로그인" 버튼 → 로그인 모달 / 로그인: 원형 아바타 → /mypage (이미지 오류 시 이니셜 폴백)
 │   ├── ProductCard.tsx       # 4층 카드 컴포넌트 (제목→이미지→하트+공유→버튼)
 │   ├── CardLikeButton.tsx    # 찜하기 버튼 (로그인 시 토글, 비로그인 시 로그인 모달)
 │   ├── ImageSlider.tsx       # 이미지 슬라이더 (auto: IntersectionObserver 1초 자동, manual: 화살표)
 │   ├── CardShareButton.tsx   # 카드 내 공유 버튼 (클라이언트)
-│   ├── HamburgerMenu.tsx     # 우측 사이드 드로어 (검색, 마이페이지·About·Privacy·Contact 링크)
+│   ├── HamburgerMenu.tsx     # 우측 사이드 드로어 — About/Privacy/Contact 링크 + 로그인 시 마이페이지 + 로그아웃(드로어 맨 하단 고정)
 │   └── ShareButton.tsx       # 상세 페이지 공유 버튼 (클라이언트)
 ├── context/
 │   ├── AuthContext.tsx       # 인증 상태 전역 관리 (user, profile, profileLoaded, signOut, updateProfile)
@@ -326,40 +332,32 @@ egomeo/
 
 ---
 
-## 최근 완료 작업 (2026-06-03 기준)
+## 최근 완료 작업 (2026-06-04 기준)
 
-- 카카오 로그인 scope에서 `account_email` 제거 — `profile_nickname profile_image`만 요청, `queryParams.scope`도 명시적으로 설정 (`LoginModal.tsx`)
-- 찜하기 기능 구현 — `likes` 테이블(RLS 활성화), `LikesContext`(전역 관리+낙관적 업데이트), `CardLikeButton` 연결 (로그인 시 토글, 비로그인 시 로그인 모달)
+- 사이트명 전체 변경 — "참아야하느니라" → "이게머고?" (헤더/푸터/타이틀/메타/About/Privacy/Search/Admin 전체 적용)
+- 헤더 로고 이미지 교체 — `/public/2.png` (66px 높이, 뷰포트 왼쪽 끝 배치)
+- **헤더 전면 개편** (`Header.tsx` 클라이언트 컴포넌트 전환):
+  - 카테고리 필터(전체/순한맛/보통맛/매운맛) 완전 제거 (`CategoryNav` 삭제)
+  - 돋보기 아이콘 → 클릭 시 헤더 하단 검색 드롭다운 팝업 (바깥 클릭 닫힘, 엔터→/search?q=)
+  - 비로그인: "로그인" 텍스트 버튼 / 로그인: 원형 아바타 버튼 (클릭→/mypage)
+  - 햄버거 메뉴 단순화: About/Privacy/Contact + 로그인 시 마이페이지 + 로그아웃(드로어 절대 하단 고정)
+  - 아이콘/버튼 색상 `#555555` 통일
+- `HeaderAuthStatus` — 아바타 이미지 로드 실패 시 이니셜 폴백 (`imgError` state)
+- **어드민 데이터 fetch 서버사이드 전환** — 브라우저→Supabase 직접 연결 타임아웃 문제 해결:
+  - `/api/admin/products` API 라우트 신규 생성 (`?type=all|queued|active`, admin_auth 쿠키 인증)
+  - `AdminPanel`, `QueueManager`, `OrderEditor` 세 컴포넌트 모두 API 라우트 경유로 변경
+- 카카오 로그인 scope에서 `account_email` 제거 — `profile_nickname profile_image`만 요청
+- 찜하기 기능 구현 — `likes` 테이블(RLS 활성화), `LikesContext`(전역 관리+낙관적 업데이트), `CardLikeButton` 연결
 - 마이페이지 구현 (`/mypage`) — 프로필 사진/닉네임 편집, 찜 목록 그리드, 로그아웃, 회원 탈퇴
-- 헤더 `HeaderAuthStatus` 컴포넌트 — 로그인 시 아바타 버튼 표시, 클릭 시 `/mypage` 이동
-- 햄버거 메뉴에 "마이페이지" 링크 추가 (로그인 시만 표시)
-- 서버사이드 JWT 검증을 브라우저 클라이언트 대신 서비스 롤 클라이언트로 교체 (`/api/user/upload-avatar`, `/api/user/delete`, `/api/delete-account`)
+- 서버사이드 JWT 검증을 서비스 롤 클라이언트로 교체 (`/api/user/upload-avatar`, `/api/user/delete`, `/api/delete-account`)
 - `profiles` 테이블 도입 — 닉네임/아바타를 OAuth 메타데이터와 분리 저장, 재로그인 시 덮어쓰기 방지
-- `AuthContext` 전면 개편:
-  - `profile` 상태 + `updateProfile()` 함수 추가 (낙관적 업데이트, profiles 테이블 upsert)
-  - `fetchProfile()` try-catch 추가 — 실패 시 OAuth 폴백, 절대 throw하지 않음
-  - `onAuthStateChange`에서 `TOKEN_REFRESHED` 이벤트 시 profiles 재조회 스킵 (optimistic update 보호)
-  - `getSession()` 제거 → `onAuthStateChange(INITIAL_SESSION)` 단일 경로로 통일 (경쟁 조건 제거)
-  - `signOut()` 즉시 로컬 상태 초기화 (로그아웃 반응 즉시, profileLoaded 갇힘 방지)
-- 헤더 로고 `<a href="/">` → `<Link href="/">` 변경 — 소프트 네비게이션으로 AuthProvider 리마운트 방지
-- 어드민 쿠키 만료 시 401 처리 추가 + 유효기간 30일로 연장 (`app/admin/actions.ts`, `AdminPanel.tsx`)
-- 미디어툴 포맷 변환 탭 추가 — GIF/Animated WebP → MP4 변환 (GIF는 ffmpeg 방식, WebP는 Canvas+MediaRecorder 방식), 드래그 앤 드롭 지원
-- 미디어툴 슬라이드쇼 탭에 이미지 파일 직접 업로드 기능 추가 — 로컬 파일 선택·드래그 앤 드롭, 알리 URL 입력과 혼용 가능
-- 미디어툴 슬라이드쇼 마지막 프레임 captureStream 처리 대기 추가 — 마지막 이미지 버그 수정
-- 메인 피드 카드 이미지·영상 `object-fit: contain` + 흰색 배경으로 변경 (이전: cover)
-- 어드민 모달 추가 이미지(image_urls) 파일 직접 업로드 지원 — R2 저장, URL 입력과 혼용 가능
-- 알리 URL 파싱 시 상품 정보 없을 때 빈 화면 대신 에러 메시지 반환 (`/api/aliexpress/parse`)
-- 미디어툴 슬라이드쇼 이미지 지속 시간 오차 버그 수정 — 녹화 전 전체 이미지 병렬 프리로드, renderFrame을 동기 draw 함수로 분리, 루프에서 순수 setTimeout만 사용
-- 미디어툴 슬라이드쇼 드래그 앤 드롭 버그 수정 — `sortableImages` 초기화를 renderSortableList에서 toStep3 클릭으로 이동, img에 `draggable="false"` 추가
-- 미디어툴 1:1 크롭 오버레이 추가 — 영상 위 드래그 이동·SE핸들 리사이즈, 기본값 중앙 최대 정사각형, ffmpeg `crop=W:W:X:Y,scale` 필터 적용
-- 미디어툴 영상 자르기 오디오 트랙 제거 — `-an` 옵션 (사이트 muted 재생 환경)
-- 미디어툴 압축 설정 튜닝 — 품질별 CRF·해상도 차등: 고품질(CRF 26·1080p) / 중간(CRF 30·720p) / 저용량(CRF 34·480p)
-- 미디어툴 ffmpeg Worker CSP 오류 수정 — `toBlobURL` 제거, `chrome.runtime.getURL` 직접 전달로 `'self'` 정책 통과
-- 미디어툴 ffmpeg-core 로컬 번들 전환 — CDN 로드 대신 ffmpeg-core.js(112KB)+wasm(31MB) 확장 폴더에 포함, 오프라인 동작
-- 미디어툴 영상 자르기 ffmpeg.wasm 개선 — Canvas+MediaRecorder → libx264 CRF 압축으로 교체, 로그 기반 진행률 표시
-- 어드민 통계 탭 추가 (`StatsPanel.tsx`) — 공개/큐/숨김 현황, 플랫폼별 분포(공개+큐 기준), 영상·슬라이드 수, GA 대시보드 바로가기
-- Google Analytics 연동 — 측정 ID `G-6P979RX187`, `NEXT_PUBLIC_GA_ID` 환경변수, `app/layout.tsx`에 `next/script afterInteractive`로 삽입
-- 사이트명 전체 변경 — "이게머고?" → "참아야하느니라" (헤더/푸터/타이틀/메타/About/Privacy/Search/Admin/확장 프로그램 전체 적용)
+- `AuthContext` 전면 개편 — profile 상태, updateProfile, fetchProfile 방어 처리, TOKEN_REFRESHED 스킵, getSession 제거, signOut 즉시 초기화
+- 어드민 쿠키 만료 시 401 처리 추가 + 유효기간 30일로 연장
+- 미디어툴 포맷 변환 탭 추가 — GIF/Animated WebP → MP4 변환, 드래그 앤 드롭 지원
+- 미디어툴 슬라이드쇼 로컬 파일 업로드, 마지막 프레임 버그 수정, 드래그 앤 드롭 버그 수정
+- 미디어툴 1:1 크롭 오버레이, ffmpeg.wasm 전환, 로컬 번들, 압축 튜닝
+- 어드민 통계 탭 추가 (`StatsPanel.tsx`)
+- Google Analytics 연동 (`G-6P979RX187`)
 
 ---
 
@@ -495,30 +493,24 @@ egomeo/
 - [완료] 메인 카드 구조 변경 — 카테고리 뱃지 제거, 5층 → 4층 (제목→이미지→하트+공유→버튼 순)
 - [완료] 카드 제목 스타일 개선 — 가운데 정렬, 최대 2줄 말줄임, 고정 높이(`h-[3.5rem]`)로 카드 균일화
 - [완료] 카드 하트 아이콘(♡) 추가 → 찜하기 기능 완전 연결 (로그인 토글, 비로그인 시 로그인 모달)
-- [완료] 사이트명 전체 변경 — "이게머고?" → "참아야하느니라" (헤더/푸터/메타/어드민/확장 전체)
+- [완료] 사이트명 전체 변경 — "참아야하느니라" → "이게머고?" (헤더/푸터/메타/어드민 전체)
+- [완료] 헤더 로고 이미지 교체 — `/public/2.png` (66px, 뷰포트 왼쪽 끝)
+- [완료] 헤더 전면 개편 — 카테고리 제거, 돋보기 검색팝업, 로그인버튼/아바타, 햄버거 단순화 (`Header.tsx` 클라이언트 컴포넌트 전환)
+- [완료] `HeaderAuthStatus` — 비로그인 "로그인" 버튼, 로그인 아바타, 이미지 오류 이니셜 폴백
+- [완료] `HamburgerMenu` — 검색창 제거, About/Privacy/Contact + 마이페이지 + 로그아웃(절대 하단) 구조
+- [완료] `/api/admin/products` 신규 생성 — 어드민 데이터 fetch 서버사이드 전환 (`?type=all|queued|active`)
+- [완료] `AdminPanel`, `QueueManager`, `OrderEditor` fetch → API 라우트 경유 (브라우저→Supabase 직접 연결 타임아웃 문제 해결)
 - [완료] Google Analytics 연동 (`G-6P979RX187`, `NEXT_PUBLIC_GA_ID`, `next/script afterInteractive`)
 - [완료] 어드민 통계 탭 (`StatsPanel.tsx`) — 공개/큐/숨김, 플랫폼 분포, 미디어 타입, GA 바로가기
-- [완료] 미디어툴 영상 자르기 ffmpeg.wasm 전환 — Canvas+MediaRecorder 제거, libx264 CRF 압축
-- [완료] 미디어툴 ffmpeg-core 로컬 번들 — ffmpeg-core.js(112KB)+wasm(31MB), CDN 불필요
-- [완료] 미디어툴 압축 설정 튜닝 — CRF 26/30/34 + 1080p/720p/480p 해상도 차등, 오디오 제거(-an)
-- [완료] 미디어툴 1:1 크롭 오버레이 — 드래그 이동+SE핸들 리사이즈, ffmpeg crop+scale 필터 연계
-- [완료] 미디어툴 슬라이드쇼 마지막 프레임 captureStream 처리 대기 추가 (마지막 이미지 잘리는 버그 수정)
+- [완료] 미디어툴 영상 자르기 ffmpeg.wasm 전환, 1:1 크롭 오버레이, 로컬 번들, 압축 튜닝, 포맷 변환 탭
 - [완료] 어드민 쿠키 만료 시 401 처리 + 유효기간 30일로 연장
-- [완료] 미디어툴 포맷 변환 탭 추가 — GIF / Animated WebP → MP4 (GIF: ffmpeg 방식, WebP: Canvas+MediaRecorder 방식, 드래그 앤 드롭 지원)
-- [완료] 미디어툴 슬라이드쇼 로컬 파일 업로드 기능 추가 — 파일 선택·드래그 앤 드롭, 알리 URL 입력과 혼용 가능
 - [완료] 메인 피드 카드 이미지·영상 `object-fit: contain` + 흰색 배경으로 변경
-- [완료] 알리 URL 파싱 상품 정보 없을 때 에러 반환 (`/api/aliexpress/parse` — 빈 화면 대신 에러 메시지)
-- [완료] 어드민 모달 추가 이미지(image_urls) 파일 직접 업로드 지원 (R2 저장, URL 입력과 혼용 가능)
 - [완료] 소셜 로그인 구현 — 구글/카카오 (Supabase Auth OAuth, `/auth/callback` PKCE 처리)
-- [완료] 카카오 로그인 scope 수정 — `account_email` 제거, `profile_nickname profile_image`만 요청 (비즈앱 아님)
 - [완료] 찜하기 기능 구현 — `likes` 테이블(RLS), `LikesContext`(전역+낙관적 업데이트), `CardLikeButton` DB 연결
 - [완료] 마이페이지 구현 (`/mypage`) — 프로필 사진/닉네임 편집, 찜 목록, 로그아웃, 회원 탈퇴
 - [완료] `profiles` 테이블 도입 — 닉네임/아바타 분리 저장, OAuth 재로그인 덮어쓰기 방지
 - [완료] `lib/supabase-admin.ts` 생성 — 서비스 롤 클라이언트 (`getSupabaseAdmin()`)
-- [완료] `/api/delete-account` 생성 — 서비스 롤 클라이언트로 JWT 검증 + 계정 삭제
-- [완료] `/api/user/upload-avatar` 생성 — Bearer 토큰 인증, R2 업로드 (`profiles/{user_id}.ext`)
 - [완료] `AuthContext` 전면 개편 — profile 상태, updateProfile, fetchProfile 방어 처리, TOKEN_REFRESHED 스킵, getSession 제거, signOut 즉시 초기화
-- [완료] 헤더 로고 `<a>` → `<Link>` 변경 (소프트 네비게이션, AuthProvider 리마운트 방지)
 - [완료] `HeaderAuthStatus` 컴포넌트 추가 — 로그인 시 아바타 버튼, profiles 테이블 기반 아바타/이니셜
 
 ---
@@ -557,6 +549,7 @@ egomeo/
 | `onAuthStateChange`만 사용, `getSession()` 제거 | 둘 다 쓰면 INITIAL_SESSION 이벤트와 getSession()이 fetchProfile을 동시 호출해 경쟁 조건 발생. onAuthStateChange의 INITIAL_SESSION 하나로 통일 |
 | TOKEN_REFRESHED 이벤트 시 profiles 재조회 스킵 | 토큰 갱신은 프로필 변경과 무관. 재조회하면 DB 지연 시 profileLoaded=false에 오래 갇히고 optimistic update가 덮어씌워짐 |
 | signOut() 즉시 로컬 상태 초기화 | `supabase.auth.signOut()` 완료를 기다리면 반응이 느리거나 onAuthStateChange 타이밍에 따라 profileLoaded가 false에 갇힐 수 있음. 상태 초기화는 동기적으로, 서버 세션 취소는 백그라운드 |
+| 어드민 데이터 fetch를 API 라우트 경유 | 브라우저→Supabase 직접 연결이 특정 네트워크 환경에서 타임아웃 발생. 메인 페이지처럼 Vercel 서버→Supabase 경로를 타도록 `/api/admin/products`로 중계 |
 
 ---
 
