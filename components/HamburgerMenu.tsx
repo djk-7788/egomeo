@@ -70,6 +70,14 @@ export default function HamburgerMenu() {
         </div>
 
         <nav className="flex flex-col py-3">
+          {user && (
+            <Link
+              href="/mypage"
+              className="px-5 py-3 text-sm font-medium text-[#111111] hover:text-[#F5A623] hover:bg-gray-50 transition-colors"
+            >
+              마이페이지
+            </Link>
+          )}
           {MENU_ITEMS.map(({ label, href }) => (
             <Link
               key={href}
@@ -79,18 +87,18 @@ export default function HamburgerMenu() {
               {label}
             </Link>
           ))}
-          {user && (
-            <>
-              <div className="mx-5 my-2 border-t border-gray-100" />
-              <button
-                onClick={handleSignOut}
-                className="px-5 py-3 text-sm text-gray-400 hover:text-[#111111] hover:bg-gray-50 transition-colors text-left"
-              >
-                로그아웃
-              </button>
-            </>
-          )}
         </nav>
+
+        {user && (
+          <div className="absolute bottom-0 left-0 right-0 px-5 py-4 border-t border-gray-100">
+            <button
+              onClick={handleSignOut}
+              className="w-full text-sm text-gray-400 hover:text-[#111111] transition-colors text-left"
+            >
+              로그아웃
+            </button>
+          </div>
+        )}
       </div>
     </>
   );

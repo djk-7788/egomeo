@@ -1,11 +1,13 @@
 "use client";
 
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 
 export default function HeaderAuthStatus() {
   const { user, loading, profile, openLoginModal } = useAuth();
   const router = useRouter();
+  const [imgError, setImgError] = useState(false);
 
   if (loading) return null;
 
@@ -35,8 +37,13 @@ export default function HeaderAuthStatus() {
       title="마이페이지"
       className="w-7 h-7 rounded-full overflow-hidden bg-[#555555] flex items-center justify-center text-white text-xs font-bold select-none shrink-0 hover:opacity-80 transition-opacity"
     >
-      {avatarUrl ? (
-        <img src={avatarUrl} alt="프로필" className="w-full h-full object-cover" />
+      {avatarUrl && !imgError ? (
+        <img
+          src={avatarUrl}
+          alt="프로필"
+          className="w-full h-full object-cover"
+          onError={() => setImgError(true)}
+        />
       ) : (
         initial
       )}
