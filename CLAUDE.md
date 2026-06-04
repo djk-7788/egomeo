@@ -332,32 +332,17 @@ egomeo/
 
 ---
 
-## 최근 완료 작업 (2026-06-04 기준)
+## 최근 완료 작업 (2026-06-05 기준)
 
-- 사이트명 전체 변경 — "참아야하느니라" → "이게머고?" (헤더/푸터/타이틀/메타/About/Privacy/Search/Admin 전체 적용)
-- 헤더 로고 이미지 교체 — `/public/2.png` (66px 높이, 뷰포트 왼쪽 끝 배치)
-- **헤더 전면 개편** (`Header.tsx` 클라이언트 컴포넌트 전환):
-  - 카테고리 필터(전체/순한맛/보통맛/매운맛) 완전 제거 (`CategoryNav` 삭제)
-  - 돋보기 아이콘 → 클릭 시 헤더 하단 검색 드롭다운 팝업 (바깥 클릭 닫힘, 엔터→/search?q=)
-  - 비로그인: "로그인" 텍스트 버튼 / 로그인: 원형 아바타 버튼 (클릭→/mypage)
-  - 햄버거 메뉴 단순화: About/Privacy/Contact + 로그인 시 마이페이지 + 로그아웃(드로어 절대 하단 고정)
-  - 아이콘/버튼 색상 `#555555` 통일
-- `HeaderAuthStatus` — 아바타 이미지 로드 실패 시 이니셜 폴백 (`imgError` state)
-- **어드민 데이터 fetch 서버사이드 전환** — 브라우저→Supabase 직접 연결 타임아웃 문제 해결:
-  - `/api/admin/products` API 라우트 신규 생성 (`?type=all|queued|active`, admin_auth 쿠키 인증)
-  - `AdminPanel`, `QueueManager`, `OrderEditor` 세 컴포넌트 모두 API 라우트 경유로 변경
-- 카카오 로그인 scope에서 `account_email` 제거 — `profile_nickname profile_image`만 요청
-- 찜하기 기능 구현 — `likes` 테이블(RLS 활성화), `LikesContext`(전역 관리+낙관적 업데이트), `CardLikeButton` 연결
-- 마이페이지 구현 (`/mypage`) — 프로필 사진/닉네임 편집, 찜 목록 그리드, 로그아웃, 회원 탈퇴
-- 서버사이드 JWT 검증을 서비스 롤 클라이언트로 교체 (`/api/user/upload-avatar`, `/api/user/delete`, `/api/delete-account`)
-- `profiles` 테이블 도입 — 닉네임/아바타를 OAuth 메타데이터와 분리 저장, 재로그인 시 덮어쓰기 방지
-- `AuthContext` 전면 개편 — profile 상태, updateProfile, fetchProfile 방어 처리, TOKEN_REFRESHED 스킵, getSession 제거, signOut 즉시 초기화
-- 어드민 쿠키 만료 시 401 처리 추가 + 유효기간 30일로 연장
-- 미디어툴 포맷 변환 탭 추가 — GIF/Animated WebP → MP4 변환, 드래그 앤 드롭 지원
-- 미디어툴 슬라이드쇼 로컬 파일 업로드, 마지막 프레임 버그 수정, 드래그 앤 드롭 버그 수정
-- 미디어툴 1:1 크롭 오버레이, ffmpeg.wasm 전환, 로컬 번들, 압축 튜닝
-- 어드민 통계 탭 추가 (`StatsPanel.tsx`)
-- Google Analytics 연동 (`G-6P979RX187`)
+- **어드민 전체 DB 쓰기 작업을 API 라우트 경유로 전환** — 브라우저→Supabase 직접 연결 타임아웃 문제 전면 해결:
+  - `GET /api/admin/products` — `supabase`(브라우저 클라이언트) → `getSupabaseAdmin()`(서버 클라이언트)로 교체
+  - `PATCH /api/admin/products` — 순서 저장/정렬 최적화 적용용 배치 업데이트 핸들러 추가
+  - `POST /api/admin/products` — 상품 신규 등록 핸들러 추가
+  - `PUT /api/admin/products` — 상품 수정·노출 토글 핸들러 추가
+  - `DELETE /api/admin/products?id=` — 상품 삭제 핸들러 추가
+  - `AdminPanel` — `handleSubmit`(등록/수정), `handleToggleActive`, `handleDelete` 모두 API 라우트 경유로 전환, `import { supabase }` 완전 제거
+  - `OrderEditor` — `handleSave`(순서 저장), `handleApply`(정렬 최적화 적용) 모두 API 라우트 경유로 전환, `import { supabase }` 완전 제거
+- **정렬 최적화 적용 진행률 표시** — 50개씩 배치로 나눠 순차 처리, 버튼에 `적용 중... 50/500` 형태로 실시간 표시
 
 ---
 
@@ -500,6 +485,8 @@ egomeo/
 - [완료] `HamburgerMenu` — 검색창 제거, About/Privacy/Contact + 마이페이지 + 로그아웃(절대 하단) 구조
 - [완료] `/api/admin/products` 신규 생성 — 어드민 데이터 fetch 서버사이드 전환 (`?type=all|queued|active`)
 - [완료] `AdminPanel`, `QueueManager`, `OrderEditor` fetch → API 라우트 경유 (브라우저→Supabase 직접 연결 타임아웃 문제 해결)
+- [완료] 어드민 전체 DB 쓰기 작업 API 라우트 전환 — `PATCH`(배치 순서 업데이트) / `POST`(등록) / `PUT`(수정·토글) / `DELETE`(삭제) 핸들러 추가, `AdminPanel`·`OrderEditor`에서 `supabase` 브라우저 클라이언트 직접 호출 완전 제거
+- [완료] 정렬 최적화 적용 배치 처리 + 진행률 표시 — 50개씩 순차 처리, `적용 중... N/전체` 실시간 표시
 - [완료] Google Analytics 연동 (`G-6P979RX187`, `NEXT_PUBLIC_GA_ID`, `next/script afterInteractive`)
 - [완료] 어드민 통계 탭 (`StatsPanel.tsx`) — 공개/큐/숨김, 플랫폼 분포, 미디어 타입, GA 바로가기
 - [완료] 미디어툴 영상 자르기 ffmpeg.wasm 전환, 1:1 크롭 오버레이, 로컬 번들, 압축 튜닝, 포맷 변환 탭
@@ -549,7 +536,7 @@ egomeo/
 | `onAuthStateChange`만 사용, `getSession()` 제거 | 둘 다 쓰면 INITIAL_SESSION 이벤트와 getSession()이 fetchProfile을 동시 호출해 경쟁 조건 발생. onAuthStateChange의 INITIAL_SESSION 하나로 통일 |
 | TOKEN_REFRESHED 이벤트 시 profiles 재조회 스킵 | 토큰 갱신은 프로필 변경과 무관. 재조회하면 DB 지연 시 profileLoaded=false에 오래 갇히고 optimistic update가 덮어씌워짐 |
 | signOut() 즉시 로컬 상태 초기화 | `supabase.auth.signOut()` 완료를 기다리면 반응이 느리거나 onAuthStateChange 타이밍에 따라 profileLoaded가 false에 갇힐 수 있음. 상태 초기화는 동기적으로, 서버 세션 취소는 백그라운드 |
-| 어드민 데이터 fetch를 API 라우트 경유 | 브라우저→Supabase 직접 연결이 특정 네트워크 환경에서 타임아웃 발생. 메인 페이지처럼 Vercel 서버→Supabase 경로를 타도록 `/api/admin/products`로 중계 |
+| 어드민 모든 DB 작업을 API 라우트 경유 | 브라우저→Supabase 직접 연결이 특정 네트워크 환경에서 타임아웃 발생. 읽기(GET)뿐 아니라 쓰기(POST/PUT/PATCH/DELETE)도 모두 `/api/admin/products`로 중계. `AdminPanel`·`OrderEditor`에서 `supabase` 브라우저 클라이언트 import 완전 제거 |
 
 ---
 
