@@ -139,6 +139,7 @@ export default function OrderEditor() {
     warnings: string[];
   } | null>(null);
   const [applying, setApplying] = useState(false);
+  const [applyProgress, setApplyProgress] = useState<{ done: number; total: number } | null>(null);
   const [applyDone, setApplyDone] = useState(false);
 
   useEffect(() => {
@@ -192,19 +193,28 @@ export default function OrderEditor() {
     if (!preview) return;
     if (!confirm(`${preview.after.length}개 상품의 순서를 변경합니다. 범위 밖 상품은 영향 없습니다. 계속할까요?`)) return;
     setApplying(true);
+    setApplyProgress({ done: 0, total: preview.after.length });
     const errors: string[] = [];
-    // 순위 기반 연속 정수 할당 (startRank, startRank+1, ...)
-    // Promise.all 대신 순차 업데이트 — 충돌 없이 확실하게 반영
-    for (let i = 0; i < preview.after.length; i++) {
-      const item = preview.after[i];
-      const newOrder = preview.startRank + i;
-      const { error } = await supabase
-        .from("products")
-        .update({ sort_order: newOrder })
-        .eq("id", item.id);
-      if (error) errors.push(`[${i + 1}번] ${error.message}`);
+    const BATCH_SIZE = 50;
+    const total = preview.after.length;
+
+    for (let i = 0; i < total; i += BATCH_SIZE) {
+      const batch = preview.after.slice(i, i + BATCH_SIZE);
+      await Promise.all(
+        batch.map(async (item, j) => {
+          const newOrder = preview.startRank + i + j;
+          const { error } = await supabase
+            .from("products")
+            .update({ sort_order: newOrder })
+            .eq("id", item.id);
+          if (error) errors.push(`[${i + j + 1}번] ${error.message}`);
+        })
+      );
+      setApplyProgress({ done: Math.min(i + BATCH_SIZE, total), total });
     }
+
     setApplying(false);
+    setApplyProgress(null);
     if (errors.length > 0) {
       alert(`저장 실패 (${errors.length}건):\n${errors[0]}`);
     } else {
@@ -420,7 +430,11 @@ export default function OrderEditor() {
                 disabled={applying}
                 className="text-sm font-bold px-5 py-2 bg-[#F5A623] text-white rounded-lg hover:bg-[#d8921f] transition-colors disabled:opacity-50"
               >
-                {applying ? "적용 중..." : "적용"}
+                {applying
+                  ? applyProgress
+                    ? `적용 중... ${applyProgress.done}/${applyProgress.total}`
+                    : "적용 중..."
+                  : "적용"}
               </button>
               <button
                 onClick={() => setPreview(null)}
