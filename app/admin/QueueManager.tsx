@@ -52,24 +52,14 @@ export default function QueueManager({ onPublished }: { onPublished?: () => void
   async function fetchItems() {
     setLoading(true);
     setFetchError(null);
-    console.log("[QueueManager] fetchItems 시작");
-
-    const timeout = new Promise<never>((_, reject) =>
-      setTimeout(() => reject(new Error("요청 시간 초과 (10초) — Supabase에 연결할 수 없습니다.")), 10000)
-    );
-
     try {
-      const query = supabase
-        .from("products")
-        .select("id, title, image_url, image_urls, video_url, sort_order, created_at, platform")
-        .eq("is_queued", true)
-        .order("sort_order", { ascending: true, nullsFirst: false })
-        .order("created_at", { ascending: false });
-
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { data, error } = await Promise.race([query, timeout]) as any;
-      console.log("[QueueManager] fetchItems 완료, 데이터 수:", data?.length ?? 0, "에러:", error?.message ?? "없음");
-      if (error) throw error;
+      const res = await fetch("/api/admin/products?type=queued");
+      if (res.status === 401) throw new Error("인증이 만료됐습니다. 다시 로그인해주세요.");
+      if (!res.ok) {
+        const { error } = await res.json();
+        throw new Error(error || "서버 오류");
+      }
+      const { data } = await res.json();
       setItems(data || []);
       setSelectedIds(new Set());
     } catch (err) {
