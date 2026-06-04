@@ -45,7 +45,7 @@ export default function Header() {
       <div className="w-full pl-0 pr-3 sm:pr-4 h-[74px] flex items-center justify-between">
         <Link href="/">
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/2.png" alt="이게머고?" style={{ height: "66px", width: "auto", marginLeft: "-36px" }} />
+          <img src="/2.png" alt="이게머고?" style={{ height: "66px", width: "auto" }} />
         </Link>
         <div className="flex items-center gap-4 sm:gap-5">
           <button
