@@ -4,12 +4,22 @@ import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 
 export default function HeaderAuthStatus() {
-  const { user, loading, profile } = useAuth();
+  const { user, loading, profile, openLoginModal } = useAuth();
   const router = useRouter();
 
-  if (loading || !user) return null;
+  if (loading) return null;
 
-  // profiles 테이블 값 우선, 없으면 OAuth 메타데이터 폴백
+  if (!user) {
+    return (
+      <button
+        onClick={() => openLoginModal()}
+        className="text-sm font-medium text-[#555555] hover:text-[#111111] transition-colors"
+      >
+        로그인
+      </button>
+    );
+  }
+
   const avatarUrl = profile?.avatar_url ?? null;
   const initial = (
     profile?.nickname ||
@@ -23,7 +33,7 @@ export default function HeaderAuthStatus() {
     <button
       onClick={() => router.push("/mypage")}
       title="마이페이지"
-      className="w-7 h-7 rounded-full overflow-hidden bg-[#F5A623] flex items-center justify-center text-white text-xs font-bold select-none shrink-0 hover:opacity-80 transition-opacity"
+      className="w-7 h-7 rounded-full overflow-hidden bg-[#555555] flex items-center justify-center text-white text-xs font-bold select-none shrink-0 hover:opacity-80 transition-opacity"
     >
       {avatarUrl ? (
         <img src={avatarUrl} alt="프로필" className="w-full h-full object-cover" />

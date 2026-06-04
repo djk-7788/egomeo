@@ -52,9 +52,9 @@ export default function HamburgerMenu() {
         aria-label="메뉴 열기"
         className="flex flex-col justify-center gap-[5px] w-8 h-8 items-center"
       >
-        <span className="block w-5 h-[2px] bg-[#111111]" />
-        <span className="block w-5 h-[2px] bg-[#111111]" />
-        <span className="block w-5 h-[2px] bg-[#111111]" />
+        <span className="block w-5 h-[2px] bg-[#555555]" />
+        <span className="block w-5 h-[2px] bg-[#555555]" />
+        <span className="block w-5 h-[2px] bg-[#555555]" />
       </button>
 
       {/* 오버레이 */}
