@@ -1,7 +1,6 @@
 ﻿"use client";
 
 import { useState, useEffect } from "react";
-import { supabase } from "@/lib/supabase";
 import { logout } from "./actions";
 import AliexpressSearch, { AliProduct } from "./AliexpressSearch";
 import UrlParser, { ParsedProduct } from "./UrlParser";
@@ -193,14 +192,23 @@ export default function AdminPanel() {
       button_text: form.button_text.trim() || null,
     };
 
-    const { error } = editing
-      ? await supabase.from("products").update(payload).eq("id", editing.id)
-      : await supabase.from("products").insert(payload);
+    const res = editing
+      ? await fetch("/api/admin/products", {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ id: editing.id, ...payload }),
+        })
+      : await fetch("/api/admin/products", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
 
     setSaving(false);
 
-    if (error) {
-      alert("저장 실패: " + error.message);
+    if (!res.ok) {
+      const { error } = await res.json().catch(() => ({ error: "서버 오류" }));
+      alert("저장 실패: " + error);
       return;
     }
 
@@ -381,13 +389,17 @@ export default function AdminPanel() {
   async function handleToggleActive(id: string, current: boolean, isQueued: boolean) {
     const updates: { is_active: boolean; is_queued?: boolean } = { is_active: !current };
     if (!current && isQueued) updates.is_queued = false;
-    await supabase.from("products").update(updates).eq("id", id);
+    await fetch("/api/admin/products", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id, ...updates }),
+    });
     fetchProducts();
   }
 
   async function handleDelete(id: string) {
     if (!confirm("정말 삭제할까요?")) return;
-    await supabase.from("products").delete().eq("id", id);
+    await fetch(`/api/admin/products?id=${encodeURIComponent(id)}`, { method: "DELETE" });
     fetchProducts();
   }
 

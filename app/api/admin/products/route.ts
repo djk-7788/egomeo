@@ -86,3 +86,56 @@ export async function PATCH(req: NextRequest) {
     return NextResponse.json({ error: msg }, { status: 500 });
   }
 }
+
+export async function POST(req: NextRequest) {
+  if (!(await isAuthorized())) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+  try {
+    const payload = await req.json();
+    const admin = getSupabaseAdmin();
+    const { error } = await admin.from("products").insert(payload);
+    if (error) throw error;
+    return NextResponse.json({ ok: true });
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : "알 수 없는 오류";
+    console.error("[/api/admin/products POST]", err);
+    return NextResponse.json({ error: msg }, { status: 500 });
+  }
+}
+
+export async function PUT(req: NextRequest) {
+  if (!(await isAuthorized())) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+  try {
+    const { id, ...payload } = await req.json();
+    if (!id) return NextResponse.json({ error: "id가 필요합니다" }, { status: 400 });
+    const admin = getSupabaseAdmin();
+    const { error } = await admin.from("products").update(payload).eq("id", id);
+    if (error) throw error;
+    return NextResponse.json({ ok: true });
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : "알 수 없는 오류";
+    console.error("[/api/admin/products PUT]", err);
+    return NextResponse.json({ error: msg }, { status: 500 });
+  }
+}
+
+export async function DELETE(req: NextRequest) {
+  if (!(await isAuthorized())) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+  try {
+    const id = req.nextUrl.searchParams.get("id");
+    if (!id) return NextResponse.json({ error: "id가 필요합니다" }, { status: 400 });
+    const admin = getSupabaseAdmin();
+    const { error } = await admin.from("products").delete().eq("id", id);
+    if (error) throw error;
+    return NextResponse.json({ ok: true });
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : "알 수 없는 오류";
+    console.error("[/api/admin/products DELETE]", err);
+    return NextResponse.json({ error: msg }, { status: 500 });
+  }
+}
