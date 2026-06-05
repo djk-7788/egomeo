@@ -23,6 +23,7 @@ export const metadata: Metadata = {
   },
   other: {
     "naver-site-verification": "ed3bbd4ce60a2bd260807f4900ffb9676ed58e6e",
+    "p:domain_verify": "7234c778c313beca3b072fcb9d25f296",
   },
 };
 
