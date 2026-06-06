@@ -7,8 +7,6 @@ import { useAuth } from "@/context/AuthContext";
 
 const MENU_ITEMS = [
   { label: "About", href: "/about" },
-  { label: "Privacy Policy", href: "/privacy" },
-  { label: "Contact", href: "/contact" },
 ];
 
 export default function HamburgerMenu() {
