@@ -8,6 +8,9 @@ export const metadata: Metadata = {
 export default function AboutPage() {
   return (
     <div className="max-w-2xl mx-auto py-16 px-4">
+      <div className="flex justify-center mb-6">
+        <img src="/2.png" alt="이게머고?" style={{ height: "80px" }} />
+      </div>
       <h1 className="text-2xl font-bold mb-8 text-[#111111]">About</h1>
       <div className="space-y-5 text-sm text-gray-600 leading-relaxed">
         <p>
@@ -20,7 +23,7 @@ export default function AboutPage() {
           본 사이트는 제휴 마케팅 프로그램에 참여하고 있습니다. 상품 링크를 통해 구매가 이루어질 경우 소정의 수수료를 받을 수 있습니다. 하지만 이는 이용자에게 추가 비용을 발생시키지 않습니다.
         </p>
         <p>
-          그렇다고 <span className="text-[#F5A623] font-bold">이게머고?</span>는 제휴 마케팅 상품만을 다루지는 않습니다. 제휴 상품이든 아니든 충분히 기발하고 독특한 재미를 주는 것들을 모두 발굴하여, 최대한의 즐거움을 누릴 수 있는 곳으로 만들기 위해 항상 노력하고 있습니다.
+          <span className="text-[#F5A623] font-bold">이게머고?</span>는 제휴 마케팅 상품만을 다루지는 않습니다. 제휴 상품이든 아니든 충분히 기발하고 독특한 재미를 주는 것들을 모두 발굴하여, 최대한의 즐거움을 누릴 수 있는 곳으로 만들기 위해 항상 노력하고 있습니다.
         </p>
         <p>
           본 사이트에 어울릴만한, 함께 공유하고 싶은 재미있는 것이 있다면{" "}
