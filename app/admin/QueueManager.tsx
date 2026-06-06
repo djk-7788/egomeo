@@ -1,7 +1,6 @@
 ﻿"use client";
 
 import { useState, useEffect, useRef } from "react";
-import { supabase } from "@/lib/supabase";
 
 type QueueItem = {
   id: string;
@@ -88,13 +87,25 @@ export default function QueueManager({ onPublished }: { onPublished?: () => void
     setSelectedIds(new Set());
   }
 
+  async function publishOne(id: string): Promise<boolean> {
+    const res = await fetch("/api/admin/products", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id, is_active: true, is_queued: false }),
+    });
+    if (!res.ok) {
+      const { error } = await res.json().catch(() => ({}));
+      console.error("[handlePublish]", error);
+      return false;
+    }
+    return true;
+  }
+
   async function handlePublish(id: string) {
     setPublishing(id);
-    await supabase
-      .from("products")
-      .update({ is_active: true, is_queued: false })
-      .eq("id", id);
+    const ok = await publishOne(id);
     setPublishing(null);
+    if (!ok) { alert("공개 실패. 다시 시도해주세요."); return; }
     await fetchItems();
     onPublished?.();
   }
@@ -103,11 +114,9 @@ export default function QueueManager({ onPublished }: { onPublished?: () => void
     if (selectedIds.size === 0) return;
     if (!confirm(`선택한 ${selectedIds.size}개 상품을 공개합니다. 계속할까요?`)) return;
     setPublishingSelected(true);
-    await supabase
-      .from("products")
-      .update({ is_active: true, is_queued: false })
-      .in("id", [...selectedIds]);
+    const results = await Promise.all([...selectedIds].map((id) => publishOne(id)));
     setPublishingSelected(false);
+    if (results.some((ok) => !ok)) alert("일부 상품 공개에 실패했습니다.");
     await fetchItems();
     onPublished?.();
   }
@@ -116,11 +125,9 @@ export default function QueueManager({ onPublished }: { onPublished?: () => void
     if (items.length === 0) return;
     if (!confirm(`큐에 있는 ${items.length}개 상품을 모두 공개합니다. 계속할까요?`)) return;
     setPublishingAll(true);
-    await supabase
-      .from("products")
-      .update({ is_active: true, is_queued: false })
-      .eq("is_queued", true);
+    const results = await Promise.all(items.map((item) => publishOne(item.id)));
     setPublishingAll(false);
+    if (results.some((ok) => !ok)) alert("일부 상품 공개에 실패했습니다.");
     await fetchItems();
     onPublished?.();
   }
@@ -157,19 +164,16 @@ export default function QueueManager({ onPublished }: { onPublished?: () => void
   async function handleSaveOrder() {
     setSaving(true);
     setSaved(false);
-    const errors: string[] = [];
-    await Promise.all(
-      items.map(async (item, index) => {
-        const { error } = await supabase
-          .from("products")
-          .update({ sort_order: index + 1 })
-          .eq("id", item.id);
-        if (error) errors.push(error.message);
-      })
-    );
+    const updates = items.map((item, index) => ({ id: item.id, sort_order: index + 1 }));
+    const res = await fetch("/api/admin/products", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ updates }),
+    });
     setSaving(false);
-    if (errors.length > 0) {
-      alert("저장 실패: " + errors[0]);
+    if (!res.ok) {
+      const { error } = await res.json().catch(() => ({}));
+      alert("저장 실패: " + (error || "알 수 없는 오류"));
     } else {
       setSaved(true);
       setTimeout(() => setSaved(false), 2500);
