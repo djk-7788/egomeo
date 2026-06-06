@@ -117,6 +117,21 @@ updated_at  timestamp with time zone DEFAULT now()
 > **목적**: 닉네임·아바타를 OAuth 메타데이터 대신 여기에 저장해 재로그인 시 OAuth가 덮어쓰는 것을 방지.
 > 조회 우선순위: profiles 테이블 → OAuth user_metadata 폴백
 
+### `viewed_products` 테이블
+```sql
+id          uuid DEFAULT gen_random_uuid() PRIMARY KEY
+user_id     uuid REFERENCES auth.users(id) ON DELETE CASCADE
+product_id  uuid REFERENCES products(id) ON DELETE CASCADE
+viewed_at   timestamptz DEFAULT now()
+UNIQUE(user_id, product_id)
+```
+**RLS 활성화됨**
+- SELECT: `auth.uid() = user_id`
+- INSERT: `auth.uid() = user_id` (WITH CHECK)
+- DELETE: `auth.uid() = user_id`
+
+> **목적**: "안 본 것만 보기" 기능용. 사용자가 /unseen 페이지에서 스크롤로 상단을 벗어난 상품이 여기에 기록됨. 다음 방문 시 NOT IN 필터로 이미 본 상품 제외.
+
 ### Storage
 - 버킷명: `product-images` (퍼블릭) — 기존 레거시. 신규 업로드는 R2로만
 - 신규 이미지/영상은 모두 Cloudflare R2에 저장됨 (`/api/upload`)
@@ -224,13 +239,16 @@ egomeo/
 │   │       └── page.tsx      # OAuth 콜백 처리 (PKCE 교환 → 리다이렉트)
 │   ├── search/
 │   │   └── page.tsx          # 검색 결과 페이지 (`/search?q=키워드`, ilike 검색, 카드 그리드)
+│   ├── unseen/
+│   │   └── page.tsx          # 안 본 것만 보기 페이지 — viewed_products NOT IN 필터, 클라이언트 페이징(12개), 카드 뷰 추적(IntersectionObserver + 배치 upsert)
 │   └── product/
 │       └── [id]/
 │           └── page.tsx      # 상품 상세 페이지 (공유 링크용, 영상 지원)
 ├── components/
-│   ├── Header.tsx            # 상단 고정 헤더 (클라이언트 컴포넌트) — 로고(/public/2.png, 66px) + 돋보기(검색팝업) + HeaderAuthStatus + HamburgerMenu
+│   ├── Header.tsx            # 상단 고정 헤더 (클라이언트 컴포넌트) — 로고(/public/2.png, 66px) + 돋보기(검색팝업) + EyeButton + HeaderAuthStatus + HamburgerMenu
 │   ├── Footer.tsx            # 쿠팡파트너스 고지 문구 + 저작권
-│   ├── HeaderAuthStatus.tsx  # 비로그인: "로그인" 버튼 → 로그인 모달 / 로그인: 원형 아바타 → /mypage (이미지 오류 시 이니셜 폴백)
+│   ├── EyeButton.tsx         # 안 본 것만 보기 토글 버튼 — ON(/unseen): 주황, OFF: 회색. 첫 클릭 시 설명 팝업, 비로그인 시 로그인 모달
+│   ├── HeaderAuthStatus.tsx  # 비로그인: "로그인" 버튼 → 로그인 모달 / 로그인: 원형 아바타 → /mypage (이미지 오류 시 이니셜 폴백, loading 중 placeholder로 레이아웃 유지)
 │   ├── ProductCard.tsx       # 4층 카드 컴포넌트 (제목→이미지→하트+공유→버튼)
 │   ├── CardLikeButton.tsx    # 찜하기 버튼 (로그인 시 토글, 비로그인 시 로그인 모달)
 │   ├── ImageSlider.tsx       # 이미지 슬라이더 (auto: IntersectionObserver 1초 자동, manual: 화살표)
@@ -332,17 +350,20 @@ egomeo/
 
 ---
 
-## 최근 완료 작업 (2026-06-05 기준)
+## 최근 완료 작업 (2026-06-06 기준)
 
-- **어드민 전체 DB 쓰기 작업을 API 라우트 경유로 전환** — 브라우저→Supabase 직접 연결 타임아웃 문제 전면 해결:
-  - `GET /api/admin/products` — `supabase`(브라우저 클라이언트) → `getSupabaseAdmin()`(서버 클라이언트)로 교체
-  - `PATCH /api/admin/products` — 순서 저장/정렬 최적화 적용용 배치 업데이트 핸들러 추가
-  - `POST /api/admin/products` — 상품 신규 등록 핸들러 추가
-  - `PUT /api/admin/products` — 상품 수정·노출 토글 핸들러 추가
-  - `DELETE /api/admin/products?id=` — 상품 삭제 핸들러 추가
-  - `AdminPanel` — `handleSubmit`(등록/수정), `handleToggleActive`, `handleDelete` 모두 API 라우트 경유로 전환, `import { supabase }` 완전 제거
-  - `OrderEditor` — `handleSave`(순서 저장), `handleApply`(정렬 최적화 적용) 모두 API 라우트 경유로 전환, `import { supabase }` 완전 제거
-- **정렬 최적화 적용 진행률 표시** — 50개씩 배치로 나눠 순차 처리, 버튼에 `적용 중... 50/500` 형태로 실시간 표시
+- **Pinterest 도메인 인증 메타태그 추가** — `app/layout.tsx`에 Pinterest 소유 확인 메타태그 추가
+- **큐 관리 탭 공개하기 버튼 API 라우트 전환** (`QueueManager.tsx`) — `supabase` 브라우저 클라이언트 직접 호출로 인한 무반응 버그 수정. 4개 함수 모두 `/api/admin/products` 경유로 전환 (`publishOne` → PUT, `handleSaveOrder` → PATCH, `handlePublishSelected` → PUT 반복, `handlePublishAll` → PUT 반복)
+- **헤더 프로필 아이콘 간헐적 사라짐 수정** — 두 가지 원인 동시 해결:
+  - `AuthContext.tsx`: Supabase가 SIGNED_OUT 아닌데 null session을 일시적으로 내보낼 때 `setUser(null)` 호출 방지 (`if (!u && event !== "SIGNED_OUT") return` guard 추가)
+  - `HeaderAuthStatus.tsx`: `loading=true`일 때 `return null` 대신 동일 크기 placeholder(`<div className="w-7 h-7 rounded-full bg-gray-100" />`) 반환으로 헤더 레이아웃 흔들림 방지
+- **"안 본 것만 보기" 기능 추가** (`/unseen`) — 로그인 사용자 전용, 전체 구현:
+  - `viewed_products` Supabase 테이블 — RLS 활성화, `UNIQUE(user_id, product_id)` 제약
+  - `components/EyeButton.tsx` — 헤더 Eye 토글 아이콘. 첫 클릭 시 설명 팝업(localStorage `unseen_explained` 플래그), 비로그인 시 로그인 모달, ON(주황·/unseen)/OFF(회색) 상태 전환
+  - `app/unseen/page.tsx` — viewed_products NOT IN 필터로 안 본 상품 전체 로드 → `displayCount/STEP=12` 클라이언트 페이징 + 하단 센티넬 IntersectionObserver. 카드별 뷰 추적: viewport 진입 → `seenRef.add()`, 상단 이탈 → `scheduleViewed()` (2초 디바운스, 10개마다 즉시 flush, unmount/unload 시 flush)
+- **어드민 전체 DB 쓰기 작업을 API 라우트 경유로 전환** (2026-06-05, 참고용):
+  - `AdminPanel`, `OrderEditor` 모두 API 라우트 경유로 전환, `import { supabase }` 완전 제거
+  - `PATCH /api/admin/products` 배치 업데이트 + 진행률 표시
 
 ---
 
@@ -499,6 +520,10 @@ egomeo/
 - [완료] `lib/supabase-admin.ts` 생성 — 서비스 롤 클라이언트 (`getSupabaseAdmin()`)
 - [완료] `AuthContext` 전면 개편 — profile 상태, updateProfile, fetchProfile 방어 처리, TOKEN_REFRESHED 스킵, getSession 제거, signOut 즉시 초기화
 - [완료] `HeaderAuthStatus` 컴포넌트 추가 — 로그인 시 아바타 버튼, profiles 테이블 기반 아바타/이니셜
+- [완료] Pinterest 도메인 인증 메타태그 추가 (`app/layout.tsx`)
+- [완료] 큐 관리 탭 공개하기 버튼 API 라우트 전환 (`QueueManager.tsx`) — `supabase` 브라우저 클라이언트 직접 호출 제거, `/api/admin/products` PUT/PATCH 경유로 전환
+- [완료] 헤더 프로필 아이콘 간헐적 사라짐 수정 — `AuthContext` null session guard 추가 + `HeaderAuthStatus` loading 중 placeholder로 레이아웃 유지
+- [완료] "안 본 것만 보기" 기능 추가 — `viewed_products` 테이블(RLS), `EyeButton` 헤더 토글 아이콘, `/unseen` 페이지 (NOT IN 필터, 클라이언트 페이징, 카드 뷰 배치 upsert 추적)
 
 ---
 
