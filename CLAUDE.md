@@ -364,6 +364,9 @@ egomeo/
 - **어드민 전체 DB 쓰기 작업을 API 라우트 경유로 전환** (2026-06-05, 참고용):
   - `AdminPanel`, `OrderEditor` 모두 API 라우트 경유로 전환, `import { supabase }` 완전 제거
   - `PATCH /api/admin/products` 배치 업데이트 + 진행률 표시
+- **About 페이지 통합** — `/privacy`, `/contact` 페이지를 `redirect("/about")`로 교체. `/about` 페이지에 Privacy Policy + Contact 섹션 통합, 로고 이미지(`/public/2.png`) 제목 위에 추가
+- **푸터 개편** (`components/Footer.tsx`) — 제휴 마케팅 문구 제거, SNS 아이콘 5개(X·인스타그램·쓰레드·페이스북·핀터레스트) 추가 (인라인 SVG, `#555555` → 호버 `#F5A623`), Privacy Policy·Contact 링크 제거 → About 하나만 유지
+- **햄버거 메뉴 링크 정리** (`components/HamburgerMenu.tsx`) — Privacy Policy·Contact 항목 제거, About만 유지
 
 ---
 
@@ -465,19 +468,16 @@ egomeo/
 - [완료] 소싱툴 이미지 URL 복사 버튼 — `type='url'` 이미지 호버 시 우상단 "URL" 버튼, 클릭 시 클립보드 복사 후 "✓" 피드백
 - [완료] 스크롤 북마크 확장 UX 개선 — '여기까지 봤다' 덮어쓰기 확인 팝업, 이동 버튼 비활성화 시 🔄 새로고침 버튼 자동 표시
 - [완료] 상품 463개 등록 완료
-- [완료] About 페이지 추가 (`app/about/page.tsx`) — 운영자/문의 정보
-- [완료] Privacy Policy 페이지 추가 (`app/privacy/page.tsx`) — 개인정보 미수집 고지, 제휴 마케팅 고지
-- [완료] Contact 페이지 추가 (`app/contact/page.tsx`) — 이메일 문의 안내
-- [완료] Footer에 About | Privacy Policy | Contact 링크 추가
-- [완료] Footer 저작권 연도 제거 ("© 이게머고?"), 제휴 마케팅 수수료 문구 추가
-- [완료] 헤더 우측 햄버거 메뉴 추가 (`components/HamburgerMenu.tsx`) — 클릭 시 우측 사이드 드로어, About/Privacy Policy/Contact 링크, 페이지 이동 시 자동 닫힘
+- [완료] About 페이지 (`app/about/page.tsx`) — 운영자/문의 정보 + Privacy Policy + Contact 통합. 로고 이미지 상단 추가
+- [완료] Privacy Policy 페이지 (`app/privacy/page.tsx`) — `/about`으로 redirect
+- [완료] Contact 페이지 (`app/contact/page.tsx`) — `/about`으로 redirect
+- [완료] Footer 개편 (`components/Footer.tsx`) — SNS 아이콘 5개(X·인스타·쓰레드·페이스북·핀터레스트) 추가, About 링크만 유지, 제휴 마케팅 문구 제거
+- [완료] 헤더 우측 햄버거 메뉴 추가 (`components/HamburgerMenu.tsx`) — 클릭 시 우측 사이드 드로어, About 링크 + 마이페이지 + 로그아웃(절대 하단), 페이지 이동 시 자동 닫힘
 - [완료] 순서 편집 탭 "정렬 최적화" 기능 추가 (`OrderEditor.tsx`) — sort_order 범위 지정 후 플랫폼 분산+영상 4칸 간격 그리디 알고리즘으로 자동 재배치, 미리보기(변경 전/후 나란히) 후 적용, 규칙 충족 불가 시 경고 표시
 - [완료] hello@igemugo.com 이메일 설정 (Cloudflare Email Routing → Gmail 포워딩)
 - [완료] 어드민 상품 목록 sort_order 기준 정렬 + 순서 번호 표기 + 제목 검색 기능
 - [완료] 사이트 검색 페이지 추가 (`app/search/page.tsx`) — `/search?q=키워드`, ilike 검색, 카드 그리드
 - [완료] 햄버거 메뉴에 사이트 검색창 추가
-- [완료] About 페이지 (`app/about/page.tsx`) + Privacy Policy (`app/privacy/page.tsx`) + Contact (`app/contact/page.tsx`)
-- [완료] Footer에 About | Privacy Policy | Contact 링크 + 제휴 마케팅 수수료 문구
 - [완료] 헤더 우측 햄버거 메뉴 (`components/HamburgerMenu.tsx`) — 사이드 드로어, 사이트 검색, 페이지 이동 시 자동 닫힘
 - [완료] 어드민 큐(임시저장) 기능 추가
   - `products` 테이블에 `is_queued` 컬럼 추가 (boolean, default false)
@@ -503,7 +503,7 @@ egomeo/
 - [완료] 헤더 로고 이미지 교체 — `/public/2.png` (66px, 뷰포트 왼쪽 끝)
 - [완료] 헤더 전면 개편 — 카테고리 제거, 돋보기 검색팝업, 로그인버튼/아바타, 햄버거 단순화 (`Header.tsx` 클라이언트 컴포넌트 전환)
 - [완료] `HeaderAuthStatus` — 비로그인 "로그인" 버튼, 로그인 아바타, 이미지 오류 이니셜 폴백
-- [완료] `HamburgerMenu` — 검색창 제거, About/Privacy/Contact + 마이페이지 + 로그아웃(절대 하단) 구조
+- [완료] `HamburgerMenu` — 검색창 제거, About + 마이페이지 + 로그아웃(절대 하단) 구조
 - [완료] `/api/admin/products` 신규 생성 — 어드민 데이터 fetch 서버사이드 전환 (`?type=all|queued|active`)
 - [완료] `AdminPanel`, `QueueManager`, `OrderEditor` fetch → API 라우트 경유 (브라우저→Supabase 직접 연결 타임아웃 문제 해결)
 - [완료] 어드민 전체 DB 쓰기 작업 API 라우트 전환 — `PATCH`(배치 순서 업데이트) / `POST`(등록) / `PUT`(수정·토글) / `DELETE`(삭제) 핸들러 추가, `AdminPanel`·`OrderEditor`에서 `supabase` 브라우저 클라이언트 직접 호출 완전 제거
