@@ -75,6 +75,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       async (event, session) => {
         try {
           const u = session?.user ?? null;
+
+          // SIGNED_OUT이 아닌데 session이 null이면 일시적 세션 불안정 → 무시
+          // user/profile을 null로 바꾸지 않아 아이콘 깜빡임 방지
+          if (!u && event !== "SIGNED_OUT") return;
+
           setUser(u);
 
           if (u) {
@@ -87,6 +92,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             const p = await fetchProfile(u);
             setProfile(p);
           } else {
+            // SIGNED_OUT: 상태 초기화
             setProfile(null);
           }
         } catch (err) {

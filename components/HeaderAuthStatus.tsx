@@ -9,7 +9,9 @@ export default function HeaderAuthStatus() {
   const router = useRouter();
   const [imgError, setImgError] = useState(false);
 
-  if (loading) return null;
+  // loading 중 null 반환 시 헤더 레이아웃이 흔들리고 아이콘 위치가 사라짐
+  // → 동일 크기 placeholder로 공간 유지
+  if (loading) return <div className="w-7 h-7 rounded-full bg-gray-100 shrink-0" />;
 
   if (!user) {
     return (
