@@ -449,7 +449,6 @@ async function makeSlideshow() {
   const makeLoading = document.getElementById("make-loading");
   const makeError = document.getElementById("make-error");
   const makeProgress = document.getElementById("make-progress");
-  const resolution = parseInt(document.getElementById("resolution-select").value);
   const globalIntervalMs = (parseInt(intervalSlider.value) / 10) * 1000;
 
   if (sortableImages.length === 0) return;
@@ -459,8 +458,10 @@ async function makeSlideshow() {
   makeLoading.classList.remove("hidden");
   makeProgress.textContent = "이미지 로딩 중...";
 
+  const frameFiles = [];
+
   try {
-    // ① 녹화 전 모든 이미지 미리 로드 (녹화 중 로딩 지연으로 인한 타이밍 오차 제거)
+    // ① 모든 이미지 미리 로드
     const imgEls = await Promise.all(
       sortableImages.map((img, i) => loadImage(img.blobUrl).then(el => {
         makeProgress.textContent = `이미지 로딩 중... (${i + 1}/${sortableImages.length})`;
@@ -468,55 +469,74 @@ async function makeSlideshow() {
       }))
     );
 
-    // 해상도 결정
-    let canvasW, canvasH;
-    if (resolution === 1920) { canvasW = 1920; canvasH = 1080; }
-    else { canvasW = resolution; canvasH = resolution; }
+    // ② ffmpeg 초기화 (영상 자르기 탭과 동일 인스턴스 공유)
+    const ffmpeg = await ensureFfmpeg(makeProgress);
 
+    // ③ 각 이미지를 1080×1080 PNG로 변환 → ffmpeg 가상 FS에 기록
     const canvas = document.createElement("canvas");
-    canvas.width = canvasW;
-    canvas.height = canvasH;
+    canvas.width = 1080;
+    canvas.height = 1080;
     const ctx = canvas.getContext("2d");
 
-    // ② 첫 프레임을 미리 그리고 captureStream 시작 (녹화 시작 시 검은 화면 방지)
-    makeProgress.textContent = "녹화 준비 중...";
-    renderFrame(ctx, imgEls[0], canvasW, canvasH);
-
-    const mimeType = getSupportedMime();
-    const stream = canvas.captureStream(30);
-    const recorder = new MediaRecorder(stream, { mimeType, videoBitsPerSecond: 4_000_000 });
-    const chunks = [];
-    recorder.ondataavailable = (e) => { if (e.data.size > 0) chunks.push(e.data); };
-
-    recorder.start();
-
-    // ③ 각 이미지를 녹화 — 개별 간격 설정이 있으면 우선 적용, 없으면 전체 기본값 사용
     for (let i = 0; i < imgEls.length; i++) {
-      makeProgress.textContent = `녹화 중... (${i + 1}/${imgEls.length})`;
-      renderFrame(ctx, imgEls[i], canvasW, canvasH);
+      makeProgress.textContent = `프레임 준비 중... (${i + 1}/${imgEls.length})`;
+      renderFrame(ctx, imgEls[i], 1080, 1080);
+      const blob = await new Promise(res => canvas.toBlob(res, "image/png"));
+      const uint8 = new Uint8Array(await blob.arrayBuffer());
+      const name = `slide_${String(i + 1).padStart(4, "0")}.png`;
+      await ffmpeg.writeFile(name, uint8);
+      frameFiles.push(name);
+    }
+
+    // ④ concat.txt 생성
+    // 마지막 파일을 duration 없이 한 번 더 추가 — concat demuxer의 마지막 duration 무시 버그 우회
+    let concatTxt = "";
+    for (let i = 0; i < sortableImages.length; i++) {
       const ms = sortableImages[i].customInterval !== null
         ? sortableImages[i].customInterval * 1000
         : globalIntervalMs;
-      await new Promise((resolve) => setTimeout(resolve, ms));
+      concatTxt += `file '${frameFiles[i]}'\nduration ${(ms / 1000).toFixed(3)}\n`;
+    }
+    concatTxt += `file '${frameFiles[frameFiles.length - 1]}'\n`;
+    await ffmpeg.writeFile("concat.txt", new TextEncoder().encode(concatTxt));
+
+    // ⑤ ffmpeg 인코딩 — 메타 광고 호환 스펙 (H.264 / yuv420p / 1080×1080 / 오디오 없음)
+    makeProgress.textContent = "인코딩 중...";
+    const onLog = ({ message }) => {
+      const m = message.match(/time=\S+/);
+      if (m) makeProgress.textContent = `인코딩 중... ${m[0].replace("time=", "")}`;
+    };
+    ffmpeg.on("log", onLog);
+    try {
+      await ffmpeg.exec([
+        "-f", "concat",
+        "-safe", "0",
+        "-i", "concat.txt",
+        "-c:v", "libx264",
+        "-pix_fmt", "yuv420p",
+        "-an",
+        "-movflags", "+faststart",
+        "output.mp4",
+      ]);
+    } finally {
+      ffmpeg.off("log", onLog);
     }
 
-    // ④ 마지막 이미지 재드로우 + captureStream 처리 대기 후 종료
-    //    renderFrame(캔버스 드로우)은 동기지만 captureStream의 프레임 캡처는 비동기.
-    //    대기 없이 바로 stop()하면 마지막 프레임이 캡처되기 전에 녹화가 끊김.
-    renderFrame(ctx, imgEls[imgEls.length - 1], canvasW, canvasH);
-    await new Promise(r => setTimeout(r, 200)); // captureStream 처리 대기 (~6 프레임)
-    recorder.stop();
-
-    await new Promise((resolve) => { recorder.onstop = resolve; });
-
+    // ⑥ 결과 다운로드
     makeProgress.textContent = "파일 저장 중...";
-    const ext = mimeType.includes("mp4") ? "mp4" : "webm";
-    const blob = new Blob(chunks, { type: mimeType });
-    downloadBlob(blob, `slideshow.${ext}`);
+    const data = await ffmpeg.readFile("output.mp4");
+    const outputBlob = new Blob([data.buffer], { type: "video/mp4" });
+    downloadBlob(outputBlob, "slideshow.mp4");
+
   } catch (err) {
     makeError.textContent = "영상 생성 실패: " + (err.message || "알 수 없는 오류");
     makeError.classList.remove("hidden");
   } finally {
+    if (ffmpegInst) {
+      for (const name of frameFiles) ffmpegInst.deleteFile(name).catch(() => {});
+      ffmpegInst.deleteFile("concat.txt").catch(() => {});
+      ffmpegInst.deleteFile("output.mp4").catch(() => {});
+    }
     makeBtn.disabled = false;
     makeLoading.classList.add("hidden");
   }
