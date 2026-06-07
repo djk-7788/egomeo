@@ -252,13 +252,18 @@ body {
   user-select: none;
 }
 .sortable-item:active { cursor: grabbing; }
-.sortable-item img {
+.sortable-item.dragging { opacity: 0.4; border-color: var(--accent); }
+.sortable-item.drag-over { border-color: var(--accent); background: #fff3ee; }
+.sortable-item-img {
+  position: relative;
+}
+.sortable-item-img img {
   width: 100%;
   aspect-ratio: 1;
   object-fit: cover;
   display: block;
 }
-.sortable-item .item-num {
+.sortable-item-img .item-num {
   position: absolute;
   bottom: 0;
   left: 0;
@@ -270,8 +275,33 @@ body {
   text-align: center;
   padding: 3px;
 }
-.sortable-item.dragging { opacity: 0.4; border-color: var(--accent); }
-.sortable-item.drag-over { border-color: var(--accent); background: #fff3ee; }
+.item-interval-wrap {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 5px 6px;
+  border-top: 1px solid var(--border);
+}
+.item-interval-input {
+  width: 0;
+  flex: 1;
+  padding: 3px 5px;
+  border: 1.5px solid var(--border);
+  border-radius: 4px;
+  font-size: 11px;
+  text-align: center;
+  color: var(--text);
+  background: #fff;
+  outline: none;
+}
+.item-interval-input:focus { border-color: var(--accent); }
+.item-interval-input::placeholder { color: var(--text-muted); font-size: 10px; }
+.item-interval-unit {
+  font-size: 10px;
+  color: var(--text-muted);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
 
 /* ── 설정 패널 ── */
 .settings-panel {

@@ -354,7 +354,8 @@ document.getElementById("clear-pool-btn").addEventListener("click", () => {
 });
 
 toStep3Btn.addEventListener("click", () => {
-  sortableImages = [...selectedImages]; // step3 진입 시에만 초기화
+  // customInterval: null → makeSlideshow에서 전체 기본값 사용
+  sortableImages = selectedImages.map(img => ({ ...img, customInterval: null }));
   renderSortableList();
   showStep(3);
 });
@@ -373,11 +374,34 @@ function renderSortableList() {
     item.className = "sortable-item";
     item.draggable = true;
     item.dataset.idx = idx;
-    // img에 draggable="false" — 이미지 자체 드래그가 sortable-item 드래그를 가로채지 않도록
+
+    const customVal = img.customInterval !== null ? img.customInterval : "";
     item.innerHTML = `
-      <img src="${img.blobUrl}" alt="이미지 ${idx + 1}" draggable="false" />
-      <div class="item-num">${idx + 1}</div>
+      <div class="sortable-item-img">
+        <img src="${img.blobUrl}" alt="이미지 ${idx + 1}" draggable="false" />
+        <div class="item-num">${idx + 1}</div>
+      </div>
+      <div class="item-interval-wrap" draggable="false">
+        <input type="number" class="item-interval-input"
+          min="0.5" max="5" step="0.5"
+          value="${customVal}"
+          placeholder="기본" />
+        <span class="item-interval-unit">초</span>
+      </div>
     `;
+
+    // 입력창 조작 시 drag 방지
+    const input = item.querySelector(".item-interval-input");
+    input.addEventListener("mousedown", (e) => e.stopPropagation());
+    input.addEventListener("change", () => {
+      const raw = parseFloat(input.value);
+      if (input.value === "" || isNaN(raw)) {
+        sortableImages[idx].customInterval = null;
+      } else {
+        sortableImages[idx].customInterval = Math.max(0.5, Math.min(5, raw));
+        input.value = sortableImages[idx].customInterval;
+      }
+    });
 
     item.addEventListener("dragstart", (e) => {
       dragSrc = item;
@@ -426,7 +450,7 @@ async function makeSlideshow() {
   const makeError = document.getElementById("make-error");
   const makeProgress = document.getElementById("make-progress");
   const resolution = parseInt(document.getElementById("resolution-select").value);
-  const intervalMs = (parseInt(intervalSlider.value) / 10) * 1000;
+  const globalIntervalMs = (parseInt(intervalSlider.value) / 10) * 1000;
 
   if (sortableImages.length === 0) return;
 
@@ -466,11 +490,14 @@ async function makeSlideshow() {
 
     recorder.start();
 
-    // ③ 각 이미지를 정확히 intervalMs씩 녹화 (로딩 없이 draw만 수행)
+    // ③ 각 이미지를 녹화 — 개별 간격 설정이 있으면 우선 적용, 없으면 전체 기본값 사용
     for (let i = 0; i < imgEls.length; i++) {
       makeProgress.textContent = `녹화 중... (${i + 1}/${imgEls.length})`;
       renderFrame(ctx, imgEls[i], canvasW, canvasH);
-      await new Promise((resolve) => setTimeout(resolve, intervalMs));
+      const ms = sortableImages[i].customInterval !== null
+        ? sortableImages[i].customInterval * 1000
+        : globalIntervalMs;
+      await new Promise((resolve) => setTimeout(resolve, ms));
     }
 
     // ④ 마지막 이미지 재드로우 + captureStream 처리 대기 후 종료
