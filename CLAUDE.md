@@ -16,7 +16,7 @@
 
 ## 기술 스택
 
-- **Frontend**: Next.js 16 (TypeScript, App Router, Tailwind CSS)
+- **Frontend**: Next.js 16 (TypeScript, App Router, Tailwind CSS), @tanstack/react-virtual v3 (가상 스크롤)
 - **DB/Auth**: Supabase
 - **미디어 스토리지**: Cloudflare R2 (`@aws-sdk/client-s3`, S3 호환 API)
 - **배포**: Vercel (GitHub 자동 연동, push하면 자동 재배포)
@@ -88,7 +88,9 @@ button_text   text          -- 카드/상세 페이지 버튼 텍스트 커스�
 > **image_urls 컬럼 추가** — 2026-05-28 `ALTER TABLE products ADD COLUMN IF NOT EXISTS image_urls text[];` 실행 완료  
 > **button_text 컬럼 추가** — 2026-05-29 `ALTER TABLE products ADD COLUMN IF NOT EXISTS button_text text;` 실행 완료
 
-**RLS**: 비활성화됨 (`alter table products disable row level security`)
+**RLS**: 활성화됨 (2026-06-07)
+- SELECT: `is_active = true`인 상품만 공개 (anon 포함 누구나)
+- INSERT/UPDATE/DELETE: 정책 없음 → 클라이언트 쓰기 완전 차단 (service_role은 RLS 우회하므로 어드민 API 정상 동작)
 
 ### `likes` 테이블
 ```sql
@@ -98,9 +100,9 @@ product_id  uuid REFERENCES products(id) ON DELETE CASCADE
 created_at  timestamp with time zone DEFAULT now()
 UNIQUE(user_id, product_id)
 ```
-**RLS 활성화됨**
+**RLS 활성화됨** (정책명: likes_select_own / likes_insert_own / likes_delete_own)
 - SELECT: `auth.uid() = user_id` (본인 likes만 조회)
-- INSERT: `auth.uid() = user_id`
+- INSERT: `auth.uid() = user_id` (WITH CHECK)
 - DELETE: `auth.uid() = user_id`
 
 ### `profiles` 테이블
@@ -110,9 +112,11 @@ nickname    text
 avatar_url  text
 updated_at  timestamp with time zone DEFAULT now()
 ```
-**RLS 활성화됨**
+**RLS 활성화됨** (정책명: profiles_select_own / profiles_insert_own / profiles_update_own / profiles_delete_own)
 - SELECT: `auth.uid() = id`
-- ALL (INSERT/UPDATE/DELETE): `auth.uid() = id`
+- INSERT: `auth.uid() = id` (WITH CHECK)
+- UPDATE: `auth.uid() = id`
+- DELETE: `auth.uid() = id`
 
 > **목적**: 닉네임·아바타를 OAuth 메타데이터 대신 여기에 저장해 재로그인 시 OAuth가 덮어쓰는 것을 방지.
 > 조회 우선순위: profiles 테이블 → OAuth user_metadata 폴백
@@ -125,7 +129,7 @@ product_id  uuid REFERENCES products(id) ON DELETE CASCADE
 viewed_at   timestamptz DEFAULT now()
 UNIQUE(user_id, product_id)
 ```
-**RLS 활성화됨**
+**RLS 활성화됨** (정책명: viewed_products_select_own / viewed_products_insert_own / viewed_products_delete_own)
 - SELECT: `auth.uid() = user_id`
 - INSERT: `auth.uid() = user_id` (WITH CHECK)
 - DELETE: `auth.uid() = user_id`
@@ -289,7 +293,7 @@ egomeo/
 
 ### 메인 페이지 (`/`)
 - Supabase에서 `is_active = true` 상품을 최신순으로 fetch (서버 컴포넌트)
-- 풀와이드 그리드로 ProductCard 렌더링
+- `InfiniteProductGrid`로 렌더링 — 가상 스크롤 적용 (뷰포트 근처 행만 DOM에 유지)
 
 ### 상품 상세 페이지 (`/product/[id]`)
 - **공유 링크 전용** — 카드에서 직접 진입 불가, 공유 버튼으로만 접근
@@ -350,8 +354,12 @@ egomeo/
 
 ---
 
-## 최근 완료 작업 (2026-06-06 기준)
+## 최근 완료 작업 (2026-06-07 기준)
 
+- **메인 피드 가상 스크롤 적용** (`components/InfiniteProductGrid.tsx`) — `@tanstack/react-virtual` v3 `useWindowVirtualizer` 사용. 카드 3개를 1행으로 묶어 행 단위 가상화, 뷰포트 위아래 5행(overscan=5)만 실제 DOM 유지, 나머지는 빈 공간. `measureElement`로 실제 카드 높이 자동 측정, `scrollMargin`으로 헤더 오프셋 보정. 반응형 열 수 JS 감지 (`useColumnCount`: <640px=1열, 640~767px=2열, 768px+=3열). 무한 스크롤 센티넬 방식 유지. 500개+ 카드 DOM 누적으로 인한 영상 카드 메모리 누수 문제 해결.
+- **Supabase RLS 전체 테이블 적용** (2026-06-07) — 4개 테이블 모두 RLS 활성화 완료:
+  - `products`: SELECT는 `is_active=true`만 공개, 쓰기 정책 없음(클라이언트 쓰기 차단). service_role(어드민 API)은 RLS 우회로 영향 없음. `/product/[id]` 비활성 상품 직접 접근 시 404 처리됨(의도적)
+  - `likes` / `profiles` / `viewed_products`: `auth.uid() = user_id(또는 id)` 정책 재정의 (정책명 통일: `테이블명_동작_own`)
 - **Pinterest 도메인 인증 메타태그 추가** — `app/layout.tsx`에 Pinterest 소유 확인 메타태그 추가
 - **큐 관리 탭 공개하기 버튼 API 라우트 전환** (`QueueManager.tsx`) — `supabase` 브라우저 클라이언트 직접 호출로 인한 무반응 버그 수정. 4개 함수 모두 `/api/admin/products` 경유로 전환 (`publishOne` → PUT, `handleSaveOrder` → PATCH, `handlePublishSelected` → PUT 반복, `handlePublishAll` → PUT 반복)
 - **헤더 프로필 아이콘 간헐적 사라짐 수정** — 두 가지 원인 동시 해결:
@@ -524,6 +532,8 @@ egomeo/
 - [완료] 큐 관리 탭 공개하기 버튼 API 라우트 전환 (`QueueManager.tsx`) — `supabase` 브라우저 클라이언트 직접 호출 제거, `/api/admin/products` PUT/PATCH 경유로 전환
 - [완료] 헤더 프로필 아이콘 간헐적 사라짐 수정 — `AuthContext` null session guard 추가 + `HeaderAuthStatus` loading 중 placeholder로 레이아웃 유지
 - [완료] "안 본 것만 보기" 기능 추가 — `viewed_products` 테이블(RLS), `EyeButton` 헤더 토글 아이콘, `/unseen` 페이지 (NOT IN 필터, 클라이언트 페이징, 카드 뷰 배치 upsert 추적)
+- [완료] 메인 피드 가상 스크롤 적용 (`InfiniteProductGrid.tsx`) — `@tanstack/react-virtual` v3, `useWindowVirtualizer`, 행 단위 가상화(overscan=5), measureElement, scrollMargin, 반응형 열 수 JS 감지
+- [완료] Supabase RLS 전체 적용 — products(is_active=true SELECT 공개·쓰기차단), likes/profiles/viewed_products(auth.uid() 정책 재정의)
 
 ---
 
@@ -546,7 +556,8 @@ egomeo/
 | 가격 기능 제거 | 플랫폼마다 가격 형식이 달라 통일 불가, 실시간성도 없어 오히려 오해 유발. 링크로 직접 확인하는 게 나음 |
 | 이미지 단일 선택 (소싱툴) | R2에는 실제로 1장만 업로드됨. UI를 실제 동작과 일치시켜 혼란 방지 |
 | sort_order로 메인 피드 순서 관리 | created_at 역순 대신 수동 정렬 지원. null이면 맨 뒤에 위치 |
-| RLS 비활성화 | 소셜 로그인 미구현 상태에서 임시 조치. Auth 붙이면 재설정 필요 |
+| products RLS SELECT를 `is_active=true`로 제한 | anon key로 비활성 상품 직접 조회 차단. 클라이언트 코드에 이미 is_active 필터가 있지만 RLS로 DB 레벨에서도 이중 보호 |
+| products 쓰기 정책 없음 (서버만 허용) | 클라이언트 쓰기 완전 차단. 어드민 API는 service_role key로 RLS 우회하므로 기능 영향 없음 |
 | 관리자 인증을 쿠키+환경변수로 | Supabase Auth 없이 빠르게 구현. 나중에 Supabase Admin 역할로 교체 가능 |
 | 이미지/영상을 Cloudflare R2에 저장 | Supabase Storage 대비 대용량 파일 비용 유리, 글로벌 CDN, 영상 스트리밍 적합 |
 | R2 업로드를 서버 API 경유 | 브라우저에서 직접 R2에 올리면 시크릿 키 노출 위험. `/api/upload`가 admin 쿠키 검증 후 처리 |
