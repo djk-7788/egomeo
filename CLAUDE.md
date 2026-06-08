@@ -78,7 +78,7 @@ affiliate_link text         -- 쿠팡/알리/아마존 링크
 is_active     boolean       -- false면 메인페이지에 안 보임
 is_queued     boolean       -- true면 큐(임시저장) 상태, is_active=false와 함께 사용
 sort_order    integer       -- 노출 순서 (낮을수록 앞에 표시, null이면 맨 뒤)
-platform      text          -- 'amazon_us' | 'amazon_jp' | 'aliexpress' | 'coupang' | 'etc' | null
+platform      text          -- 'amazon_us' | 'amazon_jp' | 'aliexpress' | 'coupang' | 'klook' | 'etc' | null
 button_text   text          -- 카드/상세 페이지 버튼 텍스트 커스터마이징 (null이면 "구경하러 가기" 기본값)
 ```
 
@@ -271,7 +271,7 @@ egomeo/
 │   ├── background.js         # 아이콘 클릭 → 새 탭 열기
 │   ├── newtab.html           # 전체 화면 UI (슬라이드쇼 + 영상 자르기 + 포맷 변환 탭)
 │   ├── newtab.css            # 스타일 (#F5A623 포인트, 크롭 오버레이, 포맷 변환 UI 포함)
-│   ├── newtab.js             # 알리 이미지 fetch + 로컬 파일 업로드, Canvas+MediaRecorder 슬라이드쇼, ffmpeg.wasm 영상 자르기 (1:1크롭·CRF압축), GIF/WebP→MP4 포맷 변환
+│   ├── newtab.js             # 알리 이미지 fetch + 로컬 파일 업로드, ffmpeg.wasm 슬라이드쇼(H.264/yuv420p/1080×1080/이미지별 개별 간격), ffmpeg.wasm 영상 자르기 (크롭 비율 선택·CRF압축), GIF/WebP→MP4 포맷 변환
 │   ├── ffmpeg.js             # @ffmpeg/ffmpeg UMD 번들 (로컬)
 │   ├── ffmpeg-util.js        # @ffmpeg/util UMD 번들 (fetchFile, toBlobURL)
 │   ├── 814.ffmpeg.js         # ffmpeg.wasm Worker 스크립트 (ffmpeg.js가 로드)
@@ -346,7 +346,8 @@ egomeo/
   - 이미지 업로드 → R2 저장 (`/api/upload`)
   - 영상 업로드 (선택) → R2 저장, `video_url` 컬럼에 저장
   - **추가 이미지 (슬라이드용)**: URL 입력 또는 파일 직접 업로드(R2 저장)로 `image_urls` 배열 관리 (썸네일 미리보기, ↑↓ 순서변경, 🗑️ 삭제, URL 입력과 파일 업로드 혼용 가능)
-  - 제휴 링크 입력 시 platform 자동 감지: 알리/쿠팡은 URL로 자동, 아마존(amazon.com/amzn.to/amazon.co.jp)은 지역 라디오 버튼 표시 (🇺🇸 미국 기본 / 🇯🇵 일본), 그 외 URL은 'etc' 자동 저장
+  - 제휴 링크 입력 시 platform 자동 감지: 알리/쿠팡은 URL로 자동, 아마존(amazon.com/amzn.to/amazon.co.jp)은 지역 라디오 버튼 표시 (🇺🇸 미국 기본 / 🇯🇵 일본), Involve Asia(invl.me/invol.co)는 파트너 선택 드롭다운 표시 (현재: 클룩), 그 외 URL은 'etc' 자동 저장
+  - Involve Asia 파트너는 `AdminPanel.tsx` 상단 `INVOLVE_ASIA_PARTNERS` 배열에 `{ value, label }` 추가하면 드롭다운에 자동 반영
   - URL 불러오기 탭에서 불러오면 platform 자동 설정 (aliexpress/coupang)
   - **공개 상태 라디오**: "바로 공개" (is_active=true, is_queued=false) / "큐에 저장" (is_active=false, is_queued=true) — **기본값: 큐에 저장**
   - **버튼 텍스트**: `button_text` 입력 필드 (비워두면 "구경하러 가기" 기본값)
@@ -354,7 +355,14 @@ egomeo/
 
 ---
 
-## 최근 완료 작업 (2026-06-07 기준)
+## 최근 완료 작업 (2026-06-08 기준)
+
+- **어드민 모달 Involve Asia 플랫폼 지원 추가** (`app/admin/AdminPanel.tsx`, `QueueManager.tsx`, `OrderEditor.tsx`, `StatsPanel.tsx`) — affiliate_link에 `invl.me` 또는 `invol.co` 입력 시 "Involve Asia 파트너 선택" 드롭다운 자동 표시. 현재 파트너: 클룩(`klook`). `INVOLVE_ASIA_PARTNERS` 배열에 `{ value, label }` 추가만 하면 드롭다운+배지 자동 확장. 큐관리/순서편집/통계 탭 배지 함수를 if문 체인 → 레코드 맵(`PLATFORM_BADGE`, `PLATFORM_COLOR`)으로 리팩터링. 클룩은 🎫 보라색 배지.
+
+- **미디어툴 영상 자르기 크롭 비율 선택 기능 추가** (`chrome-extension/newtab.html/css/js`) — 1:1 토글 버튼 → 5개 비율 선택 버튼으로 교체: 크롭 없음(기본값) / 1:1(정사각형) / 9:16(릴스·틱톡) / 16:9(유튜브) / 자유 크롭. 비율별 초기 박스를 중앙에 최대 크기로 자동 배치. SE 핸들 드래그 시 고정 비율은 대각 평균으로 비율 유지, 자유 크롭은 dx/dy 독립 조절. `cropBox`를 `sizeFrac` → `wFrac`+`hFrac`으로 분리, `buildCropFilter`가 비정사각형 `crop=W:H:X:Y` 생성.
+
+- **미디어툴 슬라이드쇼 개별 간격 설정 추가** (`chrome-extension/newtab.js/css/html`) — 전체 간격 슬라이더 범위 0.5초~2.0초 → 0.5초~5.0초로 확장. 3단계 순서 조정 화면 각 썸네일 하단에 숫자 입력창(0.5~5초, step 0.5) 추가. 비워두면 전체 기본값 사용, 입력하면 해당 이미지에만 적용. 드래그 재정렬 후에도 개별 간격값이 이미지와 함께 이동.
+- **미디어툴 슬라이드쇼 MP4 생성을 ffmpeg 인코딩으로 전환** (`chrome-extension/newtab.js`) — 기존 `MediaRecorder+captureStream` 방식 제거. 메타 광고 호환 스펙으로 교체: `libx264 / yuv420p / 1080×1080 / -an / -movflags +faststart`. 각 이미지를 canvas로 1080×1080 PNG 변환 후 ffmpeg 가상 FS 기록, `concat.txt`로 이미지별 개별 간격 반영. 마지막 프레임 중복으로 concat demuxer duration 버그 우회. 영상 자르기 탭의 ffmpeg 인스턴스 공유.
 
 - **메인 피드 가상 스크롤 적용** (`components/InfiniteProductGrid.tsx`) — `@tanstack/react-virtual` v3 `useWindowVirtualizer` 사용. 카드 3개를 1행으로 묶어 행 단위 가상화, 뷰포트 위아래 5행(overscan=5)만 실제 DOM 유지, 나머지는 빈 공간. `measureElement`로 실제 카드 높이 자동 측정, `scrollMargin`으로 헤더 오프셋 보정. 반응형 열 수 JS 감지 (`useColumnCount`: <640px=1열, 640~767px=2열, 768px+=3열). 무한 스크롤 센티넬 방식 유지. 500개+ 카드 DOM 누적으로 인한 영상 카드 메모리 누수 문제 해결.
 - **Supabase RLS 전체 테이블 적용** (2026-06-07) — 4개 테이블 모두 RLS 활성화 완료:
@@ -436,10 +444,11 @@ egomeo/
 - [완료] 상품 페이지네이션 API (`/api/products`) — page, limit, excludeId, category 파라미터
 - [완료] 공정위 고지 문구 추가 — 헤더 바로 아래 비고정(sticky 아님), 전 페이지 공통 적용 (`app/layout.tsx`)
 - [완료] 크롬 확장 프로그램 "참아야하느니라 미디어툴" 제작 (`chrome-extension/` 폴더, Manifest V3)
-  - 슬라이드쇼 만들기 탭: 알리 URL 입력 → 이미지 선택(체크박스) → 드래그 순서 조정 → 간격 설정(0.5~2초) → Canvas+MediaRecorder로 MP4/WebM 생성 + 다운로드
-  - 영상 자르기 탭: **ffmpeg.wasm 기반** (libx264 CRF 압축 + 해상도 제한 + 오디오 제거 + 1:1 크롭 오버레이)
+  - 슬라이드쇼 만들기 탭: 알리 URL 입력 → 이미지 선택(체크박스) → 드래그 순서 조정 → 간격 설정(0.5~5초) → 이미지별 개별 간격 입력 → ffmpeg.wasm으로 메타 광고 호환 MP4 생성(H.264/yuv420p/1080×1080) + 다운로드
+  - 영상 자르기 탭: **ffmpeg.wasm 기반** (libx264 CRF 압축 + 해상도 제한 + 오디오 제거 + 크롭 오버레이)
     - 품질: 고(CRF 26·1080p) / 중간(CRF 30·720p, 권장) / 저(CRF 34·480p), ultrafast preset, `-an`
-    - 1:1 크롭: 영상 위 드래그 이동·SE핸들 리사이즈, 분율 좌표 관리(창 리사이즈 안전), `crop=W:W:X:Y,scale` 순서
+    - 크롭 비율 선택: 크롭 없음(기본) / 1:1(정사각형) / 9:16(릴스·틱톡) / 16:9(유튜브) / 자유 크롭
+    - 드래그 이동·SE핸들 리사이즈, 분율 좌표 관리(창 리사이즈 안전), 고정 비율은 대각 평균으로 비율 유지, `crop=W:H:X:Y,scale` 순서
     - 로컬 번들: ffmpeg.js·ffmpeg-util.js·814.ffmpeg.js(Worker)·ffmpeg-core.js(112KB)·ffmpeg-core.wasm(31MB)
     - 로드: `chrome.runtime.getURL("ffmpeg-core.js")` 직접 전달 → Worker `importScripts`가 CSP `'self'`로 허용
   - host_permissions으로 aliexpress.com/alicdn.com CORS 없이 직접 fetch
@@ -518,7 +527,11 @@ egomeo/
 - [완료] 정렬 최적화 적용 배치 처리 + 진행률 표시 — 50개씩 순차 처리, `적용 중... N/전체` 실시간 표시
 - [완료] Google Analytics 연동 (`G-6P979RX187`, `NEXT_PUBLIC_GA_ID`, `next/script afterInteractive`)
 - [완료] 어드민 통계 탭 (`StatsPanel.tsx`) — 공개/큐/숨김, 플랫폼 분포, 미디어 타입, GA 바로가기
+- [완료] 미디어툴 영상 자르기 크롭 비율 선택 — 크롭 없음/1:1/9:16/16:9/자유 크롭 버튼, 비율 유지 리사이즈, 비정사각형 crop 필터 생성
+- [완료] 어드민 모달 Involve Asia 플랫폼 지원 — invl.me/invol.co 감지 시 파트너 드롭다운, klook 🎫 배지, INVOLVE_ASIA_PARTNERS 배열로 파트너 관리
 - [완료] 미디어툴 영상 자르기 ffmpeg.wasm 전환, 1:1 크롭 오버레이, 로컬 번들, 압축 튜닝, 포맷 변환 탭
+- [완료] 미디어툴 슬라이드쇼 개별 간격 설정 — 전체 슬라이더 0.5~5초 확장, 썸네일별 개별 초 입력, 재정렬 후에도 간격값 유지
+- [완료] 미디어툴 슬라이드쇼 MP4 생성 ffmpeg 전환 — 메타 광고 호환 스펙(H.264/yuv420p/1080×1080/-an), concat demuxer, MediaRecorder 방식 제거
 - [완료] 어드민 쿠키 만료 시 401 처리 + 유효기간 30일로 연장
 - [완료] 메인 피드 카드 이미지·영상 `object-fit: contain` + 흰색 배경으로 변경
 - [완료] 소셜 로그인 구현 — 구글/카카오 (Supabase Auth OAuth, `/auth/callback` PKCE 처리)
