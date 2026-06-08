@@ -14,22 +14,33 @@ type OrderItem = {
   platform: string | null;
 };
 
+// 파트너 추가 시 여기에만 한 줄씩 추가
+const PLATFORM_BADGE: Record<string, string> = {
+  amazon_us: "🇺🇸 아마존",
+  amazon_jp: "🇯🇵 아마존JP",
+  aliexpress: "알리",
+  coupang: "쿠팡",
+  klook: "🎫 클룩",
+  etc: "🌐",
+};
+
+const PLATFORM_COLOR: Record<string, string> = {
+  amazon_us: "bg-blue-100 text-blue-700",
+  amazon_jp: "bg-indigo-100 text-indigo-700",
+  aliexpress: "bg-orange-100 text-orange-700",
+  coupang: "bg-red-100 text-red-700",
+  klook: "bg-purple-100 text-purple-700",
+  etc: "bg-gray-100 text-gray-600",
+};
+
 function getPlatformBadge(platform: string | null): string | null {
-  if (platform === "amazon_us") return "🇺🇸 아마존";
-  if (platform === "amazon_jp") return "🇯🇵 아마존JP";
-  if (platform === "aliexpress") return "알리";
-  if (platform === "coupang") return "쿠팡";
-  if (platform === "etc") return "🌐";
-  return null;
+  if (!platform) return null;
+  return PLATFORM_BADGE[platform] ?? null;
 }
 
 function getPlatformColor(platform: string | null): string {
-  if (platform === "amazon_us") return "bg-blue-100 text-blue-700";
-  if (platform === "amazon_jp") return "bg-indigo-100 text-indigo-700";
-  if (platform === "aliexpress") return "bg-orange-100 text-orange-700";
-  if (platform === "coupang") return "bg-red-100 text-red-700";
-  if (platform === "etc") return "bg-gray-100 text-gray-600";
-  return "bg-gray-50 text-gray-400";
+  if (!platform) return "bg-gray-50 text-gray-400";
+  return PLATFORM_COLOR[platform] ?? "bg-gray-50 text-gray-400";
 }
 
 function shuffleArray<T,>(arr: T[]): T[] {
@@ -70,7 +81,7 @@ function optimizeOrder(items: OrderItem[]): { result: OrderItem[]; warnings: str
     if (!videoSlots.has(i)) nonVideoSlots.push(i);
   }
 
-  const platforms = ['aliexpress', 'coupang', 'amazon_us', 'amazon_jp', 'etc'];
+  const platforms = ['aliexpress', 'coupang', 'amazon_us', 'amazon_jp', 'klook', 'etc'];
   const buckets: Record<string, OrderItem[]> = {};
   platforms.forEach(p => {
     buckets[p] = shuffleArray(

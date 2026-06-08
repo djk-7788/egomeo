@@ -8,7 +8,13 @@ import OrderEditor from "./OrderEditor";
 import QueueManager from "./QueueManager";
 import StatsPanel from "./StatsPanel";
 
-type Platform = "amazon_us" | "amazon_jp" | "aliexpress" | "coupang" | "etc" | null;
+// 나중에 파트너 추가 시 여기에만 추가하면 드롭다운에 자동 반영
+const INVOLVE_ASIA_PARTNERS = [
+  { value: "klook", label: "클룩" },
+] as const;
+
+type InvolveAsiaPartnerValue = (typeof INVOLVE_ASIA_PARTNERS)[number]["value"];
+type Platform = "amazon_us" | "amazon_jp" | "aliexpress" | "coupang" | "etc" | InvolveAsiaPartnerValue | null;
 
 type Product = {
   id: string;
@@ -1127,7 +1133,7 @@ export default function AdminPanel() {
 
               <div>
                 <label className="text-xs font-semibold text-gray-500 block mb-1">
-                  제휴 링크 (쿠팡/알리/아마존)
+                  제휴 링크
                 </label>
                 <input
                   type="url"
@@ -1135,9 +1141,19 @@ export default function AdminPanel() {
                   onChange={(e) => {
                     const url = e.target.value;
                     const isAmazon = url.includes("amazon.com") || url.includes("amzn.to") || url.includes("amazon.co.jp");
-                    const newPlatform: Platform = isAmazon
-                      ? ((form.platform === "amazon_us" || form.platform === "amazon_jp") ? form.platform : (url.includes("amazon.co.jp") ? "amazon_jp" : "amazon_us"))
-                      : detectPlatformFromUrl(url);
+                    const isInvolveAsia = url.includes("invl.me") || url.includes("invol.co");
+                    let newPlatform: Platform;
+                    if (isAmazon) {
+                      newPlatform = (form.platform === "amazon_us" || form.platform === "amazon_jp")
+                        ? form.platform
+                        : (url.includes("amazon.co.jp") ? "amazon_jp" : "amazon_us");
+                    } else if (isInvolveAsia) {
+                      const involveAsiaValues = INVOLVE_ASIA_PARTNERS.map(p => p.value) as string[];
+                      const isCurrentPartner = form.platform !== null && involveAsiaValues.includes(form.platform);
+                      newPlatform = isCurrentPartner ? form.platform : INVOLVE_ASIA_PARTNERS[0].value;
+                    } else {
+                      newPlatform = detectPlatformFromUrl(url);
+                    }
                     setForm({ ...form, affiliate_link: url, platform: newPlatform });
                   }}
                   required
@@ -1167,6 +1183,22 @@ export default function AdminPanel() {
                       />
                       🇯🇵 일본
                     </label>
+                  </div>
+                )}
+                {(form.affiliate_link.includes("invl.me") || form.affiliate_link.includes("invol.co")) && (
+                  <div className="mt-2 flex items-center gap-3 bg-purple-50 border border-purple-100 rounded-lg px-3 py-2">
+                    <span className="text-xs font-semibold text-purple-600 whitespace-nowrap">Involve Asia 파트너 선택</span>
+                    <select
+                      value={form.platform ?? ""}
+                      onChange={(e) => setForm({ ...form, platform: e.target.value as Platform })}
+                      className="flex-1 border border-purple-200 rounded-lg px-2 py-1 text-sm outline-none focus:border-purple-400 bg-white"
+                    >
+                      {INVOLVE_ASIA_PARTNERS.map((p) => (
+                        <option key={p.value} value={p.value}>
+                          {p.label}
+                        </option>
+                      ))}
+                    </select>
                   </div>
                 )}
               </div>

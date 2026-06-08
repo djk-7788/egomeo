@@ -1,6 +1,6 @@
 "use client";
 
-type Platform = "amazon_us" | "amazon_jp" | "aliexpress" | "coupang" | "etc" | null;
+type Platform = "amazon_us" | "amazon_jp" | "aliexpress" | "coupang" | "klook" | "etc" | null;
 
 type Product = {
   is_active: boolean;
@@ -19,6 +19,7 @@ const PLATFORM_LABELS: Record<string, string> = {
   coupang: "쿠팡",
   amazon_us: "🇺🇸 아마존 US",
   amazon_jp: "🇯🇵 아마존 JP",
+  klook: "🎫 클룩",
   etc: "기타",
   none: "미분류",
 };
@@ -28,6 +29,7 @@ const PLATFORM_COLORS: Record<string, string> = {
   coupang: "bg-red-50 border-red-200 text-red-700",
   amazon_us: "bg-yellow-50 border-yellow-200 text-yellow-700",
   amazon_jp: "bg-yellow-50 border-yellow-200 text-yellow-700",
+  klook: "bg-purple-50 border-purple-200 text-purple-700",
   etc: "bg-gray-50 border-gray-200 text-gray-600",
   none: "bg-gray-50 border-gray-100 text-gray-400",
 };
@@ -39,7 +41,7 @@ export default function StatsPanel({ products }: Props) {
 
   // 플랫폼 분포 (공개+큐 합산)
   const visible = products.filter((p) => p.is_active || p.is_queued);
-  const platformKeys: (string)[] = ["aliexpress", "coupang", "amazon_us", "amazon_jp", "etc", "none"];
+  const platformKeys: (string)[] = ["aliexpress", "coupang", "amazon_us", "amazon_jp", "klook", "etc", "none"];
   const platformCounts = platformKeys.reduce<Record<string, number>>((acc, key) => {
     acc[key] = visible.filter((p) =>
       key === "none" ? p.platform === null : p.platform === key
