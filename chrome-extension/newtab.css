@@ -583,9 +583,45 @@ input[type="range"] {
   font-size: 11px;
   color: var(--text-muted);
 }
-.crop-toggle-btn {
-  padding: 4px 12px;
+.crop-ratio-btns {
+  display: flex;
+  gap: 6px;
+  margin-top: 8px;
+  flex-wrap: wrap;
+}
+.crop-ratio-btn {
+  padding: 5px 10px;
   font-size: 12px;
+  font-weight: 600;
+  line-height: 1.2;
+  border: 1.5px solid var(--border);
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+  text-align: center;
+  transition: border-color 0.15s, color 0.15s, background 0.15s;
+}
+.crop-ratio-btn em {
+  font-style: normal;
+  font-size: 10px;
+  font-weight: 400;
+  color: var(--text-muted);
+  display: block;
+  margin-top: 1px;
+}
+.crop-ratio-btn:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+.crop-ratio-btn.active {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: rgba(245, 166, 35, 0.08);
+}
+.crop-ratio-btn.active em {
+  color: var(--accent);
+  opacity: 0.7;
 }
 
 .trimmer-empty {

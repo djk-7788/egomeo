@@ -607,7 +607,8 @@ let ffmpegReady = false;
 
 // 크롭 상태 (위치/크기는 비디오 표시 영역의 분율로 저장 → 창 리사이즈에 무관)
 let cropEnabled = false;
-let cropBox = { xFrac: 0, yFrac: 0, sizeFrac: 1 };
+let cropAspect = 'none'; // 'none' | '1:1' | '9:16' | '16:9' | 'free'
+let cropBox = { xFrac: 0, yFrac: 0, wFrac: 0.5, hFrac: 0.5 };
 let cropDragMode = null; // null | 'move' | 'resize'
 let cropDragStart = { x: 0, y: 0, box: null };
 
@@ -679,7 +680,7 @@ function formatTime(sec) {
 const cropOverlay = document.getElementById("crop-overlay");
 const cropBoxEl = document.getElementById("crop-box");
 const cropResizeHandle = document.getElementById("crop-resize-handle");
-const cropToggleBtn = document.getElementById("crop-toggle-btn");
+const cropRatioBtns = document.querySelectorAll(".crop-ratio-btn");
 const cropInfoText = document.getElementById("crop-info-text");
 
 // 비디오 표시 영역 계산 (letterbox/pillarbox 오프셋 포함)
@@ -700,47 +701,59 @@ function getVideoRect() {
   return { dw, dh, ox, oy, vw: vW, vh: vH };
 }
 
-// 크롭 박스 기본값: 중앙 최대 정사각형
+// 크롭 박스 초기화: 선택한 비율에 맞게 중앙 최대 크기로 배치
 function initCropBox() {
   const { dw, dh } = getVideoRect();
-  const minDim = Math.min(dw, dh);
-  cropBox.sizeFrac = 1.0;
-  cropBox.xFrac = (dw - minDim) / 2 / dw;
-  cropBox.yFrac = (dh - minDim) / 2 / dh;
+  const ratioMap = { '1:1': 1, '9:16': 9 / 16, '16:9': 16 / 9 };
+  // 자유 크롭은 영상 자체 비율로 시작
+  const targetAR = cropAspect === 'free' ? dw / dh : (ratioMap[cropAspect] || 1);
+  let bw, bh;
+  if (dw / dh > targetAR) {
+    bh = dh; bw = bh * targetAR;
+  } else {
+    bw = dw; bh = bw / targetAR;
+  }
+  cropBox.wFrac = bw / dw;
+  cropBox.hFrac = bh / dh;
+  cropBox.xFrac = (dw - bw) / 2 / dw;
+  cropBox.yFrac = (dh - bh) / 2 / dh;
   renderCropBox();
 }
 
 // 분율 → 픽셀 변환 후 DOM 반영 + 정보 업데이트
 function renderCropBox() {
   if (!cropEnabled) return;
-  const { dw, dh, ox, oy, vw } = getVideoRect();
-  const minDim = Math.min(dw, dh);
-  const sizePx = cropBox.sizeFrac * minDim;
+  const { dw, dh, ox, oy, vw, vh } = getVideoRect();
+  const wPx = cropBox.wFrac * dw;
+  const hPx = cropBox.hFrac * dh;
   const xPx = cropBox.xFrac * dw;
   const yPx = cropBox.yFrac * dh;
-  cropBoxEl.style.left = (ox + xPx) + "px";
-  cropBoxEl.style.top  = (oy + yPx) + "px";
-  cropBoxEl.style.width = cropBoxEl.style.height = sizePx + "px";
-  const pixelSize = Math.round(sizePx / dw * vw);
-  cropInfoText.textContent = `${pixelSize} × ${pixelSize}`;
+  cropBoxEl.style.left   = (ox + xPx) + "px";
+  cropBoxEl.style.top    = (oy + yPx) + "px";
+  cropBoxEl.style.width  = wPx + "px";
+  cropBoxEl.style.height = hPx + "px";
+  const pixelW = Math.round(wPx / dw * vw);
+  const pixelH = Math.round(hPx / dh * vh);
+  cropInfoText.textContent = `${pixelW} × ${pixelH}`;
 }
 
-// 토글
-cropToggleBtn.addEventListener("click", () => {
-  cropEnabled = !cropEnabled;
-  if (cropEnabled) {
-    initCropBox();
-    cropOverlay.classList.remove("hidden");
-    cropToggleBtn.textContent = "크롭 해제";
-    cropToggleBtn.style.borderColor = "var(--accent)";
-    cropToggleBtn.style.color = "var(--accent)";
-  } else {
-    cropOverlay.classList.add("hidden");
-    cropToggleBtn.textContent = "크롭 적용";
-    cropToggleBtn.style.borderColor = "";
-    cropToggleBtn.style.color = "";
-    cropInfoText.textContent = "";
-  }
+// 비율 버튼 선택
+cropRatioBtns.forEach(btn => {
+  btn.addEventListener("click", () => {
+    const ratio = btn.dataset.ratio;
+    cropAspect = ratio;
+    cropRatioBtns.forEach(b => b.classList.remove("active"));
+    btn.classList.add("active");
+    if (ratio === 'none') {
+      cropEnabled = false;
+      cropOverlay.classList.add("hidden");
+      cropInfoText.textContent = "";
+    } else {
+      cropEnabled = true;
+      if (previewVideo.videoWidth) initCropBox();
+      cropOverlay.classList.remove("hidden");
+    }
+  });
 });
 
 // 이동: 크롭 박스 드래그
@@ -762,28 +775,36 @@ cropResizeHandle.addEventListener("mousedown", (e) => {
 document.addEventListener("mousemove", (e) => {
   if (!cropDragMode) return;
   const { dw, dh } = getVideoRect();
-  const minDim = Math.min(dw, dh);
   const dx = e.clientX - cropDragStart.x;
   const dy = e.clientY - cropDragStart.y;
 
   if (cropDragMode === "move") {
-    const sizePx = cropDragStart.box.sizeFrac * minDim;
+    const wPx = cropDragStart.box.wFrac * dw;
+    const hPx = cropDragStart.box.hFrac * dh;
     let xPx = cropDragStart.box.xFrac * dw + dx;
     let yPx = cropDragStart.box.yFrac * dh + dy;
-    xPx = Math.max(0, Math.min(dw - sizePx, xPx));
-    yPx = Math.max(0, Math.min(dh - sizePx, yPx));
+    xPx = Math.max(0, Math.min(dw - wPx, xPx));
+    yPx = Math.max(0, Math.min(dh - hPx, yPx));
     cropBox.xFrac = xPx / dw;
     cropBox.yFrac = yPx / dh;
   } else {
-    // 대각 방향 평균으로 1:1 유지하며 리사이즈
-    const delta = (dx + dy) / 2;
-    const maxFrac = Math.min(
-      (dw - cropDragStart.box.xFrac * dw) / minDim,
-      (dh - cropDragStart.box.yFrac * dh) / minDim,
-      1.0
-    );
-    const newFrac = cropDragStart.box.sizeFrac + delta / minDim;
-    cropBox.sizeFrac = Math.max(30 / minDim, Math.min(maxFrac, newFrac));
+    const maxW = dw - cropDragStart.box.xFrac * dw;
+    const maxH = dh - cropDragStart.box.yFrac * dh;
+    if (cropAspect === 'free') {
+      // 자유 크롭: SE 핸들 — dx는 너비, dy는 높이 독립 조절
+      cropBox.wFrac = Math.max(30 / dw, Math.min(maxW / dw, cropDragStart.box.wFrac + dx / dw));
+      cropBox.hFrac = Math.max(30 / dh, Math.min(maxH / dh, cropDragStart.box.hFrac + dy / dh));
+    } else {
+      // 고정 비율: 대각 평균으로 비율 유지하며 리사이즈
+      const ratioMap = { '1:1': 1, '9:16': 9 / 16, '16:9': 16 / 9 };
+      const targetAR = ratioMap[cropAspect] || 1;
+      const delta = (dx + dy) / 2;
+      const origWPx = cropDragStart.box.wFrac * dw;
+      const newWPx = origWPx + delta;
+      const clampedW = Math.max(30, Math.min(maxW, Math.min(maxH * targetAR, newWPx)));
+      cropBox.wFrac = clampedW / dw;
+      cropBox.hFrac = (clampedW / targetAR) / dh;
+    }
   }
   renderCropBox();
 });
@@ -829,22 +850,24 @@ endTimeInput.addEventListener("change", () => {
 
 /* ── 크롭 박스 → ffmpeg crop 필터 문자열 ── */
 function buildCropFilter() {
-  if (!cropEnabled) return null;
+  if (!cropEnabled || cropAspect === 'none') return null;
   const { dw, dh, vw, vh } = getVideoRect();
-  const minDim = Math.min(dw, dh);
-  const sizePx  = cropBox.sizeFrac * minDim;
-  const xPx     = cropBox.xFrac * dw;
-  const yPx     = cropBox.yFrac * dh;
+  const wPx = cropBox.wFrac * dw;
+  const hPx = cropBox.hFrac * dh;
+  const xPx = cropBox.xFrac * dw;
+  const yPx = cropBox.yFrac * dh;
 
   // 표시 좌표 → 실제 영상 픽셀 변환
   const scaleX = vw / dw;
   const scaleY = vh / dh;
-  const rawSize = Math.min(Math.round(sizePx * scaleX), Math.round(sizePx * scaleY));
-  const size = rawSize % 2 === 0 ? rawSize : rawSize - 1; // h264는 짝수 필요
-  const cropX = Math.max(0, Math.min(vw - size, Math.round(xPx * scaleX)));
-  const cropY = Math.max(0, Math.min(vh - size, Math.round(yPx * scaleY)));
+  let rawW = Math.round(wPx * scaleX);
+  let rawH = Math.round(hPx * scaleY);
+  const w = rawW % 2 === 0 ? rawW : rawW - 1; // h264는 짝수 필요
+  const h = rawH % 2 === 0 ? rawH : rawH - 1;
+  const cropX = Math.max(0, Math.min(vw - w, Math.round(xPx * scaleX)));
+  const cropY = Math.max(0, Math.min(vh - h, Math.round(yPx * scaleY)));
 
-  return `crop=${size}:${size}:${cropX}:${cropY}`;
+  return `crop=${w}:${h}:${cropX}:${cropY}`;
 }
 
 /* ── ffmpeg.wasm 로딩 (최초 1회 캐싱, 로컬 번들 사용) ── */

@@ -197,13 +197,17 @@
               </div>
             </div>
 
-            <!-- 1:1 크롭 토글 -->
+            <!-- 크롭 비율 선택 -->
             <div class="crop-row">
-              <span style="font-size:13px;font-weight:700">✂️ 1:1 크롭</span>
-              <div style="display:flex;align-items:center;gap:8px">
-                <span id="crop-info-text" class="crop-info-text"></span>
-                <button id="crop-toggle-btn" class="btn-ghost crop-toggle-btn">크롭 적용</button>
-              </div>
+              <span style="font-size:13px;font-weight:700">✂️ 크롭</span>
+              <span id="crop-info-text" class="crop-info-text"></span>
+            </div>
+            <div class="crop-ratio-btns">
+              <button class="crop-ratio-btn active" data-ratio="none">크롭 없음</button>
+              <button class="crop-ratio-btn" data-ratio="1:1">1:1<em>정사각형</em></button>
+              <button class="crop-ratio-btn" data-ratio="9:16">9:16<em>릴스·틱톡</em></button>
+              <button class="crop-ratio-btn" data-ratio="16:9">16:9<em>유튜브</em></button>
+              <button class="crop-ratio-btn" data-ratio="free">자유 크롭</button>
             </div>
 
             <div class="trim-settings" style="margin-top:16px">
