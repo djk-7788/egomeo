@@ -37,34 +37,22 @@ export default function EyeButton() {
       return;
     }
 
-    // 처음 사용: 설명 팝업 표시
-    const explained =
-      typeof window !== "undefined" && !!localStorage.getItem("unseen_explained");
-    if (!explained) {
-      setShowTooltip(true);
-      return;
-    }
-
-    // 설명 본 적 있음 → 바로 동작
+    // 비로그인 → 로그인 모달
     if (!user) {
       openLoginModal();
       return;
     }
-    router.push("/unseen");
+
+    // 로그인 상태 → 항상 팝업 표시
+    setShowTooltip(true);
   }
 
   function handleStart() {
-    if (typeof window !== "undefined") localStorage.setItem("unseen_explained", "1");
     setShowTooltip(false);
-    if (!user) {
-      openLoginModal();
-      return;
-    }
     router.push("/unseen");
   }
 
   function handleClose() {
-    if (typeof window !== "undefined") localStorage.setItem("unseen_explained", "1");
     setShowTooltip(false);
   }
 
@@ -100,7 +88,7 @@ export default function EyeButton() {
           <div className="absolute -top-1.5 right-2.5 w-3 h-3 bg-white border-t border-l border-gray-100 rotate-45" />
           <p className="text-sm font-black text-[#111111] mb-1.5">안 본 것만 보기</p>
           <p className="text-xs text-gray-500 leading-relaxed mb-4">
-            이미 스크롤한 상품을 제외하고 보여드려요.
+            이 기능을 사용하면 안 본 아이템만 골라볼 수 있습니다
           </p>
           <div className="flex gap-2">
             <button

@@ -71,7 +71,7 @@ export default function Footer() {
         <p className="text-xs text-gray-300">
           © 이게머고?{" "}
           <span className="text-gray-200 mx-1">|</span>
-          <Link href="/about" className="hover:text-[#F5A623] transition-colors">About</Link>
+          <Link href="/about" className="hover:text-[#F5A623] transition-colors">About | Privacy Policy | Contact</Link>
         </p>
       </div>
     </footer>

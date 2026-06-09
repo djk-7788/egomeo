@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 
 export const metadata: Metadata = {
   title: "About | 이게머고?",
-  description: "이게머고?는 세계 각지의 기발하고 독특한 아이템을 소개하는 큐레이션 사이트입니다.",
+  description: "이게머고?는 세상의 기발하고 독특한 아이템을 소개하는 큐레이션 사이트입니다.",
 };
 
 export default function AboutPage() {
@@ -14,7 +14,7 @@ export default function AboutPage() {
       <h1 className="text-2xl font-bold mb-8 text-[#111111]">About</h1>
       <div className="space-y-5 text-sm text-gray-600 leading-relaxed">
         <p>
-          <span className="text-[#F5A623] font-bold">이게머고?</span>는 세계 각지의 기발하고 독특한 아이템을 소개하는 큐레이션 사이트입니다.
+          <span className="text-[#F5A623] font-bold">이게머고?</span>는 세상의 기발하고 독특한 아이템을 소개하는 큐레이션 사이트입니다.
         </p>
         <p>
           &ldquo;이게 뭐야?&rdquo; 하는 순간의 설렘과 재미를 공유하고 싶어서 만들었습니다.
