@@ -357,6 +357,8 @@ egomeo/
 
 ## 최근 완료 작업 (2026-06-09 기준)
 
+- **사이트 대표 OG 이미지 추가** (`public/og-default.png`, `app/layout.tsx`) — 1200×630, 흰 배경, 로고 960px 폭 정중앙 배치. `layout.tsx`에 `openGraph` + `twitter` 메타데이터 추가. 메인/검색/마이페이지 등 공유 시 로고 이미지 표시. 상품 상세 페이지는 상품 이미지 OG 유지, 이미지 없는 상품만 기본 OG로 폴백.
+
 - **Eye 팝업 항상 표시 방식으로 변경** (`components/EyeButton.tsx`) — `localStorage unseen_explained` 플래그 제거. 로그인 상태에서 Eye 버튼 클릭 시 매번 팝업 표시(1회 체크 없음). 비로그인 클릭 시 로그인 모달. 팝업 문구 업데이트. `handleStart`/`handleClose`에서 localStorage 쓰기 코드 제거.
 - **About 페이지 문구 수정** (`app/about/page.tsx`) — '세계 각지의' → '세상의'
 - **Footer About 링크 통합** (`components/Footer.tsx`) — About 단독 링크 → 'About | Privacy Policy | Contact' 단일 텍스트 링크로 통합
@@ -535,6 +537,7 @@ egomeo/
 - [완료] 어드민 모달 Involve Asia 플랫폼 지원 — invl.me/invol.co 감지 시 파트너 드롭다운, klook 🎫 배지, INVOLVE_ASIA_PARTNERS 배열로 파트너 관리
 - [완료] Eye 팝업 항상 표시 방식으로 변경 (`EyeButton.tsx`) — localStorage 플래그 제거, 로그인 시 클릭마다 팝업 표시
 - [완료] About 페이지 문구 수정 + Footer About 링크 'About | Privacy Policy | Contact' 단일 링크로 통합
+- [완료] 사이트 대표 OG 이미지 추가 (`public/og-default.png`) — 1200×630 흰 배경 로고 중앙 배치, layout.tsx openGraph + twitter 메타데이터 등록
 - [완료] 미디어툴 영상 자르기 ffmpeg.wasm 전환, 1:1 크롭 오버레이, 로컬 번들, 압축 튜닝, 포맷 변환 탭
 - [완료] 미디어툴 슬라이드쇼 개별 간격 설정 — 전체 슬라이더 0.5~5초 확장, 썸네일별 개별 초 입력, 재정렬 후에도 간격값 유지
 - [완료] 미디어툴 슬라이드쇼 MP4 생성 ffmpeg 전환 — 메타 광고 호환 스펙(H.264/yuv420p/1080×1080/-an), concat demuxer, MediaRecorder 방식 제거
