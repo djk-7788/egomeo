@@ -18,6 +18,28 @@ export const metadata: Metadata = {
   metadataBase: new URL("https://www.igemugo.com"),
   title: "이게머고?",
   description: "이게머고? — 사면 안 되는데 손이 가는 별난 물건들.",
+  openGraph: {
+    title: "이게머고?",
+    description: "이게머고? — 사면 안 되는데 손이 가는 별난 물건들.",
+    url: "https://www.igemugo.com",
+    siteName: "이게머고?",
+    images: [
+      {
+        url: "/og-default.png",
+        width: 1200,
+        height: 630,
+        alt: "이게머고?",
+      },
+    ],
+    locale: "ko_KR",
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "이게머고?",
+    description: "이게머고? — 사면 안 되는데 손이 가는 별난 물건들.",
+    images: ["/og-default.png"],
+  },
   verification: {
     yandex: "0f0bdf1351e0e1ac",
   },
