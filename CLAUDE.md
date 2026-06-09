@@ -355,7 +355,11 @@ egomeo/
 
 ---
 
-## 최근 완료 작업 (2026-06-08 기준)
+## 최근 완료 작업 (2026-06-09 기준)
+
+- **Eye 팝업 항상 표시 방식으로 변경** (`components/EyeButton.tsx`) — `localStorage unseen_explained` 플래그 제거. 로그인 상태에서 Eye 버튼 클릭 시 매번 팝업 표시(1회 체크 없음). 비로그인 클릭 시 로그인 모달. 팝업 문구 업데이트. `handleStart`/`handleClose`에서 localStorage 쓰기 코드 제거.
+- **About 페이지 문구 수정** (`app/about/page.tsx`) — '세계 각지의' → '세상의'
+- **Footer About 링크 통합** (`components/Footer.tsx`) — About 단독 링크 → 'About | Privacy Policy | Contact' 단일 텍스트 링크로 통합
 
 - **어드민 모달 Involve Asia 플랫폼 지원 추가** (`app/admin/AdminPanel.tsx`, `QueueManager.tsx`, `OrderEditor.tsx`, `StatsPanel.tsx`) — affiliate_link에 `invl.me` 또는 `invol.co` 입력 시 "Involve Asia 파트너 선택" 드롭다운 자동 표시. 현재 파트너: 클룩(`klook`). `INVOLVE_ASIA_PARTNERS` 배열에 `{ value, label }` 추가만 하면 드롭다운+배지 자동 확장. 큐관리/순서편집/통계 탭 배지 함수를 if문 체인 → 레코드 맵(`PLATFORM_BADGE`, `PLATFORM_COLOR`)으로 리팩터링. 클룩은 🎫 보라색 배지.
 
@@ -375,7 +379,7 @@ egomeo/
   - `HeaderAuthStatus.tsx`: `loading=true`일 때 `return null` 대신 동일 크기 placeholder(`<div className="w-7 h-7 rounded-full bg-gray-100" />`) 반환으로 헤더 레이아웃 흔들림 방지
 - **"안 본 것만 보기" 기능 추가** (`/unseen`) — 로그인 사용자 전용, 전체 구현:
   - `viewed_products` Supabase 테이블 — RLS 활성화, `UNIQUE(user_id, product_id)` 제약
-  - `components/EyeButton.tsx` — 헤더 Eye 토글 아이콘. 첫 클릭 시 설명 팝업(localStorage `unseen_explained` 플래그), 비로그인 시 로그인 모달, ON(주황·/unseen)/OFF(회색) 상태 전환
+  - `components/EyeButton.tsx` — 헤더 Eye 토글 아이콘. 로그인 시 클릭마다 설명 팝업 표시(localStorage 플래그 없음), 비로그인 시 로그인 모달, ON(주황·/unseen)/OFF(회색) 상태 전환
   - `app/unseen/page.tsx` — viewed_products NOT IN 필터로 안 본 상품 전체 로드 → `displayCount/STEP=12` 클라이언트 페이징 + 하단 센티넬 IntersectionObserver. 카드별 뷰 추적: viewport 진입 → `seenRef.add()`, 상단 이탈 → `scheduleViewed()` (2초 디바운스, 10개마다 즉시 flush, unmount/unload 시 flush)
 - **어드민 전체 DB 쓰기 작업을 API 라우트 경유로 전환** (2026-06-05, 참고용):
   - `AdminPanel`, `OrderEditor` 모두 API 라우트 경유로 전환, `import { supabase }` 완전 제거
@@ -529,6 +533,8 @@ egomeo/
 - [완료] 어드민 통계 탭 (`StatsPanel.tsx`) — 공개/큐/숨김, 플랫폼 분포, 미디어 타입, GA 바로가기
 - [완료] 미디어툴 영상 자르기 크롭 비율 선택 — 크롭 없음/1:1/9:16/16:9/자유 크롭 버튼, 비율 유지 리사이즈, 비정사각형 crop 필터 생성
 - [완료] 어드민 모달 Involve Asia 플랫폼 지원 — invl.me/invol.co 감지 시 파트너 드롭다운, klook 🎫 배지, INVOLVE_ASIA_PARTNERS 배열로 파트너 관리
+- [완료] Eye 팝업 항상 표시 방식으로 변경 (`EyeButton.tsx`) — localStorage 플래그 제거, 로그인 시 클릭마다 팝업 표시
+- [완료] About 페이지 문구 수정 + Footer About 링크 'About | Privacy Policy | Contact' 단일 링크로 통합
 - [완료] 미디어툴 영상 자르기 ffmpeg.wasm 전환, 1:1 크롭 오버레이, 로컬 번들, 압축 튜닝, 포맷 변환 탭
 - [완료] 미디어툴 슬라이드쇼 개별 간격 설정 — 전체 슬라이더 0.5~5초 확장, 썸네일별 개별 초 입력, 재정렬 후에도 간격값 유지
 - [완료] 미디어툴 슬라이드쇼 MP4 생성 ffmpeg 전환 — 메타 광고 호환 스펙(H.264/yuv420p/1080×1080/-an), concat demuxer, MediaRecorder 방식 제거
