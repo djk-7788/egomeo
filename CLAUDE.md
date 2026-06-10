@@ -402,6 +402,9 @@ egomeo/
   - 댓글 대기 30초 → 5초로 단축(TEXT 컨테이너는 처리 빠름). 이미지+댓글 총 ~39초 → 60초 이내
   - `lib/threads.ts` 세분화: `createThreadsContainer` / `checkContainerStatus` / `publishThreadsContainer` / `publishThreadsComment` 개별 export
   - og:image 절대 URL로 교체 — `ref=threads`일 때 `https://www.igemugo.com/og-threads.png` (metadataBase 상속 의존 제거)
+  - **select("*") 전환** — `media_type`/`container_id` SQL 컬럼 미추가 시에도 select 에러 없이 진행. container_id UPDATE 실패 시 SQL 안내 메시지로 교체. 빈 pending + 실패 항목 있으면 '재시도' 안내 반환
+  - **실패 전체 재시도 버튼** — 실패 항목 있을 때 헤더에 표시, 클릭 시 전체 pending으로 초기화
+  - **테스트 결과 개선** — processing(영상 컨테이너 생성 완료) / published(발행 완료) 구분 표시
 
 - **Threads 댓글 링크 og:image 분기 처리** (`app/product/[id]/page.tsx`, `app/admin/SnsPublisher.tsx`) — `?ref=threads` 쿼리 파라미터 도입. 상품 상세 페이지 `generateMetadata`에서 `ref=threads`이면 og:image를 `/og-threads.png`(Threads 전용 이미지)로 고정, 없으면 기존 상품 이미지. 댓글 기본 링크가 `?ref=threads` 포함으로 자동 생성되어 Threads 공유 시 상품 이미지 대신 전용 이미지가 미리보기에 노출됨.
 
