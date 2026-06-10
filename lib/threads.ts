@@ -57,7 +57,12 @@ export async function checkContainerStatus(creationId: string): Promise<string> 
     `https://graph.threads.net/v1.0/${creationId}?fields=status_code`,
     { headers: { Authorization: `Bearer ${accessToken}` } }
   );
-  if (!res.ok) throw new Error(`상태 조회 실패 (HTTP ${res.status})`);
+  if (!res.ok) {
+    const body = await res.text().catch(() => "(body 읽기 실패)");
+    const msg = `상태 조회 실패 (HTTP ${res.status}): ${body}`;
+    console.error("[checkContainerStatus]", msg);
+    throw new Error(msg);
+  }
   const { status_code } = (await res.json()) as { status_code?: string };
   return status_code ?? "UNKNOWN";
 }
