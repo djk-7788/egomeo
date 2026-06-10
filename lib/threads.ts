@@ -1,3 +1,31 @@
+export function isVideoUrl(url: string | null | undefined): boolean {
+  if (!url) return false;
+  return /\.(mp4|mov|webm|avi|m4v)(\?.*)?$/i.test(url);
+}
+
+// 영상 컨테이너 상태 폴링 — 15초 간격, 최대 16회(4분)
+async function pollUntilReady(
+  creationId: string,
+  accessToken: string
+): Promise<void> {
+  const MAX_POLLS = 16;
+  for (let i = 0; i < MAX_POLLS; i++) {
+    await new Promise((r) => setTimeout(r, 15_000));
+    const res = await fetch(
+      `https://graph.threads.net/v1.0/${creationId}?fields=status_code`,
+      { headers: { Authorization: `Bearer ${accessToken}` } }
+    );
+    if (!res.ok) continue; // 네트워크 오류 → 재시도
+    const data = (await res.json()) as { status_code?: string };
+    if (data.status_code === "FINISHED") return;
+    if (data.status_code === "ERROR") {
+      throw new Error("Threads 영상 처리 실패 (서버 오류)");
+    }
+    // IN_PROGRESS → 계속 대기
+  }
+  throw new Error("Threads 영상 처리 타임아웃 (4분 초과)");
+}
+
 export async function publishToThreads(params: {
   postText: string;
   imageUrl?: string | null;
@@ -10,14 +38,22 @@ export async function publishToThreads(params: {
     throw new Error("THREADS_ACCESS_TOKEN 미설정");
   }
 
+  const useVideo = isVideoUrl(params.imageUrl);
+
   // ── 1단계: 본문 컨테이너 생성 ─────────────────────
   const body: Record<string, string> = {
     access_token: accessToken,
     text: params.postText,
-    media_type: params.imageUrl ? "IMAGE" : "TEXT",
   };
-  if (params.imageUrl) {
+
+  if (useVideo) {
+    body.media_type = "VIDEO";
+    body.video_url = params.imageUrl!;
+  } else if (params.imageUrl) {
+    body.media_type = "IMAGE";
     body.image_url = params.imageUrl;
+  } else {
+    body.media_type = "TEXT";
   }
 
   const createRes = await fetch(
@@ -35,10 +71,16 @@ export async function publishToThreads(params: {
 
   const { id: creationId } = (await createRes.json()) as { id: string };
 
-  // Threads 미디어 서버 처리 대기 (공식 권장: 30초)
-  await new Promise((r) => setTimeout(r, 30_000));
+  // ── 2단계: 미디어 서버 처리 대기 ──────────────────
+  if (useVideo) {
+    // 영상: 상태 폴링 (15초 간격, 최대 4분)
+    await pollUntilReady(creationId, accessToken);
+  } else {
+    // 이미지/텍스트: 공식 권장 30초 고정 대기
+    await new Promise((r) => setTimeout(r, 30_000));
+  }
 
-  // ── 2단계: 본문 발행 ──────────────────────────────
+  // ── 3단계: 본문 발행 ──────────────────────────────
   const publishRes = await fetch(
     `https://graph.threads.net/v1.0/${userId}/threads_publish`,
     {
@@ -57,7 +99,7 @@ export async function publishToThreads(params: {
 
   const { id: postId } = (await publishRes.json()) as { id: string };
 
-  // ── 3~4단계: 댓글 발행 (실패해도 본문 published 유지) ──
+  // ── 4~5단계: 댓글 발행 (실패해도 본문 published 유지) ──
   if (params.commentText) {
     try {
       const commentCreateRes = await fetch(

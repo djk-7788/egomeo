@@ -29,6 +29,7 @@ type QueueItem = {
     title: string;
     image_url: string;
     image_urls: string[] | null;
+    video_url: string | null;
   } | null;
 };
 
@@ -49,6 +50,11 @@ const PLATFORM_COLOR: Record<string, string> = {
 };
 
 const SITE_URL = "https://www.igemugo.com";
+
+function isVideoUrl(url: string | null | undefined): boolean {
+  if (!url) return false;
+  return /\.(mp4|mov|webm|avi|m4v)(\?.*)?$/i.test(url);
+}
 
 function buildDefaultPostText(product: SnsProduct): string {
   return product.title;
@@ -142,7 +148,8 @@ export default function SnsPublisher() {
     setAddProduct(product);
     setAddText(buildDefaultPostText(product));
     setAddCommentText(buildDefaultCommentText(product));
-    setAddImageUrl(product.image_url || null);
+    // 영상이 있으면 기본값으로 영상 선택, 없으면 대표 이미지
+    setAddImageUrl(product.video_url ?? product.image_url ?? null);
   }
 
   function closeAddModal() {
@@ -539,7 +546,11 @@ export default function SnsPublisher() {
                       {idx + 1}
                     </span>
                     <div className="w-11 h-11 rounded-lg overflow-hidden flex-shrink-0 bg-gray-100">
-                      {item.image_url ? (
+                      {item.image_url && isVideoUrl(item.image_url) ? (
+                        <div className="w-full h-full flex items-center justify-center text-base bg-gray-900">
+                          🎬
+                        </div>
+                      ) : item.image_url ? (
                         <img
                           src={item.image_url}
                           alt=""
@@ -623,24 +634,41 @@ export default function SnsPublisher() {
                 </button>
               </div>
               <div className="px-6 py-4 flex flex-col gap-4 overflow-y-auto">
-                {/* 이미지 선택 */}
+                {/* 이미지/영상 선택 */}
                 <div>
                   <label className="text-xs font-semibold text-gray-500 block mb-2">
-                    대표 이미지 선택
+                    미디어 선택
                   </label>
-                  {!addProduct.image_url &&
+                  {!addProduct.video_url &&
+                  !addProduct.image_url &&
                   !(addProduct.image_urls?.length) ? (
                     <p className="text-xs text-amber-600 bg-amber-50 border border-amber-100 rounded-lg px-3 py-2">
-                      이미지 없음 — 텍스트만 발행됩니다
+                      이미지/영상 없음 — 텍스트만 발행됩니다
                     </p>
                   ) : (
                     <div className="flex flex-wrap gap-2">
+                      {/* 영상 옵션 (기본값) */}
+                      {addProduct.video_url && (
+                        <button
+                          type="button"
+                          onClick={() => setAddImageUrl(addProduct.video_url!)}
+                          className={`w-16 h-16 rounded-lg border-2 flex flex-col items-center justify-center transition-all ${
+                            addImageUrl === addProduct.video_url
+                              ? "border-[#F5A623] shadow bg-amber-50"
+                              : "border-gray-200 bg-gray-900 hover:border-gray-400"
+                          }`}
+                        >
+                          <span className="text-xl leading-none">🎬</span>
+                          <span className="text-[9px] font-bold text-white mt-0.5">
+                            영상
+                          </span>
+                        </button>
+                      )}
+                      {/* 대표 이미지 */}
                       {addProduct.image_url && (
                         <button
                           type="button"
-                          onClick={() =>
-                            setAddImageUrl(addProduct.image_url)
-                          }
+                          onClick={() => setAddImageUrl(addProduct.image_url)}
                           className={`w-16 h-16 rounded-lg overflow-hidden border-2 transition-all ${
                             addImageUrl === addProduct.image_url
                               ? "border-[#F5A623] shadow"
@@ -654,6 +682,7 @@ export default function SnsPublisher() {
                           />
                         </button>
                       )}
+                      {/* 추가 이미지 */}
                       {addProduct.image_urls?.map((url) => (
                         <button
                           key={url}
@@ -672,6 +701,7 @@ export default function SnsPublisher() {
                           />
                         </button>
                       ))}
+                      {/* 텍스트만 */}
                       <button
                         type="button"
                         onClick={() => setAddImageUrl(null)}
@@ -773,15 +803,35 @@ export default function SnsPublisher() {
                 </button>
               </div>
               <div className="px-6 py-4 flex flex-col gap-4 overflow-y-auto">
-                {/* 이미지 선택 */}
+                {/* 미디어 선택 */}
                 {editItem.products &&
-                  (editItem.products.image_url ||
+                  (editItem.products.video_url ||
+                    editItem.products.image_url ||
                     (editItem.products.image_urls?.length ?? 0) > 0) && (
                     <div>
                       <label className="text-xs font-semibold text-gray-500 block mb-2">
-                        대표 이미지
+                        미디어 선택
                       </label>
                       <div className="flex flex-wrap gap-2">
+                        {/* 영상 옵션 */}
+                        {editItem.products.video_url && (
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setEditImageUrl(editItem.products!.video_url!)
+                            }
+                            className={`w-16 h-16 rounded-lg border-2 flex flex-col items-center justify-center transition-all ${
+                              editImageUrl === editItem.products.video_url
+                                ? "border-[#F5A623] shadow bg-amber-50"
+                                : "border-gray-200 bg-gray-900 hover:border-gray-400"
+                            }`}
+                          >
+                            <span className="text-xl leading-none">🎬</span>
+                            <span className="text-[9px] font-bold text-white mt-0.5">
+                              영상
+                            </span>
+                          </button>
+                        )}
                         {editItem.products.image_url && (
                           <button
                             type="button"

@@ -8,5 +8,10 @@
       "path": "/api/cron/sns-publish",
       "schedule": "30 10 * * *"
     }
-  ]
+  ],
+  "functions": {
+    "app/api/cron/sns-publish/route.ts": {
+      "maxDuration": 300
+    }
+  }
 }

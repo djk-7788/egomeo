@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { getSupabaseAdmin } from "@/lib/supabase-admin";
 import { processImageForSns } from "@/lib/sns-image";
-import { publishToThreads } from "@/lib/threads";
+import { publishToThreads, isVideoUrl } from "@/lib/threads";
 
 export const runtime = "nodejs";
 // 이미지 처리 + Threads 30초 대기 포함 최대 실행 시간
@@ -38,7 +38,12 @@ async function runPublish(): Promise<NextResponse> {
   try {
     let processedImageUrl: string | null = null;
     if (item.image_url) {
-      processedImageUrl = await processImageForSns(item.image_url);
+      if (isVideoUrl(item.image_url)) {
+        // 영상은 sharp 처리 없이 R2 URL 직접 전달
+        processedImageUrl = item.image_url;
+      } else {
+        processedImageUrl = await processImageForSns(item.image_url);
+      }
     }
 
     const { commentError } = await publishToThreads({
