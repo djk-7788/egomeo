@@ -36,7 +36,7 @@ export async function generateMetadata({ params, searchParams }: Props): Promise
   // ref=threads → 로고 이미지로 고정 (상품 이미지 노출 방지)
   const ogImageUrl: string =
     ref === "threads"
-      ? "/2.png"
+      ? "/og-threads.png"
       : product.image_url ||
         (Array.isArray(product.image_urls) && product.image_urls.length > 0
           ? product.image_urls[0]

@@ -394,7 +394,7 @@ egomeo/
 
 - **SNS 발행 — Threads 영상 발행 지원** (`lib/threads.ts`, `app/api/cron/sns-publish/route.ts`, `app/admin/SnsPublisher.tsx`, `app/api/admin/sns-queue/route.ts`, `vercel.json`) — video_url 있는 상품은 SNS 발행 모달에서 "🎬 영상" 옵션 기본 선택. 영상 선택 시 `sns_queue.image_url`에 video URL 저장. 발행 시 확장자(.mp4 등)로 자동 판별: 영상이면 `media_type=VIDEO` + 15초 간격 폴링(최대 4분) → FINISHED 확인 후 publish. 이미지는 기존 30초 고정 대기 유지. 영상은 sharp 처리 없이 R2 URL 직접 전달. `vercel.json`에 `functions.maxDuration=300` 추가(Vercel Pro 플랜 필요).
 
-- **Threads 댓글 링크 og:image 분기 처리** (`app/product/[id]/page.tsx`, `app/admin/SnsPublisher.tsx`) — `?ref=threads` 쿼리 파라미터 도입. 상품 상세 페이지 `generateMetadata`에서 `ref=threads`이면 og:image를 `/2.png`(로고)로 고정, 없으면 기존 상품 이미지. 댓글 기본 링크가 `?ref=threads` 포함으로 자동 생성되어 Threads 공유 시 상품 이미지 대신 로고가 미리보기에 노출됨.
+- **Threads 댓글 링크 og:image 분기 처리** (`app/product/[id]/page.tsx`, `app/admin/SnsPublisher.tsx`) — `?ref=threads` 쿼리 파라미터 도입. 상품 상세 페이지 `generateMetadata`에서 `ref=threads`이면 og:image를 `/og-threads.png`(Threads 전용 이미지)로 고정, 없으면 기존 상품 이미지. 댓글 기본 링크가 `?ref=threads` 포함으로 자동 생성되어 Threads 공유 시 상품 이미지 대신 전용 이미지가 미리보기에 노출됨.
 
 - **SNS 발행 본문/댓글 분리** (`lib/threads.ts`, `app/admin/SnsPublisher.tsx`, `app/api/admin/sns-queue/route.ts`, `app/api/cron/sns-publish/route.ts`) — `sns_queue` 테이블에 `comment_text text` 컬럼 추가(SQL 실행 필요). 모달 본문 기본값 = 제목만, 댓글 기본값 = 버튼문구+링크. Threads 발행 4단계로 확장(본문 발행 → 댓글 컨테이너 → 30초 대기 → 댓글 발행). 댓글 실패 시 본문 published 유지, error_message에 "댓글 발행 실패" 기록.
 
