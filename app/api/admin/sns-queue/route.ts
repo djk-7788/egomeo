@@ -77,7 +77,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const { product_id, channel = "threads", post_text, image_url, comment_text } =
+  const { product_id, channel = "threads", post_text, image_url, comment_text, media_type = "image" } =
     await req.json();
   if (!product_id || !post_text) {
     return NextResponse.json(
@@ -104,6 +104,7 @@ export async function POST(req: NextRequest) {
     post_text,
     image_url: image_url || null,
     comment_text: comment_text || null,
+    media_type: media_type || "image",
     status: "pending",
     scheduled_order: nextOrder,
   });

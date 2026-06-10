@@ -149,6 +149,7 @@ image_url       text                     -- 발행에 쓸 대표 이미지 (선�
 status          text DEFAULT 'pending'   -- pending / published / failed
 error_message   text                     -- 실패 시 오류 메시지
 scheduled_order integer                  -- 발행 순서
+media_type      text DEFAULT 'image'     -- 'video' | 'image' | 'text' — 큐 저장 시점에 명시 기록
 published_at    timestamptz              -- 발행 완료 시각
 created_at      timestamptz DEFAULT now()
 ```
@@ -392,7 +393,12 @@ egomeo/
 
 ## 최근 완료 작업 (2026-06-10 기준)
 
-- **SNS 발행 — Threads 영상 발행 지원** (`lib/threads.ts`, `app/api/cron/sns-publish/route.ts`, `app/admin/SnsPublisher.tsx`, `app/api/admin/sns-queue/route.ts`, `vercel.json`) — video_url 있는 상품은 SNS 발행 모달에서 "🎬 영상" 옵션 기본 선택. 영상 선택 시 `sns_queue.image_url`에 video URL 저장. 발행 시 확장자(.mp4 등)로 자동 판별: 영상이면 `media_type=VIDEO` + 15초 간격 폴링(최대 4분) → FINISHED 확인 후 publish. 이미지는 기존 30초 고정 대기 유지. 영상은 sharp 처리 없이 R2 URL 직접 전달. `vercel.json`에 `functions.maxDuration=300` 추가(Vercel Pro 플랜 필요).
+- **SNS 발행 — Threads 영상 발행 지원 + 버그 수정** (`lib/threads.ts`, `app/api/cron/sns-publish/route.ts`, `app/admin/SnsPublisher.tsx`, `app/api/admin/sns-queue/route.ts`, `vercel.json`, `app/product/[id]/page.tsx`)
+  - video_url 있는 상품은 SNS 발행 모달에서 "🎬 영상" 옵션 기본 선택
+  - `sns_queue`에 `media_type text` 컬럼 추가(SQL 실행 필요) — 큐 저장 시점에 'video'/'image'/'text' 명시 기록, URL 확장자 판별 의존 제거. `publishToThreads`에 `mediaType` 파라미터 추가, media_type이 null이면 URL 확장자로 폴백
+  - 영상이면 `media_type=VIDEO` + 15초 간격 폴링(최대 4분) → FINISHED 확인 후 publish. 이미지는 기존 30초 고정 대기 유지. 영상은 sharp 처리 없이 R2 URL 직접 전달
+  - og:image 절대 URL로 교체 — `ref=threads`일 때 `/og-threads.png` → `https://www.igemugo.com/og-threads.png` (metadataBase 상속 의존 제거)
+  - `vercel.json`에 `functions.maxDuration=300` 추가(Vercel Pro 플랜 필요)
 
 - **Threads 댓글 링크 og:image 분기 처리** (`app/product/[id]/page.tsx`, `app/admin/SnsPublisher.tsx`) — `?ref=threads` 쿼리 파라미터 도입. 상품 상세 페이지 `generateMetadata`에서 `ref=threads`이면 og:image를 `/og-threads.png`(Threads 전용 이미지)로 고정, 없으면 기존 상품 이미지. 댓글 기본 링크가 `?ref=threads` 포함으로 자동 생성되어 Threads 공유 시 상품 이미지 대신 전용 이미지가 미리보기에 노출됨.
 
@@ -621,7 +627,7 @@ egomeo/
 
 1. **Supabase SQL 실행 필요** (아직 미실행):
    - `ALTER TABLE products ADD COLUMN IF NOT EXISTS sns_safe boolean DEFAULT false;` + 플랫폼별 백필
-   - `sns_queue` 테이블 CREATE + RLS ENABLE + `comment_text text` 컬럼 추가
+   - `sns_queue` 테이블 CREATE + RLS ENABLE + `comment_text text` 컬럼 추가 + `media_type text DEFAULT 'image'` 컬럼 추가
 2. **Vercel 환경변수 추가 필요**: `THREADS_USER_ID`, `THREADS_ACCESS_TOKEN`, `CRON_SECRET`
 3. **Threads API 토큰 발급** — Meta 개발자 콘솔에서 발급 후 `THREADS_ACCESS_TOKEN` 등록
 4. **AI 드립 제목 생성** — 알리 검색 후 원본 상품명 기반으로 Claude API 호출해 드립형 제목 자동 생성

@@ -20,6 +20,7 @@ type QueueItem = {
   post_text: string;
   comment_text: string | null;
   image_url: string | null;
+  media_type: "video" | "image" | "text" | null;
   status: "pending" | "failed";
   error_message: string | null;
   scheduled_order: number;
@@ -54,6 +55,15 @@ const SITE_URL = "https://www.igemugo.com";
 function isVideoUrl(url: string | null | undefined): boolean {
   if (!url) return false;
   return /\.(mp4|mov|webm|avi|m4v)(\?.*)?$/i.test(url);
+}
+
+function resolveMediaType(
+  imageUrl: string | null,
+  videoUrl: string | null | undefined
+): "video" | "image" | "text" {
+  if (imageUrl === null) return "text";
+  if (videoUrl && imageUrl === videoUrl) return "video";
+  return "image";
 }
 
 function buildDefaultPostText(product: SnsProduct): string {
@@ -171,6 +181,7 @@ export default function SnsPublisher() {
           post_text: addText,
           comment_text: addCommentText.trim() || null,
           image_url: addImageUrl || null,
+          media_type: resolveMediaType(addImageUrl, addProduct.video_url),
         }),
       });
       if (!res.ok) {
@@ -213,6 +224,7 @@ export default function SnsPublisher() {
           post_text: editText,
           comment_text: editCommentText.trim() || null,
           image_url: editImageUrl || null,
+          media_type: resolveMediaType(editImageUrl, editItem.products?.video_url),
         }),
       });
       if (!res.ok) {
@@ -546,7 +558,7 @@ export default function SnsPublisher() {
                       {idx + 1}
                     </span>
                     <div className="w-11 h-11 rounded-lg overflow-hidden flex-shrink-0 bg-gray-100">
-                      {item.image_url && isVideoUrl(item.image_url) ? (
+                      {item.media_type === "video" ? (
                         <div className="w-full h-full flex items-center justify-center text-base bg-gray-900">
                           🎬
                         </div>

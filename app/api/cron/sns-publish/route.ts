@@ -33,12 +33,17 @@ async function runPublish(): Promise<NextResponse> {
     post_text: string;
     image_url: string | null;
     comment_text: string | null;
+    media_type: string | null;
   };
 
   try {
+    const isVideo =
+      item.media_type === "video" ||
+      (item.media_type == null && isVideoUrl(item.image_url));
+
     let processedImageUrl: string | null = null;
     if (item.image_url) {
-      if (isVideoUrl(item.image_url)) {
+      if (isVideo) {
         // 영상은 sharp 처리 없이 R2 URL 직접 전달
         processedImageUrl = item.image_url;
       } else {
@@ -49,6 +54,7 @@ async function runPublish(): Promise<NextResponse> {
     const { commentError } = await publishToThreads({
       postText: item.post_text,
       imageUrl: processedImageUrl,
+      mediaType: item.media_type,
       commentText: item.comment_text,
     });
 

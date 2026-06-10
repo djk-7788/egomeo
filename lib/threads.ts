@@ -29,6 +29,7 @@ async function pollUntilReady(
 export async function publishToThreads(params: {
   postText: string;
   imageUrl?: string | null;
+  mediaType?: string | null; // 'video' | 'image' | 'text' — 명시적 타입 우선, null이면 URL 확장자로 폴백
   commentText?: string | null;
 }): Promise<{ commentError?: string }> {
   const userId = process.env.THREADS_USER_ID;
@@ -38,7 +39,10 @@ export async function publishToThreads(params: {
     throw new Error("THREADS_ACCESS_TOKEN 미설정");
   }
 
-  const useVideo = isVideoUrl(params.imageUrl);
+  // media_type 컬럼이 있으면 우선 사용, 없으면 URL 확장자로 폴백
+  const useVideo =
+    params.mediaType === "video" ||
+    (params.mediaType == null && isVideoUrl(params.imageUrl));
 
   // ── 1단계: 본문 컨테이너 생성 ─────────────────────
   const body: Record<string, string> = {

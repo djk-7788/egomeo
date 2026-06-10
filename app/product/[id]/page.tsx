@@ -33,14 +33,15 @@ export async function generateMetadata({ params, searchParams }: Props): Promise
 
   if (!product) return { title: "이게머고?" };
 
-  // ref=threads → 로고 이미지로 고정 (상품 이미지 노출 방지)
+  // ref=threads → Threads 전용 이미지 고정 (상품 이미지 노출 방지)
+  // 절대 URL 사용 — metadataBase 상속 의존 없이 확실하게 처리
   const ogImageUrl: string =
     ref === "threads"
-      ? "/og-threads.png"
+      ? "https://www.igemugo.com/og-threads.png"
       : product.image_url ||
         (Array.isArray(product.image_urls) && product.image_urls.length > 0
           ? product.image_urls[0]
-          : "/2.png");
+          : "https://www.igemugo.com/2.png");
 
   return {
     title: `${product.title} | 이게머고?`,
