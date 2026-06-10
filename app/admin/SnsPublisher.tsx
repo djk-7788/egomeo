@@ -336,18 +336,43 @@ export default function SnsPublisher() {
     try {
       const res = await fetch("/api/cron/sns-publish", { method: "POST" });
       const body = await res.json().catch(() => ({}));
-      setTestResult({
-        ok: res.ok,
-        msg: res.ok
-          ? (body.message ?? "발행 완료 ✓")
-          : (body.error ?? "발행 실패"),
-      });
+      let msg: string;
+      if (res.ok) {
+        if (body.processing) {
+          msg = "⏳ 영상 컨테이너 생성 완료 — 한 번 더 클릭하면 발행됩니다";
+        } else if (body.published) {
+          msg = "발행 완료 ✓";
+        } else {
+          msg = body.message ?? "처리 완료";
+        }
+      } else {
+        msg = body.error ?? "발행 실패";
+      }
+      setTestResult({ ok: res.ok, msg });
       fetchAll();
     } catch (err) {
       setTestResult({ ok: false, msg: String(err) });
     } finally {
       setTesting(false);
     }
+  }
+
+  // ── 실패 항목 전체 재시도 ──────────────────────────
+
+  async function handleRetryAll() {
+    const failedItems = queueItems.filter((i) => i.status === "failed");
+    if (failedItems.length === 0) return;
+    if (!confirm(`실패한 ${failedItems.length}개 항목을 모두 pending으로 초기화할까요?`)) return;
+    await Promise.all(
+      failedItems.map((item) =>
+        fetch("/api/admin/sns-queue", {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ id: item.id, status: "pending", error_message: null }),
+        })
+      )
+    );
+    fetchQueue();
   }
 
   // ── 계산값 ────────────────────────────────────────
@@ -382,7 +407,15 @@ export default function SnsPublisher() {
             </span>
           </p>
         </div>
-        <div className="ml-auto">
+        <div className="ml-auto flex gap-2">
+          {queueItems.some((i) => i.status === "failed") && (
+            <button
+              onClick={handleRetryAll}
+              className="text-sm font-semibold px-3 py-2 bg-red-50 text-red-600 border border-red-200 rounded-lg hover:bg-red-100 transition-colors"
+            >
+              실패 전체 재시도
+            </button>
+          )}
           <button
             onClick={handleTestPublish}
             disabled={testing}

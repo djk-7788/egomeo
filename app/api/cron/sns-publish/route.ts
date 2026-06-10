@@ -20,17 +20,19 @@ type SnsQueueItem = {
   post_text: string;
   image_url: string | null;
   comment_text: string | null;
-  media_type: string | null;
-  container_id: string | null;
+  media_type: string | null | undefined;
+  container_id: string | null | undefined;
+  [key: string]: unknown;
 };
 
 async function runPublish(manual = false): Promise<NextResponse> {
   const admin = getSupabaseAdmin();
 
   // ── 1. processing 항목 먼저 확인 (영상 컨테이너 완료 여부) ──
+  // select("*"): media_type/container_id 컬럼이 없어도 에러 없이 진행
   const { data: processingItems } = await admin
     .from("sns_queue")
-    .select("id, post_text, image_url, comment_text, media_type, container_id")
+    .select("*")
     .eq("status", "processing")
     .order("scheduled_order", { ascending: true, nullsFirst: false })
     .order("created_at", { ascending: true })
@@ -38,17 +40,21 @@ async function runPublish(manual = false): Promise<NextResponse> {
 
   if (processingItems && processingItems.length > 0) {
     const item = processingItems[0] as SnsQueueItem;
+    const containerId = item.container_id ?? null;
 
-    if (!item.container_id) {
+    if (!containerId) {
+      const errMsg = item.container_id === undefined
+        ? "SQL 실행 필요: ALTER TABLE sns_queue ADD COLUMN IF NOT EXISTS container_id text;"
+        : "container_id 없음";
       await admin
         .from("sns_queue")
-        .update({ status: "failed", error_message: "container_id 없음" })
+        .update({ status: "failed", error_message: errMsg })
         .eq("id", item.id);
-      return NextResponse.json({ ok: false, error: "container_id 없음" }, { status: 500 });
+      return NextResponse.json({ ok: false, error: errMsg }, { status: 500 });
     }
 
     try {
-      const statusCode = await checkContainerStatus(item.container_id);
+      const statusCode = await checkContainerStatus(containerId);
 
       if (statusCode === "IN_PROGRESS") {
         return NextResponse.json({ ok: true, message: "영상 처리 중 — 다음 Cron 재시도" });
@@ -66,7 +72,7 @@ async function runPublish(manual = false): Promise<NextResponse> {
       }
 
       if (statusCode === "FINISHED") {
-        const postId = await publishThreadsContainer(item.container_id);
+        const postId = await publishThreadsContainer(containerId);
 
         let commentError: string | undefined;
         if (item.comment_text) {
@@ -101,9 +107,8 @@ async function runPublish(manual = false): Promise<NextResponse> {
   // ── 2. 일일 발행 한도 확인 (수동 테스트는 제외) ──
   if (!manual) {
     const dailyLimit = parseInt(process.env.SNS_DAILY_LIMIT ?? "2");
-    // KST 오늘 자정 기준 (UTC+9)
     const nowKst = new Date(Date.now() + 9 * 60 * 60 * 1000);
-    const kstDate = nowKst.toISOString().slice(0, 10); // YYYY-MM-DD (KST)
+    const kstDate = nowKst.toISOString().slice(0, 10);
     const kstDayStart = new Date(`${kstDate}T00:00:00+09:00`).toISOString();
 
     const { count: todayCount } = await admin
@@ -123,7 +128,7 @@ async function runPublish(manual = false): Promise<NextResponse> {
   // ── 3. pending 항목 처리 ──
   const { data: pendingItems, error: fetchError } = await admin
     .from("sns_queue")
-    .select("id, post_text, image_url, comment_text, media_type, container_id")
+    .select("*")
     .eq("status", "pending")
     .order("scheduled_order", { ascending: true, nullsFirst: false })
     .order("created_at", { ascending: true })
@@ -134,6 +139,17 @@ async function runPublish(manual = false): Promise<NextResponse> {
   }
 
   if (!pendingItems || pendingItems.length === 0) {
+    // 실패 항목이 있으면 재시도 안내
+    const { count: failedCount } = await admin
+      .from("sns_queue")
+      .select("id", { count: "exact", head: true })
+      .eq("status", "failed");
+    if ((failedCount ?? 0) > 0) {
+      return NextResponse.json({
+        ok: true,
+        message: `pending 항목 없음 (실패 ${failedCount}개 — 큐에서 '재시도' 버튼 클릭 후 다시 시도하세요)`,
+      });
+    }
     return NextResponse.json({ ok: true, message: "큐가 비어있습니다" });
   }
 
@@ -150,10 +166,23 @@ async function runPublish(manual = false): Promise<NextResponse> {
         imageUrl: item.image_url,
         mediaType: "video",
       });
-      await admin
+
+      const { error: updateError } = await admin
         .from("sns_queue")
         .update({ status: "processing", container_id: creationId })
         .eq("id", item.id);
+
+      if (updateError) {
+        // container_id 컬럼이 없을 경우 — SQL 실행 안내
+        const sqlGuide =
+          "SQL 실행 필요: ALTER TABLE sns_queue ADD COLUMN IF NOT EXISTS container_id text; (컨테이너 생성은 됐으나 저장 실패)";
+        await admin
+          .from("sns_queue")
+          .update({ status: "failed", error_message: sqlGuide })
+          .eq("id", item.id);
+        return NextResponse.json({ ok: false, error: sqlGuide }, { status: 500 });
+      }
+
       return NextResponse.json({ ok: true, processing: item.id });
     }
 
@@ -166,7 +195,7 @@ async function runPublish(manual = false): Promise<NextResponse> {
     const { commentError } = await publishToThreads({
       postText: item.post_text,
       imageUrl: processedImageUrl,
-      mediaType: item.media_type,
+      mediaType: item.media_type ?? null,
       commentText: item.comment_text,
     });
 
