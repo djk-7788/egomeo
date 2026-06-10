@@ -392,6 +392,8 @@ egomeo/
 
 ## 최근 완료 작업 (2026-06-10 기준)
 
+- **Threads 댓글 링크 og:image 분기 처리** (`app/product/[id]/page.tsx`, `app/admin/SnsPublisher.tsx`) — `?ref=threads` 쿼리 파라미터 도입. 상품 상세 페이지 `generateMetadata`에서 `ref=threads`이면 og:image를 `/2.png`(로고)로 고정, 없으면 기존 상품 이미지. 댓글 기본 링크가 `?ref=threads` 포함으로 자동 생성되어 Threads 공유 시 상품 이미지 대신 로고가 미리보기에 노출됨.
+
 - **SNS 발행 본문/댓글 분리** (`lib/threads.ts`, `app/admin/SnsPublisher.tsx`, `app/api/admin/sns-queue/route.ts`, `app/api/cron/sns-publish/route.ts`) — `sns_queue` 테이블에 `comment_text text` 컬럼 추가(SQL 실행 필요). 모달 본문 기본값 = 제목만, 댓글 기본값 = 버튼문구+링크. Threads 발행 4단계로 확장(본문 발행 → 댓글 컨테이너 → 30초 대기 → 댓글 발행). 댓글 실패 시 본문 published 유지, error_message에 "댓글 발행 실패" 기록.
 
 - **SNS 자동 발행 시스템 1차 — Threads 자동 발행** (`lib/threads.ts`, `lib/sns-image.ts`, `app/api/admin/sns-queue/route.ts`, `app/api/cron/sns-publish/route.ts`, `app/admin/SnsPublisher.tsx`, `vercel.json`, `.env.example`)
@@ -605,17 +607,26 @@ egomeo/
 - [완료] "안 본 것만 보기" 기능 추가 — `viewed_products` 테이블(RLS), `EyeButton` 헤더 토글 아이콘, `/unseen` 페이지 (NOT IN 필터, 클라이언트 페이징, 카드 뷰 배치 upsert 추적)
 - [완료] 메인 피드 가상 스크롤 적용 (`InfiniteProductGrid.tsx`) — `@tanstack/react-virtual` v3, `useWindowVirtualizer`, 행 단위 가상화(overscan=5), measureElement, scrollMargin, 반응형 열 수 JS 감지
 - [완료] Supabase RLS 전체 적용 — products(is_active=true SELECT 공개·쓰기차단), likes/profiles/viewed_products(auth.uid() 정책 재정의)
+- [완료] SNS 안전 필터 (`sns_safe`) 추가 — `products` 테이블 컬럼, 플랫폼별 백필, 어드민 모달 체크박스(amazon_us 잠금), 상품 목록 📵 배지, 통계 탭 카운트 카드
+- [완료] SNS 자동 발행 시스템 1차 — Threads 자동 발행 (`lib/threads.ts`, `lib/sns-image.ts`, `app/api/admin/sns-queue/route.ts`, `app/api/cron/sns-publish/route.ts`, `app/admin/SnsPublisher.tsx`, `vercel.json`) — `sns_queue` 테이블, 어드민 SNS 발행 탭, sharp 이미지 처리, Threads Graph API, Vercel Cron 하루 2회(11:30/19:30 KST)
+- [완료] SNS 발행 본문/댓글 분리 — `sns_queue.comment_text` 컬럼, 본문=제목만·댓글=버튼문구+링크, Threads 4단계 발행(본문→댓글), 댓글 실패 non-fatal
+- [완료] Threads 댓글 링크 og:image 분기 처리 — `?ref=threads` 파라미터로 상품 상세 페이지 og:image를 로고(`/2.png`)로 고정, 댓글 기본 링크에 `?ref=threads` 자동 포함
 
 ---
 
 ## 다음 할 일 (우선순위순)
 
-1. **AI 드립 제목 생성** — 알리 검색 후 원본 상품명 기반으로 Claude API 호출해 드립형 제목 자동 생성
-2. **소싱툴 쿠팡 링크 처리** — 쿠팡파트너스 가입 완료 후, 소싱툴에서 쿠팡 상품 URL을 파트너스 링크로 수동 입력하는 UI 추가
-3. **크롬 확장 슬라이드쇼 이미지 추출 개선** — 알리 페이지가 JS 렌더링 전용이면 정적 HTML에서 이미지 못 찾는 문제 해결 필요 (content script 방식 검토)
-4. **쿠팡 URL 파싱 개선** — 현재 봇 차단으로 제한적. Puppeteer/플레이라이트 서버리스 또는 별도 파싱 서비스 검토 필요 (아마존은 보류)
-5. **알리 트래킹 ID 교체** — 포털에서 전용 ID 생성 후 `ALIEXPRESS_TRACKING_ID` 환경변수 교체 + `sourcing-extension/config.js`도 동일하게 업데이트
-6. **네이버 소셜 로그인** — 구글/카카오는 완료. 네이버는 미구현
+1. **Supabase SQL 실행 필요** (아직 미실행):
+   - `ALTER TABLE products ADD COLUMN IF NOT EXISTS sns_safe boolean DEFAULT false;` + 플랫폼별 백필
+   - `sns_queue` 테이블 CREATE + RLS ENABLE + `comment_text text` 컬럼 추가
+2. **Vercel 환경변수 추가 필요**: `THREADS_USER_ID`, `THREADS_ACCESS_TOKEN`, `CRON_SECRET`
+3. **Threads API 토큰 발급** — Meta 개발자 콘솔에서 발급 후 `THREADS_ACCESS_TOKEN` 등록
+4. **AI 드립 제목 생성** — 알리 검색 후 원본 상품명 기반으로 Claude API 호출해 드립형 제목 자동 생성
+5. **소싱툴 쿠팡 링크 처리** — 쿠팡파트너스 가입 완료 후, 소싱툴에서 쿠팡 상품 URL을 파트너스 링크로 수동 입력하는 UI 추가
+6. **크롬 확장 슬라이드쇼 이미지 추출 개선** — 알리 페이지가 JS 렌더링 전용이면 정적 HTML에서 이미지 못 찾는 문제 해결 필요 (content script 방식 검토)
+7. **쿠팡 URL 파싱 개선** — 현재 봇 차단으로 제한적. Puppeteer/플레이라이트 서버리스 또는 별도 파싱 서비스 검토 필요 (아마존은 보류)
+8. **알리 트래킹 ID 교체** — 포털에서 전용 ID 생성 후 `ALIEXPRESS_TRACKING_ID` 환경변수 교체 + `sourcing-extension/config.js`도 동일하게 업데이트
+9. **네이버 소셜 로그인** — 구글/카카오는 완료. 네이버는 미구현
 
 ---
 

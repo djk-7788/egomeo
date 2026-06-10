@@ -56,7 +56,7 @@ function buildDefaultPostText(product: SnsProduct): string {
 
 function buildDefaultCommentText(product: SnsProduct): string {
   const btn = product.button_text?.trim() || "구경하러 가기";
-  return `${btn}\n${SITE_URL}/product/${product.id}`;
+  return `${btn}\n${SITE_URL}/product/${product.id}?ref=threads`;
 }
 
 export default function SnsPublisher() {

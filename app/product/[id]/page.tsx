@@ -8,7 +8,10 @@ import InfiniteProductGrid from "@/components/InfiniteProductGrid";
 
 export const dynamic = "force-dynamic";
 
-type Props = { params: Promise<{ id: string }> };
+type Props = {
+  params: Promise<{ id: string }>;
+  searchParams: Promise<{ ref?: string }>;
+};
 
 const categoryLabel: Record<string, string> = {
   mild: "이게 머고?",
@@ -18,8 +21,10 @@ const categoryLabel: Record<string, string> = {
 
 const PAGE_SIZE = 12;
 
-export async function generateMetadata({ params }: Props): Promise<Metadata> {
+export async function generateMetadata({ params, searchParams }: Props): Promise<Metadata> {
   const { id } = await params;
+  const { ref } = await searchParams;
+
   const { data: product } = await supabase
     .from("products")
     .select("title, image_url, image_urls")
@@ -28,12 +33,14 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
   if (!product) return { title: "이게머고?" };
 
-  // image_url 없으면 image_urls[0] 폴백
-  const ogImageUrl: string | null =
-    product.image_url ||
-    (Array.isArray(product.image_urls) && product.image_urls.length > 0
-      ? product.image_urls[0]
-      : null);
+  // ref=threads → 로고 이미지로 고정 (상품 이미지 노출 방지)
+  const ogImageUrl: string =
+    ref === "threads"
+      ? "/2.png"
+      : product.image_url ||
+        (Array.isArray(product.image_urls) && product.image_urls.length > 0
+          ? product.image_urls[0]
+          : "/2.png");
 
   return {
     title: `${product.title} | 이게머고?`,
@@ -43,9 +50,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       description: `이게 대체 머고?`,
       url: `https://www.igemugo.com/product/${id}`,
       siteName: "이게머고?",
-      images: ogImageUrl
-        ? [{ url: ogImageUrl, width: 800, height: 800, alt: product.title }]
-        : [],
+      images: [{ url: ogImageUrl, width: 800, height: 800, alt: product.title }],
       type: "website",
     },
   };
