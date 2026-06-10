@@ -394,6 +394,12 @@ egomeo/
 
 ## 최근 완료 작업 (2026-06-11 기준 — GEO 최적화 포함)
 
+- **검색엔진 배관 3종: IndexNow + 이미지 사이트맵 + RSS 피드** (`lib/indexnow.ts`, `app/api/admin/products/route.ts`, `app/sitemap.ts`, `app/rss.xml/route.ts`, `public/09a6bd0e6c07a387147a1720c7b3bc91.txt`)
+  - **IndexNow**: 키 `09a6bd0e6c07a387147a1720c7b3bc91` (UTF-8, 줄바꿈 없이) — `public/{키}.txt` 생성, `lib/indexnow.ts`에 `submitToIndexNow(urls)` 유틸 구현. api.indexnow.org + searchadvisor.naver.com 두 엔드포인트 동시 POST, fire-and-forget. 어드민 POST(즉시 공개 등록 시) + PUT(비활성→활성 전환 시, SELECT 1건으로 상태 확인 후 IndexNow 핑)에서 호출.
+  - **이미지 사이트맵**: `app/sitemap.ts` 쿼리에 `image_url, image_urls` 추가. 각 상품 entry에 `images: [imageUrl]` 필드 추가 (우선순위: image_urls[0] > image_url, 없으면 생략). Next.js 16.2+ `MetadataRoute.Sitemap` images 필드 사용.
+  - **RSS 피드**: `app/rss.xml/route.ts` 신규 생성. is_active=true + is_queued=false + platform≠amazon_us + 최신 20개. RSS 2.0 / UTF-8 / s-maxage=3600. 각 item에 title/link/guid/pubDate/description(button_text 또는 기본값)/enclosure(이미지 있을 때만). https://www.igemugo.com/rss.xml 접근 가능.
+  - **Vercel 환경변수 추가 필요**: `INDEXNOW_KEY=09a6bd0e6c07a387147a1720c7b3bc91`
+
 - **GEO(AI 답변엔진 최적화) — Organization + About 강화 + llms.txt** (`app/layout.tsx`, `app/about/page.tsx`, `public/llms.txt`)
   - `app/layout.tsx` 전역 Organization JSON-LD 추가 (name/url/logo/email/description/sameAs 6개 SNS 계정)
   - `app/about/page.tsx` 상단에 사이트 설명 단락 추가("세상의 신기하고 재밌는 물건들을 매일 발견…"), 기존 "상품 링크" → "링크"로 교체, AboutPage JSON-LD 추가 (mainEntity로 Organization 참조)
@@ -654,6 +660,7 @@ egomeo/
 - [완료] Threads 상태 조회 API 필드명 수정 — `?fields=status_code` → `?fields=status`, 응답 파싱도 동일 변경
 - [완료] 구글 디스커버 최적화 + JSON-LD 구조화 데이터 — `layout.tsx` robots `max-image-preview:large` 전역 적용, `/product/[id]` generateMetadata 정비(description/og:article/twitter/canonical), Article JSON-LD 추가, 메인 페이지 WebSite JSON-LD(SearchAction) 추가
 - [완료] GEO 최적화 — `layout.tsx` Organization JSON-LD 전역 추가, `/about` 사이트 설명 단락 강화 + AboutPage JSON-LD, `public/llms.txt` 신규 생성 (AI 크롤러용)
+- [완료] 검색엔진 배관 3종 — IndexNow(키 09a6bd0e6c07a387147a1720c7b3bc91, api.indexnow.org+네이버 동시 핑, 공개 전환 시 fire-and-forget), 이미지 사이트맵(image_urls/image_url 추가), RSS(/rss.xml, 최신 20개, amazon_us 제외)
 
 ---
 
@@ -667,7 +674,7 @@ egomeo/
      ALTER TABLE sns_queue ADD COLUMN IF NOT EXISTS media_type text DEFAULT 'image';
      ALTER TABLE sns_queue ADD COLUMN IF NOT EXISTS container_id text;
      ```
-2. **Vercel 환경변수 추가 필요**: `THREADS_USER_ID`, `THREADS_ACCESS_TOKEN`, `CRON_SECRET`, `SNS_DAILY_LIMIT`(기본값 2)
+2. **Vercel 환경변수 추가 필요**: `THREADS_USER_ID`, `THREADS_ACCESS_TOKEN`, `CRON_SECRET`, `SNS_DAILY_LIMIT`(기본값 2), `INDEXNOW_KEY=09a6bd0e6c07a387147a1720c7b3bc91`
 3. **Threads API 토큰 발급** — Meta 개발자 콘솔에서 발급 후 `THREADS_ACCESS_TOKEN` 등록
 4. **AI 드립 제목 생성** — 알리 검색 후 원본 상품명 기반으로 Claude API 호출해 드립형 제목 자동 생성
 5. **소싱툴 쿠팡 링크 처리** — 쿠팡파트너스 가입 완료 후, 소싱툴에서 쿠팡 상품 URL을 파트너스 링크로 수동 입력하는 UI 추가

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { getSupabaseAdmin } from "@/lib/supabase-admin";
+import { submitToIndexNow } from "@/lib/indexnow";
 
 export const runtime = "nodejs";
 
@@ -94,8 +95,12 @@ export async function POST(req: NextRequest) {
   try {
     const payload = await req.json();
     const admin = getSupabaseAdmin();
-    const { error } = await admin.from("products").insert(payload);
+    const { data, error } = await admin.from("products").insert(payload).select("id").single();
     if (error) throw error;
+    // 즉시 공개인 경우 IndexNow 핑
+    if (data?.id && payload.is_active === true && !payload.is_queued) {
+      submitToIndexNow([`https://www.igemugo.com/product/${data.id}`]);
+    }
     return NextResponse.json({ ok: true });
   } catch (err) {
     const msg = err instanceof Error ? err.message : "알 수 없는 오류";
@@ -112,6 +117,19 @@ export async function PUT(req: NextRequest) {
     const { id, ...payload } = await req.json();
     if (!id) return NextResponse.json({ error: "id가 필요합니다" }, { status: 400 });
     const admin = getSupabaseAdmin();
+
+    // 비활성→활성 전환 여부 확인 (비용: SELECT 1건, PK 조회라 빠름)
+    if (payload.is_active === true) {
+      const { data: current } = await admin
+        .from("products")
+        .select("is_active")
+        .eq("id", id)
+        .single();
+      if (current && !current.is_active) {
+        submitToIndexNow([`https://www.igemugo.com/product/${id}`]);
+      }
+    }
+
     const { error } = await admin.from("products").update(payload).eq("id", id);
     if (error) throw error;
     return NextResponse.json({ ok: true });
