@@ -392,7 +392,15 @@ egomeo/
 
 ---
 
-## 최근 완료 작업 (2026-06-10 기준)
+## 최근 완료 작업 (2026-06-11 기준)
+
+- **구글 디스커버 최적화 + JSON-LD 구조화 데이터** (`app/layout.tsx`, `app/product/[id]/page.tsx`, `app/page.tsx`)
+  - `app/layout.tsx` metadata에 `robots` 필드 추가 — `max-image-preview:large`, `max-snippet:-1`, `max-video-preview:-1`, `googleBot`에도 동일 적용 (구글 디스커버 노출 자격 요건)
+  - `/product/[id]` `generateMetadata` 정비: 쿼리에 `video_url`, `button_text` 추가, `description`을 `button_text` 또는 기본값으로, `og:type` → `"article"`, `twitter.card` → `"summary_large_image"`, `alternates.canonical` 추가, og 이미지 우선순위(영상→image_url 썸네일 / image_urls→첫 장 / image_url). `ref=threads` 분기 로직 완전 보존.
+  - `/product/[id]` 페이지에 JSON-LD(`@type: Article`) 추가 — headline, image, datePublished, author/publisher(이게머고? Organization), mainEntityOfPage
+  - `/` 메인 페이지에 JSON-LD(`@type: WebSite`) 추가 — name, url, potentialAction(SearchAction → `/search?q={search_term_string}`)
+
+
 
 - **Vercel Hobby Cron 제한 대응 + Threads 상태 조회 수정** (`vercel.json`, `lib/threads.ts`)
   - Vercel Hobby 플랜은 하루 1회 초과 Cron 불가 — `*/30 * * * *`이 GitHub 자동 배포까지 차단하는 원인이었음
@@ -638,6 +646,7 @@ egomeo/
 - [완료] Vercel Hobby Cron 제한 대응 — `vercel.json` Cron `*/30 * * * *` → 하루 2회(`0 2 * * *` / `0 10 * * *`) 변경. GitHub 자동 배포 복구. CLI 배포: `npx vercel --prod --scope djk-s-projects --token=TOKEN`
 - [완료] Threads 상태 조회 에러 로깅 강화 — `checkContainerStatus` HTTP 에러 시 response body 전체 저장 + console.error 출력
 - [완료] Threads 상태 조회 API 필드명 수정 — `?fields=status_code` → `?fields=status`, 응답 파싱도 동일 변경
+- [완료] 구글 디스커버 최적화 + JSON-LD 구조화 데이터 — `layout.tsx` robots `max-image-preview:large` 전역 적용, `/product/[id]` generateMetadata 정비(description/og:article/twitter/canonical), Article JSON-LD 추가, 메인 페이지 WebSite JSON-LD(SearchAction) 추가
 
 ---
 

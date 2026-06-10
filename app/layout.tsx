@@ -18,6 +18,20 @@ export const metadata: Metadata = {
   metadataBase: new URL("https://www.igemugo.com"),
   title: "이게머고?",
   description: "이게머고? — 사면 안 되는데 손이 가는 별난 물건들.",
+  robots: {
+    index: true,
+    follow: true,
+    "max-image-preview": "large",
+    "max-snippet": -1,
+    "max-video-preview": -1,
+    googleBot: {
+      index: true,
+      follow: true,
+      "max-image-preview": "large",
+      "max-snippet": -1,
+      "max-video-preview": -1,
+    },
+  },
   openGraph: {
     title: "이게머고?",
     description: "이게머고? — 사면 안 되는데 손이 가는 별난 물건들.",

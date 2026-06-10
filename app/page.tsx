@@ -41,12 +41,33 @@ export default async function Home({ searchParams }: Props) {
 
   const initialHasMore = (count ?? 0) > PAGE_SIZE;
 
+  const websiteJsonLd = {
+    "@context": "https://schema.org",
+    "@type": "WebSite",
+    name: "이게머고?",
+    url: "https://www.igemugo.com",
+    potentialAction: {
+      "@type": "SearchAction",
+      target: {
+        "@type": "EntryPoint",
+        urlTemplate: "https://www.igemugo.com/search?q={search_term_string}",
+      },
+      "query-input": "required name=search_term_string",
+    },
+  };
+
   return (
-    <InfiniteProductGrid
-      key={activeCategory ?? "all"}
-      initialProducts={products ?? []}
-      initialHasMore={initialHasMore}
-      category={activeCategory}
-    />
+    <>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(websiteJsonLd) }}
+      />
+      <InfiniteProductGrid
+        key={activeCategory ?? "all"}
+        initialProducts={products ?? []}
+        initialHasMore={initialHasMore}
+        category={activeCategory}
+      />
+    </>
   );
 }

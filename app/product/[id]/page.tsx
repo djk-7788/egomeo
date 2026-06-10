@@ -27,32 +27,48 @@ export async function generateMetadata({ params, searchParams }: Props): Promise
 
   const { data: product } = await supabase
     .from("products")
-    .select("title, image_url, image_urls")
+    .select("title, image_url, image_urls, video_url, button_text")
     .eq("id", id)
     .single();
 
   if (!product) return { title: "이게머고?" };
 
+  const description = product.button_text || "이게 머고? 세상의 신기한 물건들.";
+  const canonicalUrl = `https://www.igemugo.com/product/${id}`;
+
   // ref=threads → Threads 전용 이미지 고정 (상품 이미지 노출 방지)
   // 절대 URL 사용 — metadataBase 상속 의존 없이 확실하게 처리
-  const ogImageUrl: string =
-    ref === "threads"
-      ? "https://www.igemugo.com/og-threads.png"
-      : product.image_url ||
-        (Array.isArray(product.image_urls) && product.image_urls.length > 0
-          ? product.image_urls[0]
-          : "https://www.igemugo.com/2.png");
+  let ogImageUrl: string;
+  if (ref === "threads") {
+    ogImageUrl = "https://www.igemugo.com/og-threads.png";
+  } else if (product.video_url) {
+    // 영상 있으면 image_url을 썸네일로 사용
+    ogImageUrl = product.image_url || "https://www.igemugo.com/og-default.png";
+  } else if (Array.isArray(product.image_urls) && product.image_urls.length > 0) {
+    ogImageUrl = product.image_urls[0];
+  } else {
+    ogImageUrl = product.image_url || "https://www.igemugo.com/og-default.png";
+  }
 
   return {
-    title: `${product.title} | 이게머고?`,
-    description: `이게 대체 머고?`,
+    title: product.title,
+    description,
+    alternates: {
+      canonical: canonicalUrl,
+    },
     openGraph: {
-      title: `${product.title} | 이게머고?`,
-      description: `이게 대체 머고?`,
-      url: `https://www.igemugo.com/product/${id}`,
+      title: product.title,
+      description,
+      url: canonicalUrl,
       siteName: "이게머고?",
-      images: [{ url: ogImageUrl, width: 800, height: 800, alt: product.title }],
-      type: "website",
+      images: [{ url: ogImageUrl, alt: product.title }],
+      type: "article",
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: product.title,
+      description,
+      images: [ogImageUrl],
     },
   };
 }
@@ -77,8 +93,42 @@ export default async function ProductPage({ params }: Props) {
 
   const initialHasMore = (count ?? 0) > PAGE_SIZE;
 
+  // JSON-LD 대표 이미지: 영상→image_url, image_urls→첫 장, 그 외 image_url
+  const jsonLdImage =
+    product.video_url
+      ? product.image_url
+      : Array.isArray(product.image_urls) && product.image_urls.length > 0
+      ? product.image_urls[0]
+      : product.image_url;
+
+  const jsonLd = {
+    "@context": "https://schema.org",
+    "@type": "Article",
+    headline: product.title,
+    image: jsonLdImage ? [jsonLdImage] : undefined,
+    datePublished: product.created_at,
+    author: {
+      "@type": "Organization",
+      name: "이게머고?",
+      url: "https://www.igemugo.com",
+    },
+    publisher: {
+      "@type": "Organization",
+      name: "이게머고?",
+      logo: {
+        "@type": "ImageObject",
+        url: "https://www.igemugo.com/2.png",
+      },
+    },
+    mainEntityOfPage: `https://www.igemugo.com/product/${id}`,
+  };
+
   return (
     <div>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      />
       {/* 상단: 상품 상세 */}
       <div className="max-w-3xl mx-auto mb-16">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-start">
