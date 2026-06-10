@@ -29,6 +29,7 @@ type Product = {
   is_queued: boolean;
   platform: Platform;
   sort_order: number | null;
+  sns_safe: boolean;
 };
 
 type FormState = {
@@ -42,6 +43,7 @@ type FormState = {
   is_active: boolean;
   is_queued: boolean;
   platform: Platform;
+  sns_safe: boolean;
 };
 
 const emptyForm: FormState = {
@@ -55,6 +57,7 @@ const emptyForm: FormState = {
   is_active: false,
   is_queued: true,
   platform: null,
+  sns_safe: false,
 };
 
 const categoryLabel = {
@@ -132,14 +135,27 @@ export default function AdminPanel() {
     return "etc";
   }
 
+  function snsSafeDefault(platform: Platform): boolean {
+    if (!platform) return false;
+    const involveAsiaValues = INVOLVE_ASIA_PARTNERS.map((p) => p.value) as string[];
+    return (
+      platform === "aliexpress" ||
+      platform === "coupang" ||
+      platform === "amazon_jp" ||
+      involveAsiaValues.includes(platform)
+    );
+  }
+
   function handleUrlSelect(product: ParsedProduct, imageUrl: string) {
     setEditing(null);
     setAliHint(product.title);
+    const detectedPlatform = detectPlatformFromUrl(product.productUrl);
     setForm({
       ...emptyForm,
       image_url: imageUrl,
       affiliate_link: product.productUrl,
-      platform: detectPlatformFromUrl(product.productUrl),
+      platform: detectedPlatform,
+      sns_safe: snsSafeDefault(detectedPlatform),
     });
     setImageInputMode("upload");
     setSlideUploadMode("url");
@@ -151,11 +167,13 @@ export default function AdminPanel() {
   function handleAliSelect(product: AliProduct, imageUrl: string) {
     setEditing(null);
     setAliHint(product.title);
+    const detectedPlatform = product.platform ?? "aliexpress";
     setForm({
       ...emptyForm,
       image_url: imageUrl,
       affiliate_link: product.affiliate_link,
-      platform: product.platform ?? "aliexpress",
+      platform: detectedPlatform,
+      sns_safe: snsSafeDefault(detectedPlatform),
     });
     setImageInputMode("upload");
     setSlideUploadMode("url");
@@ -178,6 +196,7 @@ export default function AdminPanel() {
       is_active: product.is_active,
       is_queued: product.is_queued,
       platform: product.platform,
+      sns_safe: product.sns_safe,
     });
     setImageInputMode("upload");
     setSlideUploadMode("url");
@@ -740,6 +759,9 @@ export default function AdminPanel() {
                             대기중
                           </span>
                         )}
+                        {!product.sns_safe && (
+                          <span className="flex-shrink-0 text-[10px]" title="SNS 발행 불가">📵</span>
+                        )}
                       </div>
                     </td>
                     <td className="px-4 py-3 text-gray-500">
@@ -1154,7 +1176,7 @@ export default function AdminPanel() {
                     } else {
                       newPlatform = detectPlatformFromUrl(url);
                     }
-                    setForm({ ...form, affiliate_link: url, platform: newPlatform });
+                    setForm({ ...form, affiliate_link: url, platform: newPlatform, sns_safe: snsSafeDefault(newPlatform) });
                   }}
                   required
                   placeholder="https://..."
@@ -1168,7 +1190,7 @@ export default function AdminPanel() {
                         type="radio"
                         name="amazon_region"
                         checked={form.platform === "amazon_us"}
-                        onChange={() => setForm({ ...form, platform: "amazon_us" })}
+                        onChange={() => setForm({ ...form, platform: "amazon_us", sns_safe: false })}
                         className="accent-[#F5A623]"
                       />
                       🇺🇸 미국
@@ -1178,7 +1200,7 @@ export default function AdminPanel() {
                         type="radio"
                         name="amazon_region"
                         checked={form.platform === "amazon_jp"}
-                        onChange={() => setForm({ ...form, platform: "amazon_jp" })}
+                        onChange={() => setForm({ ...form, platform: "amazon_jp", sns_safe: true })}
                         className="accent-[#F5A623]"
                       />
                       🇯🇵 일본
@@ -1190,7 +1212,10 @@ export default function AdminPanel() {
                     <span className="text-xs font-semibold text-purple-600 whitespace-nowrap">Involve Asia 파트너 선택</span>
                     <select
                       value={form.platform ?? ""}
-                      onChange={(e) => setForm({ ...form, platform: e.target.value as Platform })}
+                      onChange={(e) => {
+                        const p = e.target.value as Platform;
+                        setForm({ ...form, platform: p, sns_safe: snsSafeDefault(p) });
+                      }}
                       className="flex-1 border border-purple-200 rounded-lg px-2 py-1 text-sm outline-none focus:border-purple-400 bg-white"
                     >
                       {INVOLVE_ASIA_PARTNERS.map((p) => (
@@ -1241,6 +1266,27 @@ export default function AdminPanel() {
                     <span className="text-[10px] text-amber-500 font-semibold bg-amber-50 px-1.5 py-0.5 rounded-full">기본값</span>
                   </label>
                 </div>
+              </div>
+              <div>
+                <label className="text-xs font-semibold text-gray-500 block mb-2">SNS 발행</label>
+                <label className={`flex items-center gap-2 ${form.platform === "amazon_us" ? "cursor-not-allowed opacity-60" : "cursor-pointer"}`}>
+                  <input
+                    type="checkbox"
+                    checked={form.sns_safe}
+                    disabled={form.platform === "amazon_us"}
+                    onChange={(e) => setForm({ ...form, sns_safe: e.target.checked })}
+                    className="accent-[#F5A623] w-4 h-4"
+                  />
+                  <span className="text-sm text-gray-700">SNS 발행 허용</span>
+                  {form.sns_safe && form.platform !== "amazon_us" && (
+                    <span className="text-[10px] font-semibold text-green-600 bg-green-50 px-1.5 py-0.5 rounded-full">허용됨</span>
+                  )}
+                </label>
+                {form.platform === "amazon_us" && (
+                  <p className="mt-1.5 text-[11px] text-red-500 bg-red-50 border border-red-100 rounded-lg px-3 py-2">
+                    아마존 US 상품은 SNS 발행 불가 (어소시에이트 계정 보호)
+                  </p>
+                )}
               </div>
               <div className="flex gap-3 pt-2">
                 <button

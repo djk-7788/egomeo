@@ -8,6 +8,7 @@ type Product = {
   platform: Platform;
   video_url: string | null;
   image_urls: string[] | null;
+  sns_safe: boolean;
 };
 
 type Props = {
@@ -38,6 +39,7 @@ export default function StatsPanel({ products }: Props) {
   const active = products.filter((p) => p.is_active && !p.is_queued);
   const queued = products.filter((p) => p.is_queued);
   const hidden = products.filter((p) => !p.is_active && !p.is_queued);
+  const snsSafe = products.filter((p) => p.sns_safe);
 
   // 플랫폼 분포 (공개+큐 합산)
   const visible = products.filter((p) => p.is_active || p.is_queued);
@@ -65,6 +67,16 @@ export default function StatsPanel({ products }: Props) {
           <StatCard label="공개" value={active.length} color="bg-white" accent />
           <StatCard label="큐 대기" value={queued.length} color="bg-amber-50" labelColor="text-amber-600" valueColor="text-amber-600" />
           <StatCard label="숨김" value={hidden.length} color="bg-white" labelColor="text-gray-400" valueColor="text-gray-400" />
+        </div>
+        <div className="mt-3 bg-green-50 border border-green-100 rounded-xl px-4 py-3 flex items-center justify-between">
+          <div>
+            <p className="text-xs font-semibold text-green-600 mb-0.5">📢 SNS 발행 가능</p>
+            <p className="text-xs text-green-500">알리 · 쿠팡 · 아마존JP · 클룩 등 (아마존US 제외)</p>
+          </div>
+          <p className="text-3xl font-black text-green-600">
+            {snsSafe.length}
+            <span className="text-sm font-semibold text-green-400 ml-1">/ {products.length}</span>
+          </p>
         </div>
       </section>
 

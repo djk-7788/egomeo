@@ -80,13 +80,15 @@ is_queued     boolean       -- true면 큐(임시저장) 상태, is_active=false
 sort_order    integer       -- 노출 순서 (낮을수록 앞에 표시, null이면 맨 뒤)
 platform      text          -- 'amazon_us' | 'amazon_jp' | 'aliexpress' | 'coupang' | 'klook' | 'etc' | null
 button_text   text          -- 카드/상세 페이지 버튼 텍스트 커스터마이징 (null이면 "구경하러 가기" 기본값)
+sns_safe      boolean       -- SNS 자동 발행 허용 여부 (true: 발행 가능, false: 발행 불가)
 ```
 
 > **가격(price) 컬럼은 제거됨** — 2026-05-23 `ALTER TABLE products DROP COLUMN price;` 실행 완료  
 > **platform 컬럼 추가** — 2026-05-24 `ALTER TABLE products ADD COLUMN IF NOT EXISTS platform text;` 실행 완료  
 > **is_queued 컬럼 추가** — 2026-05-26 `ALTER TABLE products ADD COLUMN IF NOT EXISTS is_queued boolean DEFAULT false;` 실행 완료  
 > **image_urls 컬럼 추가** — 2026-05-28 `ALTER TABLE products ADD COLUMN IF NOT EXISTS image_urls text[];` 실행 완료  
-> **button_text 컬럼 추가** — 2026-05-29 `ALTER TABLE products ADD COLUMN IF NOT EXISTS button_text text;` 실행 완료
+> **button_text 컬럼 추가** — 2026-05-29 `ALTER TABLE products ADD COLUMN IF NOT EXISTS button_text text;` 실행 완료  
+> **sns_safe 컬럼 추가** — 2026-06-10 `ALTER TABLE products ADD COLUMN IF NOT EXISTS sns_safe boolean DEFAULT false;` 실행 완료. 백필: aliexpress/coupang/amazon_jp/klook → true, amazon_us/etc/null → false
 
 **RLS**: 활성화됨 (2026-06-07)
 - SELECT: `is_active = true`인 상품만 공개 (anon 포함 누구나)
@@ -355,7 +357,9 @@ egomeo/
 
 ---
 
-## 최근 완료 작업 (2026-06-09 기준)
+## 최근 완료 작업 (2026-06-10 기준)
+
+- **SNS 안전 필터 (sns_safe) 추가** (`products` 테이블, `AdminPanel.tsx`, `StatsPanel.tsx`) — SNS 자동 발행 파이프라인용 데이터 레벨 차단 기능. `sns_safe boolean DEFAULT false` 컬럼 추가 후 플랫폼별 백필(aliexpress/coupang/amazon_jp/klook → true, amazon_us/etc/null → false). 어드민 모달에 "SNS 발행 허용" 체크박스 추가 — platform 자동 감지 시 기본값 자동 세팅, amazon_us 선택 시 비활성화(잠금) + 경고 문구. 상품 목록 테이블 제목 옆 📵 배지(sns_safe=false). 통계 탭에 "SNS 발행 가능" 카운트 카드 추가(sns_safe=true / 전체).
 
 - **사이트 대표 OG 이미지 추가** (`public/og-default.png`, `app/layout.tsx`) — 1200×630, 흰 배경, 로고 960px 폭 정중앙 배치. `layout.tsx`에 `openGraph` + `twitter` 메타데이터 추가. 메인/검색/마이페이지 등 공유 시 로고 이미지 표시. 상품 상세 페이지는 상품 이미지 OG 유지, 이미지 없는 상품만 기본 OG로 폴백.
 
@@ -537,6 +541,7 @@ egomeo/
 - [완료] 어드민 모달 Involve Asia 플랫폼 지원 — invl.me/invol.co 감지 시 파트너 드롭다운, klook 🎫 배지, INVOLVE_ASIA_PARTNERS 배열로 파트너 관리
 - [완료] Eye 팝업 항상 표시 방식으로 변경 (`EyeButton.tsx`) — localStorage 플래그 제거, 로그인 시 클릭마다 팝업 표시
 - [완료] About 페이지 문구 수정 + Footer About 링크 'About | Privacy Policy | Contact' 단일 링크로 통합
+- [완료] SNS 안전 필터 (sns_safe) 추가 — `products` 테이블 `sns_safe boolean` 컬럼 추가 + 플랫폼별 백필. 어드민 모달 체크박스(amazon_us 잠금+경고), 상품 목록 📵 배지, 통계 탭 카운트 카드
 - [완료] 사이트 대표 OG 이미지 추가 (`public/og-default.png`) — 1200×630 흰 배경 로고 중앙 배치, layout.tsx openGraph + twitter 메타데이터 등록
 - [완료] 미디어툴 영상 자르기 ffmpeg.wasm 전환, 1:1 크롭 오버레이, 로컬 번들, 압축 튜닝, 포맷 변환 탭
 - [완료] 미디어툴 슬라이드쇼 개별 간격 설정 — 전체 슬라이더 0.5~5초 확장, 썸네일별 개별 초 입력, 재정렬 후에도 간격값 유지
