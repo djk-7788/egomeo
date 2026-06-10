@@ -405,6 +405,7 @@ egomeo/
   - **select("*") 전환** — `media_type`/`container_id` SQL 컬럼 미추가 시에도 select 에러 없이 진행. container_id UPDATE 실패 시 SQL 안내 메시지로 교체. 빈 pending + 실패 항목 있으면 '재시도' 안내 반환
   - **실패 전체 재시도 버튼** — 실패 항목 있을 때 헤더에 표시, 클릭 시 전체 pending으로 초기화
   - **테스트 결과 개선** — processing(영상 컨테이너 생성 완료) / published(발행 완료) 구분 표시
+  - **폴링 완전 제거 최종 확인** (grep: poll=0, while=0, for=0, setInterval=0): `publishToThreads`에 영상 감지 즉시 throw 추가 — 영상이 이미지 경로로 잘못 진입하는 것 원천 차단. 이전 타임아웃의 원인은 `5ed1e4b` 커밋 시점까지 남아 있던 `pollUntilReady` 코드(15초 간격×16회=4분)가 Vercel에서 실행된 것으로 확인
 
 - **Threads 댓글 링크 og:image 분기 처리** (`app/product/[id]/page.tsx`, `app/admin/SnsPublisher.tsx`) — `?ref=threads` 쿼리 파라미터 도입. 상품 상세 페이지 `generateMetadata`에서 `ref=threads`이면 og:image를 `/og-threads.png`(Threads 전용 이미지)로 고정, 없으면 기존 상품 이미지. 댓글 기본 링크가 `?ref=threads` 포함으로 자동 생성되어 Threads 공유 시 상품 이미지 대신 전용 이미지가 미리보기에 노출됨.
 
