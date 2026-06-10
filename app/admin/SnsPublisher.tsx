@@ -21,7 +21,8 @@ type QueueItem = {
   comment_text: string | null;
   image_url: string | null;
   media_type: "video" | "image" | "text" | null;
-  status: "pending" | "failed";
+  container_id: string | null;
+  status: "pending" | "failed" | "processing";
   error_message: string | null;
   scheduled_order: number;
   published_at: string | null;
@@ -326,7 +327,7 @@ export default function SnsPublisher() {
   async function handleTestPublish() {
     if (
       !confirm(
-        "지금 즉시 큐에서 1개를 발행합니다.\n(이미지 처리 + Threads 30초 대기로 약 40초 소요)\n계속할까요?"
+        "지금 즉시 큐에서 1개를 처리합니다.\n• 이미지: 컨테이너→30초 대기→발행 (~40초)\n• 영상: 컨테이너 생성 후 processing 상태로 저장 (~5초)\n  → 다음 버튼 클릭 시 상태 확인 후 발행\n계속할까요?"
       )
     )
       return;
@@ -351,7 +352,9 @@ export default function SnsPublisher() {
 
   // ── 계산값 ────────────────────────────────────────
 
-  const pendingCount = queueItems.filter((i) => i.status === "pending").length;
+  const pendingCount = queueItems.filter(
+    (i) => i.status === "pending" || i.status === "processing"
+  ).length;
   const filteredProducts = searchQuery
     ? products.filter((p) =>
         p.title.toLowerCase().includes(searchQuery.toLowerCase())
@@ -385,7 +388,7 @@ export default function SnsPublisher() {
             disabled={testing}
             className="text-sm font-bold px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors disabled:opacity-50"
           >
-            {testing ? "발행 중... (약 40초)" : "⚡ 지금 1개 발행 (테스트)"}
+            {testing ? "처리 중..." : "⚡ 지금 1개 처리 (테스트)"}
           </button>
         </div>
       </div>
@@ -550,6 +553,8 @@ export default function SnsPublisher() {
                       ? "border-[#F5A623] shadow-md scale-[1.01]"
                       : item.status === "failed"
                       ? "border-red-200 bg-red-50"
+                      : item.status === "processing"
+                      ? "border-blue-200 bg-blue-50"
                       : "bg-white border-gray-100 hover:border-gray-200"
                   }`}
                 >
@@ -581,6 +586,11 @@ export default function SnsPublisher() {
                       <p className="text-[10px] text-gray-400 mt-0.5 line-clamp-2 leading-tight">
                         {item.post_text}
                       </p>
+                      {item.status === "processing" && (
+                        <p className="text-[10px] text-blue-500 mt-1 font-semibold">
+                          ⏳ 영상 처리 중 — 다음 Cron에서 발행
+                        </p>
+                      )}
                       {item.status === "failed" && item.error_message && (
                         <p className="text-[10px] text-red-500 mt-1 line-clamp-2">
                           ⚠️ {item.error_message}
@@ -596,6 +606,11 @@ export default function SnsPublisher() {
                         >
                           {retrying === item.id ? "..." : "재시도"}
                         </button>
+                      )}
+                      {item.status === "processing" && (
+                        <span className="text-[10px] font-bold px-2 py-1 bg-blue-100 text-blue-500 rounded text-center">
+                          대기중
+                        </span>
                       )}
                       <button
                         onClick={() => openEditModal(item)}

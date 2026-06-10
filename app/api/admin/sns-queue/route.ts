@@ -60,7 +60,7 @@ export async function GET(req: NextRequest) {
   const { data, error } = await admin
     .from("sns_queue")
     .select("*, products(title, image_url, image_urls, video_url)")
-    .in("status", ["pending", "failed"])
+    .in("status", ["pending", "failed", "processing"])
     .order("scheduled_order", { ascending: true, nullsFirst: false })
     .order("created_at", { ascending: true });
 

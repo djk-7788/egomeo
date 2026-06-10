@@ -2,16 +2,12 @@
   "crons": [
     {
       "path": "/api/cron/sns-publish",
-      "schedule": "30 2 * * *"
-    },
-    {
-      "path": "/api/cron/sns-publish",
-      "schedule": "30 10 * * *"
+      "schedule": "*/30 * * * *"
     }
   ],
   "functions": {
     "app/api/cron/sns-publish/route.ts": {
-      "maxDuration": 300
+      "maxDuration": 60
     }
   }
 }
