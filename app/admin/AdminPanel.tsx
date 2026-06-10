@@ -7,6 +7,7 @@ import UrlParser, { ParsedProduct } from "./UrlParser";
 import OrderEditor from "./OrderEditor";
 import QueueManager from "./QueueManager";
 import StatsPanel from "./StatsPanel";
+import SnsPublisher from "./SnsPublisher";
 
 // 나중에 파트너 추가 시 여기에만 추가하면 드롭다운에 자동 반영
 const INVOLVE_ASIA_PARTNERS = [
@@ -67,7 +68,7 @@ const categoryLabel = {
 };
 
 export default function AdminPanel() {
-  const [activeTab, setActiveTab] = useState<"list" | "queue" | "order" | "search" | "parse" | "stats">("list");
+  const [activeTab, setActiveTab] = useState<"list" | "queue" | "order" | "search" | "parse" | "stats" | "sns">("list");
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
@@ -607,6 +608,16 @@ export default function AdminPanel() {
         >
           📊 통계
         </button>
+        <button
+          onClick={() => setActiveTab("sns")}
+          className={`text-sm font-semibold px-4 py-3 border-b-2 transition-colors ${
+            activeTab === "sns"
+              ? "border-purple-500 text-purple-600"
+              : "border-transparent text-gray-400 hover:text-gray-600"
+          }`}
+        >
+          📢 SNS 발행
+        </button>
       </div>
 
       {/* 큐 관리 탭 */}
@@ -627,6 +638,9 @@ export default function AdminPanel() {
 
       {/* 통계 탭 */}
       {activeTab === "stats" && <StatsPanel products={products} />}
+
+      {/* SNS 발행 탭 */}
+      {activeTab === "sns" && <SnsPublisher />}
 
       {/* 상품 목록 탭 */}
       {activeTab === "list" && (

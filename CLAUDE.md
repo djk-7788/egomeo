@@ -138,6 +138,38 @@ UNIQUE(user_id, product_id)
 
 > **목적**: "안 본 것만 보기" 기능용. 사용자가 /unseen 페이지에서 스크롤로 상단을 벗어난 상품이 여기에 기록됨. 다음 방문 시 NOT IN 필터로 이미 본 상품 제외.
 
+### `sns_queue` 테이블
+```sql
+id              uuid DEFAULT gen_random_uuid() PRIMARY KEY
+product_id      uuid REFERENCES products(id)
+channel         text DEFAULT 'threads'   -- 추후 'x', 'instagram' 등 확장
+post_text       text                     -- 발행 문구
+image_url       text                     -- 발행에 쓸 대표 이미지 (선택)
+status          text DEFAULT 'pending'   -- pending / published / failed
+error_message   text                     -- 실패 시 오류 메시지
+scheduled_order integer                  -- 발행 순서
+published_at    timestamptz              -- 발행 완료 시각
+created_at      timestamptz DEFAULT now()
+```
+**RLS 활성화됨** (공개 정책 없음 — service_role만 접근, 어드민 API 경유)
+
+> **sns_queue 테이블 생성** — 2026-06-10 아래 SQL 실행 필요:
+> ```sql
+> CREATE TABLE IF NOT EXISTS sns_queue (
+>   id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+>   product_id uuid REFERENCES products(id),
+>   channel text DEFAULT 'threads',
+>   post_text text,
+>   image_url text,
+>   status text DEFAULT 'pending',
+>   error_message text,
+>   scheduled_order integer,
+>   published_at timestamptz,
+>   created_at timestamptz DEFAULT now()
+> );
+> ALTER TABLE sns_queue ENABLE ROW LEVEL SECURITY;
+> ```
+
 ### Storage
 - 버킷명: `product-images` (퍼블릭) — 기존 레거시. 신규 업로드는 R2로만
 - 신규 이미지/영상은 모두 Cloudflare R2에 저장됨 (`/api/upload`)
@@ -359,6 +391,14 @@ egomeo/
 
 ## 최근 완료 작업 (2026-06-10 기준)
 
+- **SNS 자동 발행 시스템 1차 — Threads 자동 발행** (`lib/threads.ts`, `lib/sns-image.ts`, `app/api/admin/sns-queue/route.ts`, `app/api/cron/sns-publish/route.ts`, `app/admin/SnsPublisher.tsx`, `vercel.json`, `.env.example`)
+  - `sns_queue` Supabase 테이블 추가 (SQL 실행 필요 — 아래 참고)
+  - 어드민 "📢 SNS 발행" 탭 추가 — sns_safe=true 상품 그리드(✅발행됨/⏳대기중/⚠️실패 배지), 큐 추가 모달(이미지 선택+문구 편집), 발행 큐(드래그 순서변경+편집+삭제+재시도), "지금 1개 발행(테스트)" 버튼
+  - 이미지 파이프라인: sharp로 모든 포맷 → JPEG 품질85·최대1440px → R2 `sns/` 폴더 업로드
+  - Threads Graph API 2단계 발행: 컨테이너 생성 → 30초 대기 → 발행
+  - Vercel Cron 하루 2회 (11:30/19:30 KST): `vercel.json` 추가, `CRON_SECRET` 환경변수로 보호
+  - 환경변수: `THREADS_USER_ID`, `THREADS_ACCESS_TOKEN`, `CRON_SECRET` (`.env.example` 자리 추가)
+
 - **SNS 안전 필터 (sns_safe) 추가** (`products` 테이블, `AdminPanel.tsx`, `StatsPanel.tsx`) — SNS 자동 발행 파이프라인용 데이터 레벨 차단 기능. `sns_safe boolean DEFAULT false` 컬럼 추가 후 플랫폼별 백필(aliexpress/coupang/amazon_jp/klook → true, amazon_us/etc/null → false). 어드민 모달에 "SNS 발행 허용" 체크박스 추가 — platform 자동 감지 시 기본값 자동 세팅, amazon_us 선택 시 비활성화(잠금) + 경고 문구. 상품 목록 테이블 제목 옆 📵 배지(sns_safe=false). 통계 탭에 "SNS 발행 가능" 카운트 카드 추가(sns_safe=true / 전체).
 
 - **사이트 대표 OG 이미지 추가** (`public/og-default.png`, `app/layout.tsx`) — 1200×630, 흰 배경, 로고 960px 폭 정중앙 배치. `layout.tsx`에 `openGraph` + `twitter` 메타데이터 추가. 메인/검색/마이페이지 등 공유 시 로고 이미지 표시. 상품 상세 페이지는 상품 이미지 OG 유지, 이미지 없는 상품만 기본 OG로 폴백.
@@ -541,6 +581,7 @@ egomeo/
 - [완료] 어드민 모달 Involve Asia 플랫폼 지원 — invl.me/invol.co 감지 시 파트너 드롭다운, klook 🎫 배지, INVOLVE_ASIA_PARTNERS 배열로 파트너 관리
 - [완료] Eye 팝업 항상 표시 방식으로 변경 (`EyeButton.tsx`) — localStorage 플래그 제거, 로그인 시 클릭마다 팝업 표시
 - [완료] About 페이지 문구 수정 + Footer About 링크 'About | Privacy Policy | Contact' 단일 링크로 통합
+- [완료] SNS 자동 발행 시스템 1차 (Threads) — `sns_queue` 테이블, `lib/threads.ts`+`lib/sns-image.ts`, 어드민 SNS 발행 탭, Vercel Cron 하루 2회, 수동 테스트 버튼. 토큰 등록 후 즉시 동작
 - [완료] SNS 안전 필터 (sns_safe) 추가 — `products` 테이블 `sns_safe boolean` 컬럼 추가 + 플랫폼별 백필. 어드민 모달 체크박스(amazon_us 잠금+경고), 상품 목록 📵 배지, 통계 탭 카운트 카드
 - [완료] 사이트 대표 OG 이미지 추가 (`public/og-default.png`) — 1200×630 흰 배경 로고 중앙 배치, layout.tsx openGraph + twitter 메타데이터 등록
 - [완료] 미디어툴 영상 자르기 ffmpeg.wasm 전환, 1:1 크롭 오버레이, 로컬 번들, 압축 튜닝, 포맷 변환 탭
