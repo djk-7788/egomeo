@@ -10,22 +10,24 @@ function getCredentials(): { userId: string; accessToken: string } {
   return { userId, accessToken };
 }
 
-// 컨테이너 생성 → creationId 반환
+// ── 컨테이너 생성 (1회 POST) ───────────────────────────────
 export async function createThreadsContainer(params: {
   postText: string;
   imageUrl?: string | null;
   mediaType?: string | null;
 }): Promise<string> {
   const { userId, accessToken } = getCredentials();
-  const useVideo =
-    params.mediaType === "video" ||
-    (params.mediaType == null && isVideoUrl(params.imageUrl));
 
   const body: Record<string, string> = {
     access_token: accessToken,
     text: params.postText,
   };
-  if (useVideo) {
+
+  const isVideo =
+    params.mediaType === "video" ||
+    (params.mediaType == null && isVideoUrl(params.imageUrl));
+
+  if (isVideo) {
     body.media_type = "VIDEO";
     body.video_url = params.imageUrl!;
   } else if (params.imageUrl) {
@@ -48,7 +50,7 @@ export async function createThreadsContainer(params: {
   return id;
 }
 
-// 컨테이너 상태 조회 (1회) → status_code 반환
+// ── 컨테이너 상태 조회 (1회 GET, 절대 루프 없음) ──────────────
 export async function checkContainerStatus(creationId: string): Promise<string> {
   const { accessToken } = getCredentials();
   const res = await fetch(
@@ -56,11 +58,11 @@ export async function checkContainerStatus(creationId: string): Promise<string> 
     { headers: { Authorization: `Bearer ${accessToken}` } }
   );
   if (!res.ok) throw new Error(`상태 조회 실패 (HTTP ${res.status})`);
-  const data = (await res.json()) as { status_code?: string };
-  return data.status_code ?? "UNKNOWN";
+  const { status_code } = (await res.json()) as { status_code?: string };
+  return status_code ?? "UNKNOWN";
 }
 
-// 준비된 컨테이너 발행 → postId 반환
+// ── 준비된 컨테이너 발행 (1회 POST) ──────────────────────────
 export async function publishThreadsContainer(creationId: string): Promise<string> {
   const { userId, accessToken } = getCredentials();
   const res = await fetch(
@@ -79,33 +81,30 @@ export async function publishThreadsContainer(creationId: string): Promise<strin
   return id;
 }
 
-// 댓글(reply) 발행 — 실패해도 non-fatal, commentError 반환
+// ── 댓글(reply) 발행 — 실패해도 non-fatal ────────────────────
 export async function publishThreadsComment(
   postId: string,
   commentText: string
 ): Promise<{ commentError?: string }> {
   const { userId, accessToken } = getCredentials();
   try {
-    const createRes = await fetch(
-      `https://graph.threads.net/v1.0/${userId}/threads`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          access_token: accessToken,
-          text: commentText,
-          media_type: "TEXT",
-          reply_to_id: postId,
-        }),
-      }
-    );
+    const createRes = await fetch(`https://graph.threads.net/v1.0/${userId}/threads`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        access_token: accessToken,
+        text: commentText,
+        media_type: "TEXT",
+        reply_to_id: postId,
+      }),
+    });
     if (!createRes.ok) {
       const err = await createRes.json().catch(() => ({}));
       throw new Error(`댓글 컨테이너 생성 실패: ${JSON.stringify(err)}`);
     }
     const { id: commentCreationId } = (await createRes.json()) as { id: string };
 
-    // TEXT 컨테이너는 처리가 빠름 — 5초 대기로 충분
+    // TEXT 컨테이너는 빠름 — 5초 대기
     await new Promise((r) => setTimeout(r, 5_000));
 
     const publishRes = await fetch(
@@ -113,10 +112,7 @@ export async function publishThreadsComment(
       {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          creation_id: commentCreationId,
-          access_token: accessToken,
-        }),
+        body: JSON.stringify({ creation_id: commentCreationId, access_token: accessToken }),
       }
     );
     if (!publishRes.ok) {
@@ -129,16 +125,24 @@ export async function publishThreadsComment(
   return {};
 }
 
-// 이미지/텍스트 통합 발행 (기존 API 유지 — 영상은 cron 2사이클 방식 사용)
+// ── 이미지/텍스트 전용 발행 (영상 불가 — 영상은 cron 2사이클 사용) ──
 export async function publishToThreads(params: {
   postText: string;
   imageUrl?: string | null;
   mediaType?: string | null;
   commentText?: string | null;
 }): Promise<{ commentError?: string }> {
+  // 영상이 이 경로로 들어오면 즉시 차단 (폴링 없이 실패로 처리)
+  if (
+    params.mediaType === "video" ||
+    (params.mediaType == null && isVideoUrl(params.imageUrl))
+  ) {
+    throw new Error("영상은 publishToThreads 사용 불가 — cron 2사이클 방식 사용");
+  }
+
   const creationId = await createThreadsContainer(params);
 
-  // 이미지: 30초 고정 대기 (공식 권장)
+  // 이미지 컨테이너: 30초 고정 대기 (Threads 공식 권장)
   await new Promise((r) => setTimeout(r, 30_000));
 
   const postId = await publishThreadsContainer(creationId);
