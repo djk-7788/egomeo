@@ -54,7 +54,7 @@ export async function createThreadsContainer(params: {
 export async function checkContainerStatus(creationId: string): Promise<string> {
   const { accessToken } = getCredentials();
   const res = await fetch(
-    `https://graph.threads.net/v1.0/${creationId}?fields=status_code`,
+    `https://graph.threads.net/v1.0/${creationId}?fields=status`,
     { headers: { Authorization: `Bearer ${accessToken}` } }
   );
   if (!res.ok) {
@@ -63,8 +63,8 @@ export async function checkContainerStatus(creationId: string): Promise<string> 
     console.error("[checkContainerStatus]", msg);
     throw new Error(msg);
   }
-  const { status_code } = (await res.json()) as { status_code?: string };
-  return status_code ?? "UNKNOWN";
+  const { status } = (await res.json()) as { status?: string };
+  return status ?? "UNKNOWN";
 }
 
 // ── 준비된 컨테이너 발행 (1회 POST) ──────────────────────────
