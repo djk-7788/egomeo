@@ -143,7 +143,8 @@ UNIQUE(user_id, product_id)
 id              uuid DEFAULT gen_random_uuid() PRIMARY KEY
 product_id      uuid REFERENCES products(id)
 channel         text DEFAULT 'threads'   -- 추후 'x', 'instagram' 등 확장
-post_text       text                     -- 발행 문구
+post_text       text                     -- 본문 (제목만)
+comment_text    text                     -- 댓글 (버튼문구+링크, null이면 댓글 없이 발행)
 image_url       text                     -- 발행에 쓸 대표 이미지 (선택)
 status          text DEFAULT 'pending'   -- pending / published / failed
 error_message   text                     -- 실패 시 오류 메시지
@@ -390,6 +391,8 @@ egomeo/
 ---
 
 ## 최근 완료 작업 (2026-06-10 기준)
+
+- **SNS 발행 본문/댓글 분리** (`lib/threads.ts`, `app/admin/SnsPublisher.tsx`, `app/api/admin/sns-queue/route.ts`, `app/api/cron/sns-publish/route.ts`) — `sns_queue` 테이블에 `comment_text text` 컬럼 추가(SQL 실행 필요). 모달 본문 기본값 = 제목만, 댓글 기본값 = 버튼문구+링크. Threads 발행 4단계로 확장(본문 발행 → 댓글 컨테이너 → 30초 대기 → 댓글 발행). 댓글 실패 시 본문 published 유지, error_message에 "댓글 발행 실패" 기록.
 
 - **SNS 자동 발행 시스템 1차 — Threads 자동 발행** (`lib/threads.ts`, `lib/sns-image.ts`, `app/api/admin/sns-queue/route.ts`, `app/api/cron/sns-publish/route.ts`, `app/admin/SnsPublisher.tsx`, `vercel.json`, `.env.example`)
   - `sns_queue` Supabase 테이블 추가 (SQL 실행 필요 — 아래 참고)

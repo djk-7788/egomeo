@@ -32,6 +32,7 @@ async function runPublish(): Promise<NextResponse> {
     id: string;
     post_text: string;
     image_url: string | null;
+    comment_text: string | null;
   };
 
   try {
@@ -40,9 +41,10 @@ async function runPublish(): Promise<NextResponse> {
       processedImageUrl = await processImageForSns(item.image_url);
     }
 
-    await publishToThreads({
+    const { commentError } = await publishToThreads({
       postText: item.post_text,
       imageUrl: processedImageUrl,
+      commentText: item.comment_text,
     });
 
     await admin
@@ -50,7 +52,7 @@ async function runPublish(): Promise<NextResponse> {
       .update({
         status: "published",
         published_at: new Date().toISOString(),
-        error_message: null,
+        error_message: commentError ? `댓글 발행 실패: ${commentError}` : null,
       })
       .eq("id", item.id);
 

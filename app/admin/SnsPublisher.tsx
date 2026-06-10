@@ -18,6 +18,7 @@ type QueueItem = {
   product_id: string;
   channel: string;
   post_text: string;
+  comment_text: string | null;
   image_url: string | null;
   status: "pending" | "failed";
   error_message: string | null;
@@ -50,8 +51,12 @@ const PLATFORM_COLOR: Record<string, string> = {
 const SITE_URL = "https://www.igemugo.com";
 
 function buildDefaultPostText(product: SnsProduct): string {
+  return product.title;
+}
+
+function buildDefaultCommentText(product: SnsProduct): string {
   const btn = product.button_text?.trim() || "구경하러 가기";
-  return `${product.title}\n\n${btn}\n${SITE_URL}/product/${product.id}`;
+  return `${btn}\n${SITE_URL}/product/${product.id}`;
 }
 
 export default function SnsPublisher() {
@@ -64,12 +69,14 @@ export default function SnsPublisher() {
   // 큐 추가 모달
   const [addProduct, setAddProduct] = useState<SnsProduct | null>(null);
   const [addText, setAddText] = useState("");
+  const [addCommentText, setAddCommentText] = useState("");
   const [addImageUrl, setAddImageUrl] = useState<string | null>(null);
   const [adding, setAdding] = useState(false);
 
   // 편집 모달
   const [editItem, setEditItem] = useState<QueueItem | null>(null);
   const [editText, setEditText] = useState("");
+  const [editCommentText, setEditCommentText] = useState("");
   const [editImageUrl, setEditImageUrl] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
@@ -134,12 +141,14 @@ export default function SnsPublisher() {
   function openAddModal(product: SnsProduct) {
     setAddProduct(product);
     setAddText(buildDefaultPostText(product));
+    setAddCommentText(buildDefaultCommentText(product));
     setAddImageUrl(product.image_url || null);
   }
 
   function closeAddModal() {
     setAddProduct(null);
     setAddText("");
+    setAddCommentText("");
     setAddImageUrl(null);
   }
 
@@ -153,6 +162,7 @@ export default function SnsPublisher() {
         body: JSON.stringify({
           product_id: addProduct.id,
           post_text: addText,
+          comment_text: addCommentText.trim() || null,
           image_url: addImageUrl || null,
         }),
       });
@@ -173,12 +183,14 @@ export default function SnsPublisher() {
   function openEditModal(item: QueueItem) {
     setEditItem(item);
     setEditText(item.post_text);
+    setEditCommentText(item.comment_text ?? "");
     setEditImageUrl(item.image_url);
   }
 
   function closeEditModal() {
     setEditItem(null);
     setEditText("");
+    setEditCommentText("");
     setEditImageUrl(null);
   }
 
@@ -192,6 +204,7 @@ export default function SnsPublisher() {
         body: JSON.stringify({
           id: editItem.id,
           post_text: editText,
+          comment_text: editCommentText.trim() || null,
           image_url: editImageUrl || null,
         }),
       });
@@ -675,20 +688,39 @@ export default function SnsPublisher() {
                     </div>
                   )}
                 </div>
-                {/* 발행 문구 */}
+                {/* 본문 */}
                 <div>
                   <label className="text-xs font-semibold text-gray-500 block mb-2">
-                    발행 문구
+                    본문
                   </label>
                   <textarea
                     value={addText}
                     onChange={(e) => setAddText(e.target.value)}
-                    rows={6}
+                    rows={4}
                     className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-[#F5A623] transition-colors resize-none"
-                    placeholder="발행할 문구를 입력하세요..."
+                    placeholder="본문 내용..."
                   />
                   <p className="text-xs text-gray-300 mt-1 text-right">
                     {addText.length}자
+                  </p>
+                </div>
+                {/* 댓글 */}
+                <div>
+                  <label className="text-xs font-semibold text-gray-500 block mb-2">
+                    댓글{" "}
+                    <span className="font-normal text-gray-400">
+                      (비워두면 댓글 없이 발행)
+                    </span>
+                  </label>
+                  <textarea
+                    value={addCommentText}
+                    onChange={(e) => setAddCommentText(e.target.value)}
+                    rows={3}
+                    className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-[#F5A623] transition-colors resize-none"
+                    placeholder="버튼 문구 + 링크..."
+                  />
+                  <p className="text-xs text-gray-300 mt-1 text-right">
+                    {addCommentText.length}자
                   </p>
                 </div>
                 <div className="flex gap-3 pt-1">
@@ -803,19 +835,38 @@ export default function SnsPublisher() {
                       </div>
                     </div>
                   )}
-                {/* 발행 문구 */}
+                {/* 본문 */}
                 <div>
                   <label className="text-xs font-semibold text-gray-500 block mb-2">
-                    발행 문구
+                    본문
                   </label>
                   <textarea
                     value={editText}
                     onChange={(e) => setEditText(e.target.value)}
-                    rows={6}
+                    rows={4}
                     className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-[#F5A623] transition-colors resize-none"
                   />
                   <p className="text-xs text-gray-300 mt-1 text-right">
                     {editText.length}자
+                  </p>
+                </div>
+                {/* 댓글 */}
+                <div>
+                  <label className="text-xs font-semibold text-gray-500 block mb-2">
+                    댓글{" "}
+                    <span className="font-normal text-gray-400">
+                      (비워두면 댓글 없이 발행)
+                    </span>
+                  </label>
+                  <textarea
+                    value={editCommentText}
+                    onChange={(e) => setEditCommentText(e.target.value)}
+                    rows={3}
+                    className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-[#F5A623] transition-colors resize-none"
+                    placeholder="버튼 문구 + 링크..."
+                  />
+                  <p className="text-xs text-gray-300 mt-1 text-right">
+                    {editCommentText.length}자
                   </p>
                 </div>
                 <div className="flex gap-3 pt-1">
