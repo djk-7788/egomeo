@@ -412,7 +412,7 @@ egomeo/
   - 어드민 "📢 SNS 발행" 탭 추가 — sns_safe=true 상품 그리드(✅발행됨/⏳대기중/⚠️실패 배지), 큐 추가 모달(이미지 선택+문구 편집), 발행 큐(드래그 순서변경+편집+삭제+재시도), "지금 1개 발행(테스트)" 버튼
   - 이미지 파이프라인: sharp로 모든 포맷 → JPEG 품질85·최대1440px → R2 `sns/` 폴더 업로드
   - Threads Graph API 2단계 발행: 컨테이너 생성 → 30초 대기 → 발행
-  - Vercel Cron 하루 2회 (11:30/19:30 KST): `vercel.json` 추가, `CRON_SECRET` 환경변수로 보호
+  - Vercel Cron 30분마다 (`*/30 * * * *`): `vercel.json` 추가, `CRON_SECRET` 환경변수로 보호
   - 환경변수: `THREADS_USER_ID`, `THREADS_ACCESS_TOKEN`, `CRON_SECRET` (`.env.example` 자리 추가)
 
 - **SNS 안전 필터 (sns_safe) 추가** (`products` 테이블, `AdminPanel.tsx`, `StatsPanel.tsx`) — SNS 자동 발행 파이프라인용 데이터 레벨 차단 기능. `sns_safe boolean DEFAULT false` 컬럼 추가 후 플랫폼별 백필(aliexpress/coupang/amazon_jp/klook → true, amazon_us/etc/null → false). 어드민 모달에 "SNS 발행 허용" 체크박스 추가 — platform 자동 감지 시 기본값 자동 세팅, amazon_us 선택 시 비활성화(잠금) + 경고 문구. 상품 목록 테이블 제목 옆 📵 배지(sns_safe=false). 통계 탭에 "SNS 발행 가능" 카운트 카드 추가(sns_safe=true / 전체).
@@ -619,10 +619,10 @@ egomeo/
 - [완료] 메인 피드 가상 스크롤 적용 (`InfiniteProductGrid.tsx`) — `@tanstack/react-virtual` v3, `useWindowVirtualizer`, 행 단위 가상화(overscan=5), measureElement, scrollMargin, 반응형 열 수 JS 감지
 - [완료] Supabase RLS 전체 적용 — products(is_active=true SELECT 공개·쓰기차단), likes/profiles/viewed_products(auth.uid() 정책 재정의)
 - [완료] SNS 안전 필터 (`sns_safe`) 추가 — `products` 테이블 컬럼, 플랫폼별 백필, 어드민 모달 체크박스(amazon_us 잠금), 상품 목록 📵 배지, 통계 탭 카운트 카드
-- [완료] SNS 자동 발행 시스템 1차 — Threads 자동 발행 (`lib/threads.ts`, `lib/sns-image.ts`, `app/api/admin/sns-queue/route.ts`, `app/api/cron/sns-publish/route.ts`, `app/admin/SnsPublisher.tsx`, `vercel.json`) — `sns_queue` 테이블, 어드민 SNS 발행 탭, sharp 이미지 처리, Threads Graph API, Vercel Cron 하루 2회(11:30/19:30 KST)
+- [완료] SNS 자동 발행 시스템 1차 — Threads 자동 발행 (`lib/threads.ts`, `lib/sns-image.ts`, `app/api/admin/sns-queue/route.ts`, `app/api/cron/sns-publish/route.ts`, `app/admin/SnsPublisher.tsx`, `vercel.json`) — `sns_queue` 테이블, 어드민 SNS 발행 탭, sharp 이미지 처리, Threads Graph API, Vercel Cron 30분마다(`*/30 * * * *`)
 - [완료] SNS 발행 본문/댓글 분리 — `sns_queue.comment_text` 컬럼, 본문=제목만·댓글=버튼문구+링크, Threads 4단계 발행(본문→댓글), 댓글 실패 non-fatal
 - [완료] Threads 댓글 링크 og:image 분기 처리 — `?ref=threads` 파라미터로 상품 상세 페이지 og:image를 로고(`/2.png`)로 고정, 댓글 기본 링크에 `?ref=threads` 자동 포함
-- [완료] SNS 발행 Threads 영상 발행 지원 — 영상 상품 모달에 "🎬 영상" 기본 선택 옵션, 발행 시 폴링(15초 간격, 최대 4분) 대기 후 publish, 영상은 sharp 처리 없이 직접 전달
+- [완료] SNS 발행 Threads 영상 발행 지원 + 2사이클 분리 (`lib/threads.ts`, `app/api/cron/sns-publish/route.ts`, `app/admin/SnsPublisher.tsx`) — 영상 모달 "🎬 영상" 기본 선택. 폴링 완전 제거. Vercel 60초 제한 우회: 사이클1(pending→processing: 컨테이너 생성만~5초), 사이클2(processing: 상태확인→FINISHED면 발행). `media_type`/`container_id` 컬럼 추가. og:image 절대 URL로 교체. 일일 발행 한도(`SNS_DAILY_LIMIT` 기본 2). 댓글 대기 30→5초
 
 ---
 

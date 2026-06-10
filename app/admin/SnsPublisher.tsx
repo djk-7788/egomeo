@@ -378,7 +378,7 @@ export default function SnsPublisher() {
               </span>
             )}
             <span className="ml-2 text-gray-300">
-              · 자동 발행 11:30 / 19:30 KST
+              · 30분마다 자동 확인
             </span>
           </p>
         </div>
