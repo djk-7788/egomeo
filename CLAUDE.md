@@ -392,7 +392,13 @@ egomeo/
 
 ---
 
-## 최근 완료 작업 (2026-06-11 기준)
+## 최근 완료 작업 (2026-06-11 기준 — GEO 최적화 포함)
+
+- **GEO(AI 답변엔진 최적화) — Organization + About 강화 + llms.txt** (`app/layout.tsx`, `app/about/page.tsx`, `public/llms.txt`)
+  - `app/layout.tsx` 전역 Organization JSON-LD 추가 (name/url/logo/email/description/sameAs 6개 SNS 계정)
+  - `app/about/page.tsx` 상단에 사이트 설명 단락 추가("세상의 신기하고 재밌는 물건들을 매일 발견…"), 기존 "상품 링크" → "링크"로 교체, AboutPage JSON-LD 추가 (mainEntity로 Organization 참조)
+  - `public/llms.txt` 신규 생성 — AI 크롤러용 사이트 소개 (https://www.igemugo.com/llms.txt 접근 가능)
+  - 브랜드 원칙: 사이트 화면 노출 텍스트에 "상품" 단어 사용 금지, 구체적 개수 미기재 (수백 가지 / 매일 추가 표현만 사용)
 
 - **구글 디스커버 최적화 + JSON-LD 구조화 데이터** (`app/layout.tsx`, `app/product/[id]/page.tsx`, `app/page.tsx`)
   - `app/layout.tsx` metadata에 `robots` 필드 추가 — `max-image-preview:large`, `max-snippet:-1`, `max-video-preview:-1`, `googleBot`에도 동일 적용 (구글 디스커버 노출 자격 요건)
@@ -647,6 +653,7 @@ egomeo/
 - [완료] Threads 상태 조회 에러 로깅 강화 — `checkContainerStatus` HTTP 에러 시 response body 전체 저장 + console.error 출력
 - [완료] Threads 상태 조회 API 필드명 수정 — `?fields=status_code` → `?fields=status`, 응답 파싱도 동일 변경
 - [완료] 구글 디스커버 최적화 + JSON-LD 구조화 데이터 — `layout.tsx` robots `max-image-preview:large` 전역 적용, `/product/[id]` generateMetadata 정비(description/og:article/twitter/canonical), Article JSON-LD 추가, 메인 페이지 WebSite JSON-LD(SearchAction) 추가
+- [완료] GEO 최적화 — `layout.tsx` Organization JSON-LD 전역 추가, `/about` 사이트 설명 단락 강화 + AboutPage JSON-LD, `public/llms.txt` 신규 생성 (AI 크롤러용)
 
 ---
 

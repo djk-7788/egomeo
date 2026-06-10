@@ -9,6 +9,24 @@ import { LikesProvider } from "@/context/LikesContext";
 
 const GA_ID = process.env.NEXT_PUBLIC_GA_ID;
 
+const organizationJsonLd = {
+  "@context": "https://schema.org",
+  "@type": "Organization",
+  name: "이게머고?",
+  url: "https://www.igemugo.com",
+  logo: "https://www.igemugo.com/2.png",
+  email: "hello@igemugo.com",
+  description: "세상의 신기하고 재밌는 물건들을 매일 발견해서 모아두는 큐레이션 사이트",
+  sameAs: [
+    "https://threads.net/@igemugo",
+    "https://x.com/igemugo_com",
+    "https://instagram.com/igemugo",
+    "https://www.facebook.com/profile.php?id=61590274155469",
+    "https://pinterest.com/igemugo",
+    "https://youtube.com/@igemugo",
+  ],
+};
+
 const geistSans = Geist({
   variable: "--font-geist-sans",
   subsets: ["latin"],
@@ -87,6 +105,10 @@ export default function RootLayout({
         </>
       )}
       <body className="min-h-screen bg-white text-[#111111]">
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(organizationJsonLd) }}
+        />
         <AuthProvider>
           <LikesProvider>
           <Header />
