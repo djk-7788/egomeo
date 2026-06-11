@@ -32,7 +32,14 @@ export default function VideoPlayer({
     );
 
     observer.observe(el);
-    return () => observer.disconnect();
+
+    // onCanPlay/onLoadedMetadata가 영원히 안 오는 엣지케이스 방어
+    const timer = setTimeout(() => setReady(true), 3000);
+
+    return () => {
+      observer.disconnect();
+      clearTimeout(timer);
+    };
   }, [src]);
 
   return (
@@ -55,6 +62,8 @@ export default function VideoPlayer({
         muted
         loop
         playsInline
+        preload="metadata"
+        onLoadedMetadata={() => setReady(true)}
         onCanPlay={() => setReady(true)}
         style={ready ? undefined : { opacity: 0 }}
         className={className}

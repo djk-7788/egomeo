@@ -394,6 +394,12 @@ egomeo/
 
 ## 최근 완료 작업 (2026-06-11 기준)
 
+- **비디오 카드 흰 빈 화면 버그 추가 수정** (`components/VideoPlayer.tsx`)
+  - `image_url` 없이 `video_url`만 있는 카드에서 `onCanPlay`가 안 오는 엣지케이스로 영상이 영구 숨김 상태로 고정되는 문제 수정
+  - `preload="metadata"` 추가 — 브라우저가 메타데이터 미리 로드해 `onLoadedMetadata` 빠르게 발화
+  - `onLoadedMetadata` 이벤트도 ready 트리거로 추가 (`onCanPlay`보다 먼저 발화)
+  - 3초 timeout fallback — `onCanPlay`/`onLoadedMetadata` 둘 다 안 오는 엣지케이스에서 강제 표시
+
 - **비디오 카드 가상 스크롤 빈 화면 버그 수정** (`components/VideoPlayer.tsx`, `components/ProductCard.tsx`, `app/product/[id]/page.tsx`)
   - **원인**: 가상 스크롤이 VideoPlayer를 재마운트할 때 `<video>` 요소가 데이터 로딩 완료 전에는 투명(transparent) 상태 → 부모 `bg-white`가 노출되어 흰 빈 공간처럼 보임. poster/fallback이 없어서 로딩 중 아무것도 표시되지 않는 것이 핵심.
   - `poster` prop 추가 — 로딩 완료(`onCanPlay`) 전까지 `image_url` 이미지 표시, 없으면 gray-100 스켈레톤
@@ -662,6 +668,7 @@ egomeo/
 - [완료] "안 본 것만 보기" 기능 추가 — `viewed_products` 테이블(RLS), `EyeButton` 헤더 토글 아이콘, `/unseen` 페이지 (NOT IN 필터, 클라이언트 페이징, 카드 뷰 배치 upsert 추적)
 - [완료] 메인 피드 가상 스크롤 적용 (`InfiniteProductGrid.tsx`) — `@tanstack/react-virtual` v3, `useWindowVirtualizer`, 행 단위 가상화(overscan=5), measureElement, scrollMargin, 반응형 열 수 JS 감지
 - [완료] 비디오 카드 가상 스크롤 빈 화면 버그 수정 (`VideoPlayer.tsx`) — poster/스켈레톤 fallback, key={src}, el.load()→play(), 뷰포트 이탈 시 pause()만 실행
+- [완료] 비디오 카드 흰 빈 화면 버그 추가 수정 (`VideoPlayer.tsx`) — preload="metadata", onLoadedMetadata ready 트리거 추가, 3초 timeout fallback
 - [완료] Supabase RLS 전체 적용 — products(is_active=true SELECT 공개·쓰기차단), likes/profiles/viewed_products(auth.uid() 정책 재정의)
 - [완료] SNS 안전 필터 (`sns_safe`) 추가 — `products` 테이블 컬럼, 플랫폼별 백필, 어드민 모달 체크박스(amazon_us 잠금), 상품 목록 📵 배지, 통계 탭 카운트 카드
 - [완료] SNS 자동 발행 시스템 1차 — Threads 자동 발행 (`lib/threads.ts`, `lib/sns-image.ts`, `app/api/admin/sns-queue/route.ts`, `app/api/cron/sns-publish/route.ts`, `app/admin/SnsPublisher.tsx`, `vercel.json`) — `sns_queue` 테이블, 어드민 SNS 발행 탭, sharp 이미지 처리, Threads Graph API, Vercel Cron 하루 2회(KST 11:00/19:00)
