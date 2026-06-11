@@ -42,8 +42,22 @@ export default function VideoPlayer({
     };
   }, [src]);
 
+  // video는 항상 visible — opacity:0 숨김 시 일부 브라우저에서 미디어 이벤트 미발화
+  // poster/skeleton을 absolute overlay로 위에 올려서 로딩 중 화면을 덮음
   return (
     <>
+      <video
+        key={src}
+        ref={ref}
+        src={src}
+        muted
+        loop
+        playsInline
+        preload="metadata"
+        onLoadedMetadata={() => setReady(true)}
+        onCanPlay={() => setReady(true)}
+        className={className}
+      />
       {!ready && (
         poster ? (
           <img
@@ -55,19 +69,6 @@ export default function VideoPlayer({
           <div className="absolute inset-0 bg-gray-100 animate-pulse" />
         )
       )}
-      <video
-        key={src}
-        ref={ref}
-        src={src}
-        muted
-        loop
-        playsInline
-        preload="metadata"
-        onLoadedMetadata={() => setReady(true)}
-        onCanPlay={() => setReady(true)}
-        style={ready ? undefined : { opacity: 0 }}
-        className={className}
-      />
     </>
   );
 }

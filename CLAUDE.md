@@ -394,6 +394,12 @@ egomeo/
 
 ## 최근 완료 작업 (2026-06-11 기준)
 
+- **비디오 카드 흰 빈 화면 근본 원인 수정** (`components/VideoPlayer.tsx`)
+  - **원인**: `style={{ opacity: 0 }}`로 숨긴 video 요소에서 일부 브라우저(모바일 Chrome 등)가 `onLoadedMetadata`/`onCanPlay` 발화를 skip — invisible 요소의 미디어 이벤트 발화 불안정 문제
+  - 수정: `opacity: 0` 숨김 방식 완전 제거 → video는 처음부터 visible하게 렌더링
+  - poster/skeleton을 video 뒤에서 앞으로 이동 (`absolute inset-0` overlay 방식으로 video 위에 덮음)
+  - 렌더링 순서: `<video>` 먼저 → `poster img` / `skeleton div` 가 absolute로 위를 덮음 → ready 시 overlay 제거
+
 - **비디오 카드 흰 빈 화면 버그 추가 수정** (`components/VideoPlayer.tsx`)
   - `image_url` 없이 `video_url`만 있는 카드에서 `onCanPlay`가 안 오는 엣지케이스로 영상이 영구 숨김 상태로 고정되는 문제 수정
   - `preload="metadata"` 추가 — 브라우저가 메타데이터 미리 로드해 `onLoadedMetadata` 빠르게 발화
@@ -669,6 +675,7 @@ egomeo/
 - [완료] 메인 피드 가상 스크롤 적용 (`InfiniteProductGrid.tsx`) — `@tanstack/react-virtual` v3, `useWindowVirtualizer`, 행 단위 가상화(overscan=5), measureElement, scrollMargin, 반응형 열 수 JS 감지
 - [완료] 비디오 카드 가상 스크롤 빈 화면 버그 수정 (`VideoPlayer.tsx`) — poster/스켈레톤 fallback, key={src}, el.load()→play(), 뷰포트 이탈 시 pause()만 실행
 - [완료] 비디오 카드 흰 빈 화면 버그 추가 수정 (`VideoPlayer.tsx`) — preload="metadata", onLoadedMetadata ready 트리거 추가, 3초 timeout fallback
+- [완료] 비디오 카드 흰 빈 화면 근본 원인 수정 (`VideoPlayer.tsx`) — opacity:0 숨김 제거, video 항상 visible + poster/skeleton을 absolute overlay로 위에 덮는 방식으로 전환
 - [완료] Supabase RLS 전체 적용 — products(is_active=true SELECT 공개·쓰기차단), likes/profiles/viewed_products(auth.uid() 정책 재정의)
 - [완료] SNS 안전 필터 (`sns_safe`) 추가 — `products` 테이블 컬럼, 플랫폼별 백필, 어드민 모달 체크박스(amazon_us 잠금), 상품 목록 📵 배지, 통계 탭 카운트 카드
 - [완료] SNS 자동 발행 시스템 1차 — Threads 자동 발행 (`lib/threads.ts`, `lib/sns-image.ts`, `app/api/admin/sns-queue/route.ts`, `app/api/cron/sns-publish/route.ts`, `app/admin/SnsPublisher.tsx`, `vercel.json`) — `sns_queue` 테이블, 어드민 SNS 발행 탭, sharp 이미지 처리, Threads Graph API, Vercel Cron 하루 2회(KST 11:00/19:00)
