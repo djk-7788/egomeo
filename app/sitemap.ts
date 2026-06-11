@@ -10,10 +10,13 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     .eq("is_active", true);
 
   const productUrls: MetadataRoute.Sitemap = (products ?? []).map((p) => {
-    const imageUrl =
+    const rawImageUrl =
       Array.isArray(p.image_urls) && p.image_urls.length > 0
         ? p.image_urls[0]
         : p.image_url;
+    const imageUrl = rawImageUrl
+      ? rawImageUrl.replace(/&/g, "&amp;")
+      : null;
 
     return {
       url: `${BASE_URL}/product/${p.id}`,
