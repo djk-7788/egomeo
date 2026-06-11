@@ -394,25 +394,10 @@ egomeo/
 
 ## 최근 완료 작업 (2026-06-11 기준)
 
-- **비디오 카드 흰 빈 화면 근본 원인 수정** (`components/VideoPlayer.tsx`)
-  - **원인**: `style={{ opacity: 0 }}`로 숨긴 video 요소에서 일부 브라우저(모바일 Chrome 등)가 `onLoadedMetadata`/`onCanPlay` 발화를 skip — invisible 요소의 미디어 이벤트 발화 불안정 문제
-  - 수정: `opacity: 0` 숨김 방식 완전 제거 → video는 처음부터 visible하게 렌더링
-  - poster/skeleton을 video 뒤에서 앞으로 이동 (`absolute inset-0` overlay 방식으로 video 위에 덮음)
-  - 렌더링 순서: `<video>` 먼저 → `poster img` / `skeleton div` 가 absolute로 위를 덮음 → ready 시 overlay 제거
-
-- **비디오 카드 흰 빈 화면 버그 추가 수정** (`components/VideoPlayer.tsx`)
-  - `image_url` 없이 `video_url`만 있는 카드에서 `onCanPlay`가 안 오는 엣지케이스로 영상이 영구 숨김 상태로 고정되는 문제 수정
-  - `preload="metadata"` 추가 — 브라우저가 메타데이터 미리 로드해 `onLoadedMetadata` 빠르게 발화
-  - `onLoadedMetadata` 이벤트도 ready 트리거로 추가 (`onCanPlay`보다 먼저 발화)
-  - 3초 timeout fallback — `onCanPlay`/`onLoadedMetadata` 둘 다 안 오는 엣지케이스에서 강제 표시
-
-- **비디오 카드 가상 스크롤 빈 화면 버그 수정** (`components/VideoPlayer.tsx`, `components/ProductCard.tsx`, `app/product/[id]/page.tsx`)
-  - **원인**: 가상 스크롤이 VideoPlayer를 재마운트할 때 `<video>` 요소가 데이터 로딩 완료 전에는 투명(transparent) 상태 → 부모 `bg-white`가 노출되어 흰 빈 공간처럼 보임. poster/fallback이 없어서 로딩 중 아무것도 표시되지 않는 것이 핵심.
-  - `poster` prop 추가 — 로딩 완료(`onCanPlay`) 전까지 `image_url` 이미지 표시, 없으면 gray-100 스켈레톤
-  - `key={src}` → `<video>` 엘리먼트에 명시적 부여로 src 변경 시 확실한 재초기화
-  - IntersectionObserver 진입 시 `el.load()` 먼저 호출 후 `el.play().catch(() => {})` — play()는 항상 try-catch로 처리
-  - 뷰포트 이탈 시 `pause()`만 실행, `currentTime = 0` 및 `src` 초기화 제거 (재마운트 시 재로딩 비용 방지)
-  - `ProductCard`에 `poster={imageUrl}` 전달, 상세 페이지에도 동일 적용
+- **비디오 카드 흰 빈 화면 버그 수정 시도 전체 롤백** (`components/VideoPlayer.tsx`, `components/ProductCard.tsx`, `app/product/[id]/page.tsx`)
+  - 3회에 걸친 수정(poster/skeleton fallback, preload+onLoadedMetadata+3초timeout, opacity:0→overlay 전환)에도 불구하고 `video_url`만 있고 `image_url` 없는 특정 카드에서 흰 공간 증상 지속
+  - 원인 규명을 위해 첫 번째 수정 이전 커밋(`3934265`) 상태로 3개 파일 전체 복원
+  - 원본 코드: IntersectionObserver로 진입 시 `play()`, 이탈 시 `pause()+currentTime=0`, fallback/poster 없음
 
 - **사이트맵 이미지 URL `&amp;` XML 이스케이프 수정** (`app/sitemap.ts`)
   - Next.js가 `images` 배열 URL을 자동으로 XML 이스케이프하지 않아 `&` 포함 URL이 사이트맵 XML 파싱 에러를 일으키는 문제 수정

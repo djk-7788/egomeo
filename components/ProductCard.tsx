@@ -46,7 +46,7 @@ export default function ProductCard({
         className="relative w-full aspect-square overflow-hidden block bg-white"
       >
         {videoUrl ? (
-          <VideoPlayer src={videoUrl} poster={imageUrl} className="w-full h-full object-contain" />
+          <VideoPlayer src={videoUrl} className="w-full h-full object-contain" />
         ) : hasSlide ? (
           <ImageSlider images={imageUrls!} alt={title} mode="auto" className="w-full h-full" />
         ) : (
