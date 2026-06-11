@@ -137,6 +137,7 @@ export default async function ProductPage({ params }: Props) {
             {product.video_url ? (
               <VideoPlayer
                 src={product.video_url}
+                poster={product.image_url || undefined}
                 className="w-full h-full object-contain"
               />
             ) : product.image_urls && product.image_urls.length >= 2 ? (

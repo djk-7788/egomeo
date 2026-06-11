@@ -394,10 +394,14 @@ egomeo/
 
 ## 최근 완료 작업 (2026-06-11 기준)
 
-- **비디오 카드 흰 빈 화면 버그 수정 시도 전체 롤백** (`components/VideoPlayer.tsx`, `components/ProductCard.tsx`, `app/product/[id]/page.tsx`)
-  - 3회에 걸친 수정(poster/skeleton fallback, preload+onLoadedMetadata+3초timeout, opacity:0→overlay 전환)에도 불구하고 `video_url`만 있고 `image_url` 없는 특정 카드에서 흰 공간 증상 지속
-  - 원인 규명을 위해 첫 번째 수정 이전 커밋(`3934265`) 상태로 3개 파일 전체 복원
-  - 원본 코드: IntersectionObserver로 진입 시 `play()`, 이탈 시 `pause()+currentTime=0`, fallback/poster 없음
+- **비디오 카드 흰 빈 화면 근본 원인 규명 및 최종 수정** (`components/VideoPlayer.tsx`, `components/ProductCard.tsx`, `app/product/[id]/page.tsx`)
+  - **근본 원인**: 문제 영상(`video-1780852209852-2x4ev771rl3.mp4`)의 GOP(Group of Pictures) 구조 분석으로 원인 확인 — 175프레임(7초) 중 키프레임이 첫 프레임 1개뿐(stss entry_count=1). 이처럼 키프레임 간격이 극단적으로 긴 경우 HTML5 `<video>` 엘리먼트의 미디어 파이프라인이 `canplay`/`onLoadedMetadata` 이벤트를 늦게 발화하거나 발화 안 함. 반면 브라우저 내장 미디어 플레이어(새 탭 직접 접근)는 더 관대하게 처리해서 재생됨.
+  - **최종 수정 내용**: VideoPlayer 롤백 상태에서 수정 재적용
+    - `opacity: 0` 숨김 완전 제거 → video 항상 visible, poster/skeleton을 absolute overlay로
+    - `preload="metadata"` + `onLoadedMetadata` ready 트리거
+    - 3초 timeout fallback (키프레임 1개짜리 영상 등 이벤트 미발화 케이스 방어)
+    - `key={src}`, `el.load()` → `play()`, 이탈 시 `pause()`만
+    - `ProductCard` `poster={imageUrl}` 전달, 상세 페이지 동일 적용
 
 - **사이트맵 이미지 URL `&amp;` XML 이스케이프 수정** (`app/sitemap.ts`)
   - Next.js가 `images` 배열 URL을 자동으로 XML 이스케이프하지 않아 `&` 포함 URL이 사이트맵 XML 파싱 에러를 일으키는 문제 수정
