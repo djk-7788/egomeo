@@ -392,7 +392,11 @@ egomeo/
 
 ---
 
-## 최근 완료 작업 (2026-06-11 기준 — GEO 최적화 포함)
+## 최근 완료 작업 (2026-06-11 기준)
+
+- **사이트맵 이미지 URL `&amp;` XML 이스케이프 수정** (`app/sitemap.ts`)
+  - Next.js가 `images` 배열 URL을 자동으로 XML 이스케이프하지 않아 `&` 포함 URL이 사이트맵 XML 파싱 에러를 일으키는 문제 수정
+  - `rawImageUrl.replace(/&/g, "&amp;")` 처리 추가
 
 - **검색엔진 배관 3종: IndexNow + 이미지 사이트맵 + RSS 피드** (`lib/indexnow.ts`, `app/api/admin/products/route.ts`, `app/sitemap.ts`, `app/rss.xml/route.ts`, `public/09a6bd0e6c07a387147a1720c7b3bc91.txt`)
   - **IndexNow**: 키 `09a6bd0e6c07a387147a1720c7b3bc91` (UTF-8, 줄바꿈 없이) — `public/{키}.txt` 생성, `lib/indexnow.ts`에 `submitToIndexNow(urls)` 유틸 구현. api.indexnow.org + searchadvisor.naver.com 두 엔드포인트 동시 POST, fire-and-forget. 어드민 POST(즉시 공개 등록 시) + PUT(비활성→활성 전환 시, SELECT 1건으로 상태 확인 후 IndexNow 핑)에서 호출.
@@ -661,6 +665,7 @@ egomeo/
 - [완료] 구글 디스커버 최적화 + JSON-LD 구조화 데이터 — `layout.tsx` robots `max-image-preview:large` 전역 적용, `/product/[id]` generateMetadata 정비(description/og:article/twitter/canonical), Article JSON-LD 추가, 메인 페이지 WebSite JSON-LD(SearchAction) 추가
 - [완료] GEO 최적화 — `layout.tsx` Organization JSON-LD 전역 추가, `/about` 사이트 설명 단락 강화 + AboutPage JSON-LD, `public/llms.txt` 신규 생성 (AI 크롤러용)
 - [완료] 검색엔진 배관 3종 — IndexNow(키 09a6bd0e6c07a387147a1720c7b3bc91, api.indexnow.org+네이버 동시 핑, 공개 전환 시 fire-and-forget), 이미지 사이트맵(image_urls/image_url 추가), RSS(/rss.xml, 최신 20개, amazon_us 제외)
+- [완료] 사이트맵 이미지 URL `&amp;` XML 이스케이프 수정 — `app/sitemap.ts`에서 `&` → `&amp;` 치환 추가 (Next.js가 images 배열 URL 자동 이스케이프 안 함)
 
 ---
 
