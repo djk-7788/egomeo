@@ -394,6 +394,14 @@ egomeo/
 
 ## 최근 완료 작업 (2026-06-11 기준)
 
+- **비디오 카드 가상 스크롤 빈 화면 버그 수정** (`components/VideoPlayer.tsx`, `components/ProductCard.tsx`, `app/product/[id]/page.tsx`)
+  - **원인**: 가상 스크롤이 VideoPlayer를 재마운트할 때 `<video>` 요소가 데이터 로딩 완료 전에는 투명(transparent) 상태 → 부모 `bg-white`가 노출되어 흰 빈 공간처럼 보임. poster/fallback이 없어서 로딩 중 아무것도 표시되지 않는 것이 핵심.
+  - `poster` prop 추가 — 로딩 완료(`onCanPlay`) 전까지 `image_url` 이미지 표시, 없으면 gray-100 스켈레톤
+  - `key={src}` → `<video>` 엘리먼트에 명시적 부여로 src 변경 시 확실한 재초기화
+  - IntersectionObserver 진입 시 `el.load()` 먼저 호출 후 `el.play().catch(() => {})` — play()는 항상 try-catch로 처리
+  - 뷰포트 이탈 시 `pause()`만 실행, `currentTime = 0` 및 `src` 초기화 제거 (재마운트 시 재로딩 비용 방지)
+  - `ProductCard`에 `poster={imageUrl}` 전달, 상세 페이지에도 동일 적용
+
 - **사이트맵 이미지 URL `&amp;` XML 이스케이프 수정** (`app/sitemap.ts`)
   - Next.js가 `images` 배열 URL을 자동으로 XML 이스케이프하지 않아 `&` 포함 URL이 사이트맵 XML 파싱 에러를 일으키는 문제 수정
   - `rawImageUrl.replace(/&/g, "&amp;")` 처리 추가
@@ -653,6 +661,7 @@ egomeo/
 - [완료] 헤더 프로필 아이콘 간헐적 사라짐 수정 — `AuthContext` null session guard 추가 + `HeaderAuthStatus` loading 중 placeholder로 레이아웃 유지
 - [완료] "안 본 것만 보기" 기능 추가 — `viewed_products` 테이블(RLS), `EyeButton` 헤더 토글 아이콘, `/unseen` 페이지 (NOT IN 필터, 클라이언트 페이징, 카드 뷰 배치 upsert 추적)
 - [완료] 메인 피드 가상 스크롤 적용 (`InfiniteProductGrid.tsx`) — `@tanstack/react-virtual` v3, `useWindowVirtualizer`, 행 단위 가상화(overscan=5), measureElement, scrollMargin, 반응형 열 수 JS 감지
+- [완료] 비디오 카드 가상 스크롤 빈 화면 버그 수정 (`VideoPlayer.tsx`) — poster/스켈레톤 fallback, key={src}, el.load()→play(), 뷰포트 이탈 시 pause()만 실행
 - [완료] Supabase RLS 전체 적용 — products(is_active=true SELECT 공개·쓰기차단), likes/profiles/viewed_products(auth.uid() 정책 재정의)
 - [완료] SNS 안전 필터 (`sns_safe`) 추가 — `products` 테이블 컬럼, 플랫폼별 백필, 어드민 모달 체크박스(amazon_us 잠금), 상품 목록 📵 배지, 통계 탭 카운트 카드
 - [완료] SNS 자동 발행 시스템 1차 — Threads 자동 발행 (`lib/threads.ts`, `lib/sns-image.ts`, `app/api/admin/sns-queue/route.ts`, `app/api/cron/sns-publish/route.ts`, `app/admin/SnsPublisher.tsx`, `vercel.json`) — `sns_queue` 테이블, 어드민 SNS 발행 탭, sharp 이미지 처리, Threads Graph API, Vercel Cron 하루 2회(KST 11:00/19:00)
