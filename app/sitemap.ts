@@ -6,7 +6,7 @@ const BASE_URL = "https://www.igemugo.com";
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const { data: products } = await supabase
     .from("products")
-    .select("id, created_at, image_url, image_urls")
+    .select("id, created_at, title, seo_title, image_url, image_urls")
     .eq("is_active", true);
 
   const productUrls: MetadataRoute.Sitemap = (products ?? []).map((p) => {

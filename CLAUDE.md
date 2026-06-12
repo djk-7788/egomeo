@@ -69,7 +69,8 @@ CLOUDFLARE_R2_PUBLIC_URL=https://퍼블릭도메인
 ```sql
 id            uuid (PK, 자동생성)
 created_at    timestamp (자동생성)
-title         text          -- 드립형 제목
+title         text          -- 드립형 짧은 제목 (메인 피드 카드에 표시)
+seo_title     text          -- SEO용 제목 (상품명, 검색용 — 상세페이지 메타태그에 사용, null이면 title 폴백)
 category      text          -- 'mild' | 'medium' | 'hot'
 image_url     text          -- Cloudflare R2 퍼블릭 URL (기존 Supabase Storage에서 마이그레이션 완료)
 image_urls    text[]        -- 슬라이드용 추가 이미지 배열 (선택, null 가능, 2장 이상이면 카드에서 슬라이드)
@@ -88,7 +89,12 @@ sns_safe      boolean       -- SNS 자동 발행 허용 여부 (true: 발행 가
 > **is_queued 컬럼 추가** — 2026-05-26 `ALTER TABLE products ADD COLUMN IF NOT EXISTS is_queued boolean DEFAULT false;` 실행 완료  
 > **image_urls 컬럼 추가** — 2026-05-28 `ALTER TABLE products ADD COLUMN IF NOT EXISTS image_urls text[];` 실행 완료  
 > **button_text 컬럼 추가** — 2026-05-29 `ALTER TABLE products ADD COLUMN IF NOT EXISTS button_text text;` 실행 완료  
-> **sns_safe 컬럼 추가** — 2026-06-10 `ALTER TABLE products ADD COLUMN IF NOT EXISTS sns_safe boolean DEFAULT false;` 실행 완료. 백필: aliexpress/coupang/amazon_jp/klook → true, amazon_us/etc/null → false
+> **sns_safe 컬럼 추가** — 2026-06-10 `ALTER TABLE products ADD COLUMN IF NOT EXISTS sns_safe boolean DEFAULT false;` 실행 완료. 백필: aliexpress/coupang/amazon_jp/klook → true, amazon_us/etc/null → false  
+> **seo_title 컬럼 추가** — 2026-06-12 아래 SQL 실행 필요:
+> ```sql
+> ALTER TABLE products ADD COLUMN IF NOT EXISTS seo_title text;
+> UPDATE products SET seo_title = title;
+> ```
 
 **RLS**: 활성화됨 (2026-06-07)
 - SELECT: `is_active = true`인 상품만 공개 (anon 포함 누구나)
@@ -392,7 +398,13 @@ egomeo/
 
 ---
 
-## 최근 완료 작업 (2026-06-11 기준)
+## 최근 완료 작업 (2026-06-12 기준)
+
+- **SEO용 제목(seo_title) 분리 추가** (`app/product/[id]/page.tsx`, `app/admin/AdminPanel.tsx`, `app/sitemap.ts`)
+  - `products` 테이블에 `seo_title text` 컬럼 추가 (nullable) — **Supabase SQL 실행 필요** (아래 "다음 할 일" 참고)
+  - 상세페이지 `generateMetadata`: `og:title` / `twitter:title` / 브라우저 탭 title / meta description / JSON-LD headline 모두 `seo_title || title` 우선 사용
+  - 어드민 모달: 제목 레이블 → "메인 제목 (드립/짧은 제목)", SEO 제목 입력란 추가 ("비워두면 메인 제목과 동일하게 사용됨")
+  - `app/sitemap.ts` 쿼리에 `seo_title` 추가 (Next.js `MetadataRoute.Sitemap`은 `images: string[]`만 지원해 `image:title` XML 출력은 커스텀 XML 라우트로 별도 구현 필요)
 
 - **비디오 카드 흰 빈 화면 근본 원인 규명 및 최종 수정** (`components/VideoPlayer.tsx`, `components/ProductCard.tsx`, `app/product/[id]/page.tsx`)
   - **근본 원인**: 문제 영상(`video-1780852209852-2x4ev771rl3.mp4`)의 GOP(Group of Pictures) 구조 분석으로 원인 확인 — 175프레임(7초) 중 키프레임이 첫 프레임 1개뿐(stss entry_count=1). 이처럼 키프레임 간격이 극단적으로 긴 경우 HTML5 `<video>` 엘리먼트의 미디어 파이프라인이 `canplay`/`onLoadedMetadata` 이벤트를 늦게 발화하거나 발화 안 함. 반면 브라우저 내장 미디어 플레이어(새 탭 직접 접근)는 더 관대하게 처리해서 재생됨.
@@ -690,6 +702,11 @@ egomeo/
      ALTER TABLE sns_queue ADD COLUMN IF NOT EXISTS comment_text text;
      ALTER TABLE sns_queue ADD COLUMN IF NOT EXISTS media_type text DEFAULT 'image';
      ALTER TABLE sns_queue ADD COLUMN IF NOT EXISTS container_id text;
+     ```
+   - **seo_title 컬럼 추가 + 기존 상품 백필** (2026-06-12 추가, 최우선 실행):
+     ```sql
+     ALTER TABLE products ADD COLUMN IF NOT EXISTS seo_title text;
+     UPDATE products SET seo_title = title;
      ```
 2. **Vercel 환경변수 추가 필요**: `THREADS_USER_ID`, `THREADS_ACCESS_TOKEN`, `CRON_SECRET`, `SNS_DAILY_LIMIT`(기본값 2), `INDEXNOW_KEY=09a6bd0e6c07a387147a1720c7b3bc91`
 3. **Threads API 토큰 발급** — Meta 개발자 콘솔에서 발급 후 `THREADS_ACCESS_TOKEN` 등록

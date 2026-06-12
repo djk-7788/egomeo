@@ -27,13 +27,14 @@ export async function generateMetadata({ params, searchParams }: Props): Promise
 
   const { data: product } = await supabase
     .from("products")
-    .select("title, image_url, image_urls, video_url, button_text")
+    .select("title, seo_title, image_url, image_urls, video_url, button_text")
     .eq("id", id)
     .single();
 
   if (!product) return { title: "이게머고?" };
 
-  const description = product.button_text || "이게 머고? 세상의 신기한 물건들.";
+  const seoTitle = product.seo_title || product.title;
+  const description = seoTitle;
   const canonicalUrl = `https://www.igemugo.com/product/${id}`;
 
   // ref=threads → Threads 전용 이미지 고정 (상품 이미지 노출 방지)
@@ -51,22 +52,22 @@ export async function generateMetadata({ params, searchParams }: Props): Promise
   }
 
   return {
-    title: product.title,
+    title: seoTitle,
     description,
     alternates: {
       canonical: canonicalUrl,
     },
     openGraph: {
-      title: product.title,
+      title: seoTitle,
       description,
       url: canonicalUrl,
       siteName: "이게머고?",
-      images: [{ url: ogImageUrl, alt: product.title }],
+      images: [{ url: ogImageUrl, alt: seoTitle }],
       type: "article",
     },
     twitter: {
       card: "summary_large_image",
-      title: product.title,
+      title: seoTitle,
       description,
       images: [ogImageUrl],
     },
@@ -101,10 +102,12 @@ export default async function ProductPage({ params }: Props) {
       ? product.image_urls[0]
       : product.image_url;
 
+  const seoHeadline = product.seo_title || product.title;
+
   const jsonLd = {
     "@context": "https://schema.org",
     "@type": "Article",
-    headline: product.title,
+    headline: seoHeadline,
     image: jsonLdImage ? [jsonLdImage] : undefined,
     datePublished: product.created_at,
     author: {

@@ -20,6 +20,7 @@ type Platform = "amazon_us" | "amazon_jp" | "aliexpress" | "coupang" | "etc" | I
 type Product = {
   id: string;
   title: string;
+  seo_title: string | null;
   category: "mild" | "medium" | "hot";
   image_url: string;
   image_urls: string[] | null;
@@ -35,6 +36,7 @@ type Product = {
 
 type FormState = {
   title: string;
+  seo_title: string;
   category: "mild" | "medium" | "hot";
   image_url: string;
   image_urls: string[];
@@ -49,6 +51,7 @@ type FormState = {
 
 const emptyForm: FormState = {
   title: "",
+  seo_title: "",
   category: "mild",
   image_url: "",
   image_urls: [],
@@ -188,6 +191,7 @@ export default function AdminPanel() {
     setAliHint("");
     setForm({
       title: product.title,
+      seo_title: product.seo_title || "",
       category: product.category,
       image_url: product.image_url,
       image_urls: product.image_urls || [],
@@ -212,6 +216,7 @@ export default function AdminPanel() {
 
     const payload = {
       ...form,
+      seo_title: form.seo_title.trim() || null,
       video_url: form.video_url || null,
       platform: form.platform || null,
       image_urls: form.image_urls.length > 0 ? form.image_urls : null,
@@ -875,7 +880,7 @@ export default function AdminPanel() {
               )}
               <div>
                 <label className="text-xs font-semibold text-gray-500 block mb-1">
-                  드립형 제목
+                  메인 제목 <span className="font-normal text-gray-400">(드립/짧은 제목 — 카드에 표시됨)</span>
                 </label>
                 <input
                   type="text"
@@ -883,6 +888,18 @@ export default function AdminPanel() {
                   onChange={(e) => setForm({ ...form, title: e.target.value })}
                   required
                   placeholder="이게 뭔지 설명하면 내가 짐"
+                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-[#F5A623] transition-colors"
+                />
+              </div>
+              <div>
+                <label className="text-xs font-semibold text-gray-500 block mb-1">
+                  SEO 제목 <span className="font-normal text-gray-400">(상품명, 검색용 — 상세페이지 메타태그에 사용)</span>
+                </label>
+                <input
+                  type="text"
+                  value={form.seo_title}
+                  onChange={(e) => setForm({ ...form, seo_title: e.target.value })}
+                  placeholder="비워두면 메인 제목과 동일하게 사용됨"
                   className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-[#F5A623] transition-colors"
                 />
               </div>
