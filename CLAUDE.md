@@ -90,11 +90,7 @@ sns_safe      boolean       -- SNS 자동 발행 허용 여부 (true: 발행 가
 > **image_urls 컬럼 추가** — 2026-05-28 `ALTER TABLE products ADD COLUMN IF NOT EXISTS image_urls text[];` 실행 완료  
 > **button_text 컬럼 추가** — 2026-05-29 `ALTER TABLE products ADD COLUMN IF NOT EXISTS button_text text;` 실행 완료  
 > **sns_safe 컬럼 추가** — 2026-06-10 `ALTER TABLE products ADD COLUMN IF NOT EXISTS sns_safe boolean DEFAULT false;` 실행 완료. 백필: aliexpress/coupang/amazon_jp/klook → true, amazon_us/etc/null → false  
-> **seo_title 컬럼 추가** — 2026-06-12 아래 SQL 실행 필요:
-> ```sql
-> ALTER TABLE products ADD COLUMN IF NOT EXISTS seo_title text;
-> UPDATE products SET seo_title = title;
-> ```
+> **seo_title 컬럼 추가** — 2026-06-13 `ALTER TABLE products ADD COLUMN IF NOT EXISTS seo_title text; UPDATE products SET seo_title = title;` 실행 완료
 
 **RLS**: 활성화됨 (2026-06-07)
 - SELECT: `is_active = true`인 상품만 공개 (anon 포함 누구나)
@@ -697,11 +693,6 @@ egomeo/
 ## 다음 할 일 (우선순위순)
 
 1. **Supabase SQL 실행 필요** (아직 미실행):
-   - **seo_title 컬럼 추가 + 기존 상품 백필** (2026-06-12, 최우선):
-     ```sql
-     ALTER TABLE products ADD COLUMN IF NOT EXISTS seo_title text;
-     UPDATE products SET seo_title = title;
-     ```
    - `sns_queue` 테이블 CREATE + RLS ENABLE (미실행 시):
      ```sql
      CREATE TABLE IF NOT EXISTS sns_queue (
