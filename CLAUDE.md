@@ -690,23 +690,36 @@ egomeo/
 - [완료] GEO 최적화 — `layout.tsx` Organization JSON-LD 전역 추가, `/about` 사이트 설명 단락 강화 + AboutPage JSON-LD, `public/llms.txt` 신규 생성 (AI 크롤러용)
 - [완료] 검색엔진 배관 3종 — IndexNow(키 09a6bd0e6c07a387147a1720c7b3bc91, api.indexnow.org+네이버 동시 핑, 공개 전환 시 fire-and-forget), 이미지 사이트맵(image_urls/image_url 추가), RSS(/rss.xml, 최신 20개, amazon_us 제외)
 - [완료] 사이트맵 이미지 URL `&amp;` XML 이스케이프 수정 — `app/sitemap.ts`에서 `&` → `&amp;` 치환 추가 (Next.js가 images 배열 URL 자동 이스케이프 안 함)
+- [완료] SEO용 제목(seo_title) 분리 — `products` 테이블에 `seo_title text` 컬럼 추가(Supabase SQL 실행 필요). 상세페이지 메타태그(og:title/twitter:title/description/JSON-LD headline) 모두 `seo_title || title` 우선 사용. 어드민 모달에 "SEO 제목" 입력란 추가, 기존 제목 레이블 "메인 제목 (드립/짧은 제목)"으로 변경
 
 ---
 
 ## 다음 할 일 (우선순위순)
 
 1. **Supabase SQL 실행 필요** (아직 미실행):
-   - `ALTER TABLE products ADD COLUMN IF NOT EXISTS sns_safe boolean DEFAULT false;` + 플랫폼별 백필
-   - `sns_queue` 테이블 CREATE + RLS ENABLE + 아래 컬럼 추가:
-     ```sql
-     ALTER TABLE sns_queue ADD COLUMN IF NOT EXISTS comment_text text;
-     ALTER TABLE sns_queue ADD COLUMN IF NOT EXISTS media_type text DEFAULT 'image';
-     ALTER TABLE sns_queue ADD COLUMN IF NOT EXISTS container_id text;
-     ```
-   - **seo_title 컬럼 추가 + 기존 상품 백필** (2026-06-12 추가, 최우선 실행):
+   - **seo_title 컬럼 추가 + 기존 상품 백필** (2026-06-12, 최우선):
      ```sql
      ALTER TABLE products ADD COLUMN IF NOT EXISTS seo_title text;
      UPDATE products SET seo_title = title;
+     ```
+   - `sns_queue` 테이블 CREATE + RLS ENABLE (미실행 시):
+     ```sql
+     CREATE TABLE IF NOT EXISTS sns_queue (
+       id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+       product_id uuid REFERENCES products(id),
+       channel text DEFAULT 'threads',
+       post_text text,
+       comment_text text,
+       image_url text,
+       status text DEFAULT 'pending',
+       error_message text,
+       scheduled_order integer,
+       media_type text DEFAULT 'image',
+       container_id text,
+       published_at timestamptz,
+       created_at timestamptz DEFAULT now()
+     );
+     ALTER TABLE sns_queue ENABLE ROW LEVEL SECURITY;
      ```
 2. **Vercel 환경변수 추가 필요**: `THREADS_USER_ID`, `THREADS_ACCESS_TOKEN`, `CRON_SECRET`, `SNS_DAILY_LIMIT`(기본값 2), `INDEXNOW_KEY=09a6bd0e6c07a387147a1720c7b3bc91`
 3. **Threads API 토큰 발급** — Meta 개발자 콘솔에서 발급 후 `THREADS_ACCESS_TOKEN` 등록
@@ -744,6 +757,7 @@ egomeo/
 | TOKEN_REFRESHED 이벤트 시 profiles 재조회 스킵 | 토큰 갱신은 프로필 변경과 무관. 재조회하면 DB 지연 시 profileLoaded=false에 오래 갇히고 optimistic update가 덮어씌워짐 |
 | signOut() 즉시 로컬 상태 초기화 | `supabase.auth.signOut()` 완료를 기다리면 반응이 느리거나 onAuthStateChange 타이밍에 따라 profileLoaded가 false에 갇힐 수 있음. 상태 초기화는 동기적으로, 서버 세션 취소는 백그라운드 |
 | 어드민 모든 DB 작업을 API 라우트 경유 | 브라우저→Supabase 직접 연결이 특정 네트워크 환경에서 타임아웃 발생. 읽기(GET)뿐 아니라 쓰기(POST/PUT/PATCH/DELETE)도 모두 `/api/admin/products`로 중계. `AdminPanel`·`OrderEditor`에서 `supabase` 브라우저 클라이언트 import 완전 제거 |
+| title과 seo_title 분리 | 메인 피드 카드 제목은 드립/짧은 문구가 클릭률에 유리하지만, 검색엔진 메타태그(og:title·description 등)에는 실제 상품명이 있어야 SEO에 유리. 두 컬럼을 분리해 카드 표시(title)와 검색 최적화(seo_title)를 독립 관리. seo_title이 비어있으면 title로 자동 폴백 |
 
 ---
 
