@@ -19,7 +19,24 @@
       "Bash(node *)",
       "Bash(curl -s 'https://akcpwirzkjdmdrajntum.supabase.co/rest/v1/products?select=id,title,image_url,affiliate_link&platform=eq.aliexpress&image_url=like.*pub-ca7c5843*' -H 'apikey: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFrY3B3aXJ6a2pkbWRyYWpudHVtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzkyNTc4MzcsImV4cCI6MjA5NDgzMzgzN30.MW2An2PQClvsnEeTndL3jz2VV70fmywNVb2m-Y3wh0k' -H 'Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFrY3B3aXJ6a2pkbWRyYWpudHVtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzkyNTc4MzcsImV4cCI6MjA5NDgzMzgzN30.MW2An2PQClvsnEeTndL3jz2VV70fmywNVb2m-Y3wh0k' -H 'Prefer: count=exact' -H 'Range: 0-999')",
       "Bash(python -m json.tool)",
-      "Bash(curl -s 'https://akcpwirzkjdmdrajntum.supabase.co/rest/v1/products?select=id,affiliate_link&platform=eq.aliexpress&image_url=like.*pub-ca7c5843*' -H 'apikey: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFrY3B3aXJ6a2pkbWRyYWpudHVtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzkyNTc4MzcsImV4cCI6MjA5NDgzMzgzN30.MW2An2PQClvsnEeTndL3jz2VV70fmywNVb2m-Y3wh0k' -H 'Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFrY3B3aXJ6a2pkbWRyYWpudHVtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzkyNTc4MzcsImV4cCI6MjA5NDgzMzgzN30.MW2An2PQClvsnEeTndL3jz2VV70fmywNVb2m-Y3wh0k')"
+      "Bash(curl -s 'https://akcpwirzkjdmdrajntum.supabase.co/rest/v1/products?select=id,affiliate_link&platform=eq.aliexpress&image_url=like.*pub-ca7c5843*' -H 'apikey: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFrY3B3aXJ6a2pkbWRyYWpudHVtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzkyNTc4MzcsImV4cCI6MjA5NDgzMzgzN30.MW2An2PQClvsnEeTndL3jz2VV70fmywNVb2m-Y3wh0k' -H 'Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFrY3B3aXJ6a2pkbWRyYWpudHVtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzkyNTc4MzcsImV4cCI6MjA5NDgzMzgzN30.MW2An2PQClvsnEeTndL3jz2VV70fmywNVb2m-Y3wh0k')",
+      "Bash(dir C:\\\\Users\\\\dj\\\\Desktop\\\\egomeo\\\\app\\\\product\\\\[id]\\\\ *)",
+      "Bash(curl -L -o ffmpeg.js \"https://unpkg.com/@ffmpeg/ffmpeg@0.12.10/dist/umd/ffmpeg.js\")",
+      "Bash(curl -L -o \"ffmpeg-util.js\" \"https://unpkg.com/@ffmpeg/util@0.12.1/dist/umd/index.js\")",
+      "Bash(curl -L -o ffmpeg-core.wasm \"https://unpkg.com/@ffmpeg/core@0.12.6/dist/umd/ffmpeg-core.wasm\")",
+      "Bash(curl *)",
+      "Bash(git log *)",
+      "Bash(git revert *)",
+      "Bash(git checkout *)",
+      "Bash(npm ls *)",
+      "Bash(powershell -command \"\\(Get-Item 'C:\\\\Users\\\\dj\\\\Desktop\\\\egomeo\\\\public\\\\og-threads.png'\\).Length\")",
+      "Bash(grep -r \"pollUntilReady\\\\|타임아웃\\\\|4분\\\\|poll\\\\|polling\\\\|setTimeout.*[0-9]\\\\{5,\\\\}\\\\|4.*60.*1000\" --include=\"*.ts\" --include=\"*.tsx\" -l)",
+      "Bash(xargs grep -l \"sns\\\\|threads\")",
+      "Bash(npx vercel *)",
+      "Bash(gh run *)",
+      "Bash(xxd)",
+      "Bash(xxd /tmp/moov.bin)",
+      "Bash(git *)"
     ]
   }
 }
