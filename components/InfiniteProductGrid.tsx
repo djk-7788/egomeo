@@ -1,8 +1,7 @@
 "use client";
 
-import { useState, useEffect, useRef, useMemo } from "react";
-import { useWindowVirtualizer } from "@tanstack/react-virtual";
-import ProductCard from "./ProductCard";
+import { useState, useEffect, useRef } from "react";
+import Link from "next/link";
 
 export type GridProduct = {
   id: string;
@@ -23,27 +22,104 @@ type Props = {
   heading?: string;
 };
 
-// 초기값 3: SSR과 클라이언트 첫 렌더를 일치시켜 hydration 경고 방지
-// useEffect에서 실제 화면 너비로 보정됨
-function useColumnCount(): number {
-  const [cols, setCols] = useState(3);
+// TODO: 영상 메모리 최적화(뷰포트 이탈 시 DOM 언마운트 등)는 다음 단계에서 별도 처리 예정
+function MasonryVideoItem({ src, poster }: { src: string; poster?: string }) {
+  const ref = useRef<HTMLVideoElement>(null);
+  const [videoReady, setVideoReady] = useState(false);
 
   useEffect(() => {
-    const compute = (): number => {
-      if (window.innerWidth < 640) return 1;
-      if (window.innerWidth < 768) return 2;
-      return 3;
-    };
-    setCols(compute());
-    const handler = () => setCols(compute());
-    window.addEventListener("resize", handler);
-    return () => window.removeEventListener("resize", handler);
-  }, []);
+    setVideoReady(false);
+    const el = ref.current;
+    if (!el) return;
 
-  return cols;
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          el.load();
+          el.play().catch(() => {});
+        } else {
+          el.pause();
+        }
+      },
+      { threshold: 0.3 }
+    );
+    observer.observe(el);
+
+    // 키프레임 1개짜리 영상 등 이벤트 미발화 케이스 방어
+    const timer = setTimeout(() => setVideoReady(true), 3000);
+
+    return () => {
+      observer.disconnect();
+      clearTimeout(timer);
+    };
+  }, [src]);
+
+  return (
+    <div className="relative bg-white">
+      {poster ? (
+        // 포스터 이미지가 컨테이너의 자연 높이를 결정 — 영상 로드 전 레이아웃 안정화
+        <img
+          src={poster}
+          alt=""
+          className="w-full block"
+          style={{ visibility: videoReady ? "hidden" : "visible" }}
+        />
+      ) : (
+        !videoReady && <div className="w-full aspect-square bg-gray-100 animate-pulse" />
+      )}
+      <video
+        key={src}
+        ref={ref}
+        src={src}
+        muted
+        loop
+        playsInline
+        preload="metadata"
+        onLoadedMetadata={() => setVideoReady(true)}
+        onCanPlay={() => setVideoReady(true)}
+        className="w-full block"
+        style={
+          poster
+            ? { position: "absolute", top: 0, left: 0, right: 0, bottom: 0, height: "100%", objectFit: "contain" }
+            : !videoReady
+            ? { position: "absolute", top: 0, left: 0, opacity: 0 }
+            : undefined
+        }
+      />
+    </div>
+  );
 }
 
-const ESTIMATED_ROW_HEIGHT = 600; // 카드 높이(~500) + gap(16) + 여유분
+function MasonryItem({ product }: { product: GridProduct }) {
+  // 미디어 우선순위: video_url > image_urls(2장↑이면 첫 번째만, 슬라이드 없음) > image_url
+  const isVideo = !!product.video_url;
+  const displayImageUrl =
+    !isVideo && product.image_urls && product.image_urls.length >= 2
+      ? product.image_urls[0]
+      : product.image_url;
+
+  return (
+    <Link
+      href={`/product/${product.id}`}
+      className="group relative block overflow-hidden rounded-lg break-inside-avoid mb-3 cursor-pointer"
+    >
+      {isVideo ? (
+        <MasonryVideoItem
+          src={product.video_url!}
+          poster={product.image_url || undefined}
+        />
+      ) : (
+        <img
+          src={displayImageUrl}
+          alt={product.title}
+          className="w-full block"
+        />
+      )}
+      {/* PC 호버 시 어두운 오버레이 — 클릭 가능함을 암시 */}
+      <div className="absolute inset-0 bg-black opacity-0 group-hover:opacity-20 transition-opacity duration-200 pointer-events-none" />
+    </Link>
+  );
+}
 
 export default function InfiniteProductGrid({
   initialProducts,
@@ -60,39 +136,6 @@ export default function InfiniteProductGrid({
   const loadingRef = useRef(false);
   const sentinelRef = useRef<HTMLDivElement>(null);
   const loadMoreRef = useRef<() => void>(() => {});
-  const listRef = useRef<HTMLDivElement>(null);
-
-  const columnCount = useColumnCount();
-
-  // 카드 배열 → 행 배열 (columnCount개씩 묶기)
-  const rows = useMemo<GridProduct[][]>(() => {
-    const result: GridProduct[][] = [];
-    for (let i = 0; i < products.length; i += columnCount) {
-      result.push(products.slice(i, i + columnCount));
-    }
-    return result;
-  }, [products, columnCount]);
-
-  // 가상 스크롤러가 필요한 scrollMargin:
-  // 리스트 컨테이너의 document 최상단 기준 절대 Y 좌표
-  const [scrollMargin, setScrollMargin] = useState(0);
-  useEffect(() => {
-    const update = () => {
-      if (!listRef.current) return;
-      const rect = listRef.current.getBoundingClientRect();
-      setScrollMargin(Math.round(rect.top + window.scrollY));
-    };
-    update();
-    window.addEventListener("resize", update);
-    return () => window.removeEventListener("resize", update);
-  }, []);
-
-  const virtualizer = useWindowVirtualizer({
-    count: rows.length,
-    estimateSize: () => ESTIMATED_ROW_HEIGHT,
-    overscan: 5, // 뷰포트 위아래 5행 미리 렌더링
-    scrollMargin,
-  });
 
   async function loadMore() {
     if (loadingRef.current || !hasMoreRef.current) return;
@@ -129,7 +172,7 @@ export default function InfiniteProductGrid({
     loadMoreRef.current = loadMore;
   });
 
-  // 센티넬이 뷰포트에 들어오면 다음 페이지 로드 (마운트 시 한 번만 생성)
+  // 센티넬이 뷰포트에 들어오면 다음 페이지 로드
   useEffect(() => {
     const sentinel = sentinelRef.current;
     if (!sentinel) return;
@@ -149,59 +192,20 @@ export default function InfiniteProductGrid({
     );
   }
 
-  const virtualItems = virtualizer.getVirtualItems();
-  const totalSize = virtualizer.getTotalSize();
-
   return (
     <div>
       {heading && (
         <h2 className="text-lg font-black text-[#111111] mb-4">{heading}</h2>
       )}
 
-      {/* 가상 스크롤 컨테이너: 전체 높이를 차지하고 가시 행만 absolute로 배치 */}
-      <div
-        ref={listRef}
-        style={{ height: `${totalSize}px`, position: "relative" }}
-      >
-        {virtualItems.map((vRow) => {
-          const row = rows[vRow.index];
-          if (!row) return null;
-          return (
-            <div
-              key={vRow.key}
-              data-index={vRow.index}
-              ref={virtualizer.measureElement}
-              style={{
-                position: "absolute",
-                top: 0,
-                left: 0,
-                width: "100%",
-                transform: `translateY(${vRow.start - virtualizer.options.scrollMargin}px)`,
-              }}
-            >
-              <div
-                className="grid gap-4 pb-4"
-                style={{
-                  gridTemplateColumns: `repeat(${columnCount}, minmax(0, 1fr))`,
-                }}
-              >
-                {row.map((p) => (
-                  <ProductCard
-                    key={p.id}
-                    id={p.id}
-                    category={p.category}
-                    imageUrl={p.image_url}
-                    imageUrls={p.image_urls}
-                    videoUrl={p.video_url}
-                    title={p.title}
-                    link={p.affiliate_link}
-                    buttonText={p.button_text}
-                  />
-                ))}
-              </div>
-            </div>
-          );
-        })}
+      {/* 메이슨리 갤러리 — CSS columns 기반
+          모바일 2열, 태블릿(sm:640px+) 3열, PC(lg:1024px+) 4열
+          가상 스크롤(@tanstack/react-virtual) 제거 —
+          영상 메모리 최적화(뷰포트 이탈 시 언마운트 등)는 다음 단계에서 별도 처리 예정 */}
+      <div className="columns-2 sm:columns-3 lg:columns-4 gap-3">
+        {products.map((p) => (
+          <MasonryItem key={p.id} product={p} />
+        ))}
       </div>
 
       {/* 센티넬: 이 div가 뷰포트에 들어오면 다음 페이지 로드 */}
