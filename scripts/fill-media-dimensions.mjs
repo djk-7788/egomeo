@@ -10,21 +10,16 @@
  *        (Supabase 대시보드 > Settings > API > service_role)
  *
  * 실행: node scripts/fill-media-dimensions.mjs
+ *
+ * probe 로직: lib/probe-media.mjs 에서 공유
  */
 
-import { createRequire } from 'module'
-import { execFile } from 'child_process'
-import { promisify } from 'util'
 import { readFileSync, existsSync } from 'fs'
 import path from 'path'
 import { fileURLToPath } from 'url'
 import { createClient } from '@supabase/supabase-js'
+import { getMediaDimension } from '../lib/probe-media.mjs'
 
-const require = createRequire(import.meta.url)
-const probeImageSize = require('probe-image-size')
-const ffprobeStatic = require('ffprobe-static')
-
-const execFileAsync = promisify(execFile)
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
 // ──────────────────────────────────────────────
@@ -46,7 +41,7 @@ function parseEnvFile(filePath) {
 
 const envVars = {
   ...parseEnvFile(path.join(__dirname, '..', '.env.local')),
-  ...process.env, // 환경변수로 직접 전달한 값이 .env.local보다 우선
+  ...process.env,
 }
 
 const SUPABASE_URL = envVars.NEXT_PUBLIC_SUPABASE_URL
@@ -62,82 +57,6 @@ if (!SUPABASE_URL || !SERVICE_KEY) {
 }
 
 const supabase = createClient(SUPABASE_URL, SERVICE_KEY)
-const FFPROBE = ffprobeStatic.path
-
-// ──────────────────────────────────────────────
-// 유틸
-// ──────────────────────────────────────────────
-function withTimeout(promise, ms, label) {
-  let timer
-  const timeout = new Promise((_, reject) => {
-    timer = setTimeout(
-      () => reject(new Error(`타임아웃 ${ms / 1000}초 (${label})`)),
-      ms
-    )
-  })
-  return Promise.race([promise, timeout]).finally(() => clearTimeout(timer))
-}
-
-// ──────────────────────────────────────────────
-// 영상 dimension 추출 (ffprobe URL 직접 probe, 로컬 저장 없음)
-// ──────────────────────────────────────────────
-async function probeVideo(url) {
-  const { stdout } = await execFileAsync(
-    FFPROBE,
-    [
-      '-v', 'quiet',
-      '-print_format', 'json',
-      '-show_streams',
-      '-select_streams', 'v:0',
-      '-probesize', '5000000',       // 최대 5MB 읽기
-      '-analyzeduration', '2000000', // 최대 2초 분석
-      url,
-    ],
-    { timeout: 30_000 }
-  )
-
-  const data = JSON.parse(stdout)
-  const stream = data.streams?.[0]
-
-  // rotate 90/270 이면 width/height 교환
-  const rotate = Math.abs(parseInt(stream?.tags?.rotate ?? stream?.side_data_list?.[0]?.rotation ?? '0', 10))
-  let { width, height } = stream ?? {}
-  if (!width || !height) throw new Error('비디오 스트림 dimension 없음')
-  if (rotate === 90 || rotate === 270) [width, height] = [height, width]
-
-  return { width, height }
-}
-
-// ──────────────────────────────────────────────
-// 이미지 dimension 추출 (probe-image-size: 최소 바이트만 읽음, 로컬 저장 없음)
-// ──────────────────────────────────────────────
-async function probeImage(url) {
-  const result = await probeImageSize(url)
-  if (!result?.width || !result?.height) throw new Error('이미지 dimension 없음')
-  return { width: result.width, height: result.height }
-}
-
-// ──────────────────────────────────────────────
-// 미디어 우선순위: video_url > image_urls[0] > image_url
-// ──────────────────────────────────────────────
-async function getMediaDimension(product) {
-  const { video_url, image_urls, image_url } = product
-
-  if (video_url) {
-    const dim = await withTimeout(probeVideo(video_url), 35_000, 'video')
-    return { type: 'video', mediaUrl: video_url, ...dim }
-  }
-
-  const imgUrl =
-    Array.isArray(image_urls) && image_urls.length > 0
-      ? image_urls[0]
-      : image_url
-
-  if (!imgUrl) throw new Error('미디어 URL 없음')
-
-  const dim = await withTimeout(probeImage(imgUrl), 20_000, 'image')
-  return { type: 'image', mediaUrl: imgUrl, ...dim }
-}
 
 // ──────────────────────────────────────────────
 // 메인
@@ -148,7 +67,6 @@ const BATCH_DELAY = 300 // 배치 간 대기 ms
 async function main() {
   console.log('\n📐 media_width / media_height 일괄 채우기')
   console.log('─'.repeat(52))
-  console.log(`ffprobe: ${FFPROBE}`)
   console.log(`Supabase: ${SUPABASE_URL}\n`)
 
   // media_width 가 null 인 항목만 조회 (이미 처리된 항목 자동 스킵)
@@ -178,19 +96,21 @@ async function main() {
     await Promise.allSettled(
       batch.map(async (p) => {
         try {
-          const { width, height, type } = await getMediaDimension(p)
+          const dim = await getMediaDimension(p.video_url, p.image_urls, p.image_url)
+          if (!dim) throw new Error('dimension 추출 실패 (미디어 없음 또는 probe 오류)')
 
           const { error: updateErr } = await supabase
             .from('products')
-            .update({ media_width: width, media_height: height })
+            .update({ media_width: dim.width, media_height: dim.height })
             .eq('id', p.id)
 
           if (updateErr) throw new Error(`DB 업데이트 실패: ${updateErr.message}`)
 
           successCount++
-          const icon = type === 'video' ? '🎬' : '🖼️ '
+          const isVideo = !!p.video_url
+          const icon = isVideo ? '🎬' : '🖼️ '
           console.log(
-            `✓ ${String(successCount + failCount).padStart(3)}/${total}  ${icon} ${String(width).padStart(4)}×${String(height).padEnd(4)}  ${p.id.slice(0, 8)}…`
+            `✓ ${String(successCount + failCount).padStart(3)}/${total}  ${icon} ${String(dim.width).padStart(4)}×${String(dim.height).padEnd(4)}  ${p.id.slice(0, 8)}…`
           )
         } catch (err) {
           failCount++
@@ -207,7 +127,6 @@ async function main() {
       })
     )
 
-    // 배치 간 짧은 대기 (CDN/DB 과부하 방지)
     if (i + BATCH_SIZE < products.length) {
       await new Promise((r) => setTimeout(r, BATCH_DELAY))
     }

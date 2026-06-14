@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { getSupabaseAdmin } from "@/lib/supabase-admin";
 import { submitToIndexNow } from "@/lib/indexnow";
+import { getMediaDimension } from "@/lib/probe-media";
 
 export const runtime = "nodejs";
 
@@ -94,8 +95,17 @@ export async function POST(req: NextRequest) {
   }
   try {
     const payload = await req.json();
+
+    // 미디어 dimension 자동 계산 (실패 시 null, 등록은 계속 진행)
+    const dim = await getMediaDimension(payload.video_url, payload.image_urls, payload.image_url);
+    const insertData = {
+      ...payload,
+      media_width: dim?.width ?? null,
+      media_height: dim?.height ?? null,
+    };
+
     const admin = getSupabaseAdmin();
-    const { data, error } = await admin.from("products").insert(payload).select("id").single();
+    const { data, error } = await admin.from("products").insert(insertData).select("id").single();
     if (error) throw error;
     // 즉시 공개인 경우 IndexNow 핑
     if (data?.id && payload.is_active === true && !payload.is_queued) {
@@ -128,6 +138,15 @@ export async function PUT(req: NextRequest) {
       if (current && !current.is_active) {
         submitToIndexNow([`https://www.igemugo.com/product/${id}`]);
       }
+    }
+
+    // 미디어 필드가 포함된 경우에만 dimension 재계산
+    const hasMediaFields =
+      'video_url' in payload || 'image_urls' in payload || 'image_url' in payload;
+    if (hasMediaFields) {
+      const dim = await getMediaDimension(payload.video_url, payload.image_urls, payload.image_url);
+      payload.media_width = dim?.width ?? null;
+      payload.media_height = dim?.height ?? null;
     }
 
     const { error } = await admin.from("products").update(payload).eq("id", id);
