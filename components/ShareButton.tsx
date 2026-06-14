@@ -2,7 +2,12 @@
 
 import { useState } from "react";
 
-export default function ShareButton() {
+type Props = {
+  /** 버튼 라벨 텍스트 (기본값: "🔗 공유 링크 복사") */
+  label?: string;
+};
+
+export default function ShareButton({ label = "🔗 공유 링크 복사" }: Props) {
   const [copied, setCopied] = useState(false);
 
   async function handleCopy() {
@@ -16,7 +21,7 @@ export default function ShareButton() {
       onClick={handleCopy}
       className="w-full text-center font-semibold text-gray-500 border border-gray-200 rounded-xl py-4 hover:bg-gray-50 transition-colors"
     >
-      {copied ? "✓ 링크 복사됨!" : "🔗 공유 링크 복사"}
+      {copied ? "✓ 복사됨!" : label}
     </button>
   );
 }

@@ -4,6 +4,7 @@ import type { Metadata } from "next";
 import VideoPlayer from "@/components/VideoPlayer";
 import ImageSlider from "@/components/ImageSlider";
 import ShareButton from "@/components/ShareButton";
+import CardLikeButton from "@/components/CardLikeButton";
 import InfiniteProductGrid from "@/components/InfiniteProductGrid";
 
 export const dynamic = "force-dynamic";
@@ -11,12 +12,6 @@ export const dynamic = "force-dynamic";
 type Props = {
   params: Promise<{ id: string }>;
   searchParams: Promise<{ ref?: string }>;
-};
-
-const categoryLabel: Record<string, string> = {
-  mild: "이게 머고?",
-  medium: "이게? 머고???",
-  hot: "이게??? 머고???????",
 };
 
 const PAGE_SIZE = 12;
@@ -161,12 +156,19 @@ export default async function ProductPage({ params }: Props) {
 
           {/* 정보 */}
           <div className="flex flex-col gap-4 py-2">
-            <span className="text-sm font-semibold text-gray-400">
-              {categoryLabel[product.category]}
-            </span>
             <h1 className="text-2xl font-black text-[#111111] leading-snug">
               {product.title}
             </h1>
+            {/* 찜하기 + 공유 버튼 — 50:50 분할 */}
+            <div className="flex gap-3">
+              <div className="flex-1">
+                <CardLikeButton productId={product.id} variant="detail" />
+              </div>
+              <div className="flex-1">
+                <ShareButton label="🔗 공유" />
+              </div>
+            </div>
+            {/* 드립 버튼 */}
             <a
               href={product.affiliate_link}
               target="_blank"
@@ -175,7 +177,6 @@ export default async function ProductPage({ params }: Props) {
             >
               {product.button_text || "구경하러 가기"}
             </a>
-            <ShareButton />
           </div>
         </div>
       </div>
