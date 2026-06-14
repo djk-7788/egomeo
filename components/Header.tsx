@@ -5,7 +5,6 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import HamburgerMenu from "./HamburgerMenu";
 import HeaderAuthStatus from "./HeaderAuthStatus";
-import EyeButton from "./EyeButton";
 
 export default function Header() {
   const [searchOpen, setSearchOpen] = useState(false);
@@ -59,7 +58,6 @@ export default function Header() {
               <line x1="21" y1="21" x2="16.65" y2="16.65" />
             </svg>
           </button>
-          <EyeButton />
           <HeaderAuthStatus />
           <HamburgerMenu />
         </div>
