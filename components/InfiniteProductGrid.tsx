@@ -186,6 +186,7 @@ type Props = {
   excludeId?: string;
   category?: string;
   heading?: string;
+  useSeed?: boolean; // true = sessionStorage 시드 기반 정렬
 };
 
 export default function InfiniteProductGrid({
@@ -194,12 +195,14 @@ export default function InfiniteProductGrid({
   excludeId,
   category,
   heading,
+  useSeed = false,
 }: Props) {
   // 컬럼 높이 추적 (ref: 무한스크롤 시 기존 위치 불변 보장)
   const colHeightsRef = useRef<number[]>([]);
   const numColsRef = useRef<number>(2);
   const allProductsRef = useRef<GridProduct[]>([...initialProducts]);
   const loadingRef = useRef(false);
+  const seedRef = useRef<string | null>(null);
   const hasMoreRef = useRef(initialHasMore);
   const pageRef = useRef(2);
   const sentinelRef = useRef<HTMLDivElement>(null);
@@ -241,6 +244,47 @@ export default function InfiniteProductGrid({
     };
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // 시드 기반 정렬: 마운트 시 sessionStorage 시드로 page 1 재조회
+  // SSR 데이터(기본 정렬)를 시드 정렬로 교체, 이후 무한스크롤도 동일 시드 유지
+  useEffect(() => {
+    if (!useSeed) return;
+
+    let seed = sessionStorage.getItem("feed_shuffle_seed");
+    if (!seed) {
+      seed = String(Math.floor(Math.random() * 2147483647));
+      sessionStorage.setItem("feed_shuffle_seed", seed);
+    }
+    seedRef.current = seed;
+
+    // loadMore가 동시에 실행되지 않도록 먼저 잠금
+    loadingRef.current = true;
+    setLoading(true);
+
+    const params = new URLSearchParams({ page: "1", limit: "12", seed });
+    if (excludeId) params.set("excludeId", excludeId);
+    if (category) params.set("category", category);
+
+    fetch(`/api/products?${params}`)
+      .then((r) => r.json())
+      .then(({ products: page1, hasMore: moreExists }) => {
+        const p: GridProduct[] = page1 ?? [];
+        const n = numColsRef.current;
+        const { cols, heights } = distributeToColumns(p, n);
+        colHeightsRef.current = heights;
+        allProductsRef.current = p;
+        pageRef.current = 2;
+        hasMoreRef.current = moreExists;
+        setColumns(cols);
+      })
+      .catch(() => {
+        // 실패 시 SSR 데이터 유지
+      })
+      .finally(() => {
+        loadingRef.current = false;
+        setLoading(false);
+      });
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
   // 무한스크롤: 새 아이템을 현재 가장 짧은 컬럼에 추가 (기존 아이템 위치 불변)
   async function loadMore() {
     if (loadingRef.current || !hasMoreRef.current) return;
@@ -250,6 +294,7 @@ export default function InfiniteProductGrid({
     const params = new URLSearchParams({ page: String(pageRef.current), limit: "12" });
     if (excludeId) params.set("excludeId", excludeId);
     if (category) params.set("category", category);
+    if (seedRef.current) params.set("seed", seedRef.current);
 
     try {
       const res = await fetch(`/api/products?${params}`);

@@ -67,6 +67,7 @@ export default async function Home({ searchParams }: Props) {
         initialProducts={products ?? []}
         initialHasMore={initialHasMore}
         category={activeCategory}
+        useSeed
       />
     </>
   );

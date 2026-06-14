@@ -188,6 +188,7 @@ export default async function ProductPage({ params }: Props) {
           initialHasMore={initialHasMore}
           excludeId={id}
           heading="이건 또 머고?"
+          useSeed
         />
       )}
     </div>
