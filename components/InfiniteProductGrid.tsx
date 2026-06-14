@@ -16,22 +16,49 @@ export type GridProduct = {
   media_height?: number | null;
 };
 
-// aspect-ratio 문자열 — DB 값 있으면 사용, 없으면 4/5 fallback
+// ─────────────────────────────────────────────
+// 유틸
+// ─────────────────────────────────────────────
+
+function getNumCols(): number {
+  if (typeof window === "undefined") return 2;
+  if (window.innerWidth >= 1024) return 4;
+  if (window.innerWidth >= 640) return 3;
+  return 2;
+}
+
+// 상품 높이 추정값 (컬럼 폭=1 기준, 실제 px 불필요)
+function estimateHeight(p: GridProduct): number {
+  if (p.media_width && p.media_height) return p.media_height / p.media_width;
+  return 5 / 4; // 4:5 fallback
+}
+
+// 상품 배열 → 컬럼 배열 (그리디: 가장 짧은 컬럼에 순서대로 배정)
+function distributeToColumns(
+  products: GridProduct[],
+  numCols: number
+): { cols: GridProduct[][]; heights: number[] } {
+  const cols: GridProduct[][] = Array.from({ length: numCols }, () => []);
+  const heights = Array<number>(numCols).fill(0);
+  for (const p of products) {
+    const minIdx = heights.indexOf(Math.min(...heights));
+    cols[minIdx].push(p);
+    heights[minIdx] += estimateHeight(p);
+  }
+  return { cols, heights };
+}
+
 function aspectRatioStyle(w?: number | null, h?: number | null): string {
   return w && h ? `${w} / ${h}` : "4 / 5";
 }
 
-/**
- * 영상 카드
- *
- * 메모리 최적화:
- *   - Observer 1 (넓은 범위, rootMargin 150%): 뷰포트에서 1.5화면 이상 벗어나면 <video> DOM 언마운트
- *   - Observer 2 (좁은 범위, threshold 0.3): 뷰포트 30% 진입 시 play, 이탈 시 pause
- *
- * 레이아웃 안정화:
- *   - 컨테이너에 aspect-ratio 고정 → 영상 로드 전에도 높이가 확정되어 리플로우 없음
- *   - 언마운트 중엔 포스터 이미지(또는 회색 박스)가 동일 aspect-ratio 유지
- */
+// ─────────────────────────────────────────────
+// 영상 카드
+// 이중 IntersectionObserver:
+//   1) 넓은 범위(1.5화면): <video> DOM 마운트/언마운트
+//   2) 좁은 범위(30% 진입): play/pause
+// ─────────────────────────────────────────────
+
 function MasonryVideoItem({
   src,
   poster,
@@ -43,10 +70,10 @@ function MasonryVideoItem({
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
-  const [mounted, setMounted] = useState(false); // <video> DOM 존재 여부
-  const [ready, setReady] = useState(false);     // 영상 재생 준비 완료
+  const [mounted, setMounted] = useState(false);
+  const [ready, setReady] = useState(false);
 
-  // Observer 1: 마운트 제어 — 뷰포트 기준 1.5화면 안쪽이면 마운트, 벗어나면 언마운트
+  // Observer 1: 마운트 제어
   useEffect(() => {
     const el = containerRef.current;
     if (!el) return;
@@ -54,7 +81,7 @@ function MasonryVideoItem({
       ([entry]) => {
         const near = entry.isIntersecting;
         setMounted(near);
-        if (!near) setReady(false); // 언마운트 시 리셋 → 재마운트 때 포스터 먼저 표시
+        if (!near) setReady(false);
       },
       { rootMargin: "150% 0px 150% 0px" }
     );
@@ -62,28 +89,21 @@ function MasonryVideoItem({
     return () => observer.disconnect();
   }, []);
 
-  // Observer 2: play/pause — mounted 상태일 때만 실행
+  // Observer 2: 재생 제어
   useEffect(() => {
     if (!mounted) return;
     const el = videoRef.current;
     if (!el) return;
-
     el.load();
     const playObserver = new IntersectionObserver(
       ([entry]) => {
-        if (entry.isIntersecting) {
-          el.play().catch(() => {});
-        } else {
-          el.pause();
-        }
+        if (entry.isIntersecting) el.play().catch(() => {});
+        else el.pause();
       },
       { threshold: 0.3 }
     );
     playObserver.observe(el);
-
-    // 키프레임 1개짜리 영상 등 이벤트 미발화 케이스 방어
     const timer = setTimeout(() => setReady(true), 3000);
-
     return () => {
       playObserver.disconnect();
       clearTimeout(timer);
@@ -97,7 +117,6 @@ function MasonryVideoItem({
       style={{ aspectRatio }}
       className="relative overflow-hidden bg-white"
     >
-      {/* 포스터: 영상 미준비(ready=false) 또는 언마운트 상태에서 표시 */}
       {poster ? (
         <img
           src={poster}
@@ -106,11 +125,8 @@ function MasonryVideoItem({
           style={{ visibility: mounted && ready ? "hidden" : "visible" }}
         />
       ) : (
-        (!mounted || !ready) && (
-          <div className="absolute inset-0 bg-gray-100" />
-        )
+        (!mounted || !ready) && <div className="absolute inset-0 bg-gray-100" />
       )}
-      {/* <video>: 근처에 있을 때만 DOM에 존재 */}
       {mounted && (
         <video
           key={src}
@@ -129,19 +145,22 @@ function MasonryVideoItem({
   );
 }
 
+// ─────────────────────────────────────────────
+// 개별 카드
+// ─────────────────────────────────────────────
+
 function MasonryItem({ product }: { product: GridProduct }) {
   const isVideo = !!product.video_url;
   const displayImageUrl =
     !isVideo && product.image_urls && product.image_urls.length >= 2
       ? product.image_urls[0]
       : product.image_url;
-
   const arStyle = aspectRatioStyle(product.media_width, product.media_height);
 
   return (
     <Link
       href={`/product/${product.id}`}
-      className="group relative block overflow-hidden rounded-lg break-inside-avoid mb-3 cursor-pointer"
+      className="group relative block overflow-hidden rounded-lg cursor-pointer"
     >
       {isVideo ? (
         <MasonryVideoItem
@@ -150,7 +169,6 @@ function MasonryItem({ product }: { product: GridProduct }) {
           aspectRatio={arStyle}
         />
       ) : (
-        // aspect-ratio로 컨테이너 높이 미리 확정 → 이미지 로드 전 리플로우 없음
         <div style={{ aspectRatio: arStyle }} className="overflow-hidden">
           <img
             src={displayImageUrl}
@@ -165,28 +183,72 @@ function MasonryItem({ product }: { product: GridProduct }) {
   );
 }
 
+// ─────────────────────────────────────────────
+// 그리드 (메인)
+// ─────────────────────────────────────────────
+
+type Props = {
+  initialProducts: GridProduct[];
+  initialHasMore: boolean;
+  excludeId?: string;
+  category?: string;
+  heading?: string;
+};
+
 export default function InfiniteProductGrid({
   initialProducts,
   initialHasMore,
   excludeId,
   category,
   heading,
-}: {
-  initialProducts: GridProduct[];
-  initialHasMore: boolean;
-  excludeId?: string;
-  category?: string;
-  heading?: string;
-}) {
-  const [products, setProducts] = useState<GridProduct[]>(initialProducts);
-  const [loading, setLoading] = useState(false);
-
-  const pageRef = useRef(2);
-  const hasMoreRef = useRef(initialHasMore);
+}: Props) {
+  // 컬럼 높이 추적 (ref: 무한스크롤 시 기존 위치 불변 보장)
+  const colHeightsRef = useRef<number[]>([]);
+  const numColsRef = useRef<number>(2);
+  const allProductsRef = useRef<GridProduct[]>([...initialProducts]);
   const loadingRef = useRef(false);
+  const hasMoreRef = useRef(initialHasMore);
+  const pageRef = useRef(2);
   const sentinelRef = useRef<HTMLDivElement>(null);
   const loadMoreRef = useRef<() => void>(() => {});
 
+  // 초기 배분 (SSR 호환: numCols=2 고정, useEffect에서 실제 값으로 재배치)
+  const [columns, setColumns] = useState<GridProduct[][]>(() => {
+    if (!initialProducts.length) return [];
+    const { cols, heights } = distributeToColumns(initialProducts, 2);
+    colHeightsRef.current = heights;
+    return cols;
+  });
+  const [loading, setLoading] = useState(false);
+
+  // 실제 컬럼 수 감지 + 리사이즈 시 재배치 (마운트 1회 + 리사이즈)
+  useEffect(() => {
+    let debounceTimer: ReturnType<typeof setTimeout>;
+
+    function relayout() {
+      const n = getNumCols();
+      if (n === numColsRef.current) return; // 변화 없으면 스킵
+      numColsRef.current = n;
+      const { cols, heights } = distributeToColumns(allProductsRef.current, n);
+      colHeightsRef.current = heights;
+      setColumns(cols);
+    }
+
+    relayout(); // 초기 1회 (2열 → 실제 열 수로 전환)
+
+    function onResize() {
+      clearTimeout(debounceTimer);
+      debounceTimer = setTimeout(relayout, 150);
+    }
+
+    window.addEventListener("resize", onResize);
+    return () => {
+      window.removeEventListener("resize", onResize);
+      clearTimeout(debounceTimer);
+    };
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // 무한스크롤: 새 아이템을 현재 가장 짧은 컬럼에 추가 (기존 아이템 위치 불변)
   async function loadMore() {
     if (loadingRef.current || !hasMoreRef.current) return;
     loadingRef.current = true;
@@ -203,7 +265,24 @@ export default function InfiniteProductGrid({
         products: GridProduct[];
         hasMore: boolean;
       };
-      setProducts((prev) => [...prev, ...more]);
+
+      // 어느 컬럼에 넣을지 setColumns 밖에서 계산 (ref 변이를 setState 콜백 밖으로 분리)
+      const heights = [...colHeightsRef.current];
+      const assignments: number[] = [];
+      for (const p of more) {
+        const minIdx = heights.indexOf(Math.min(...heights));
+        assignments.push(minIdx);
+        heights[minIdx] += estimateHeight(p);
+      }
+      colHeightsRef.current = heights;
+      allProductsRef.current = [...allProductsRef.current, ...more];
+
+      setColumns(prev => {
+        const next = prev.map(col => [...col]);
+        more.forEach((p, i) => next[assignments[i]].push(p));
+        return next;
+      });
+
       pageRef.current += 1;
       hasMoreRef.current = moreExists;
     } catch {
@@ -214,8 +293,10 @@ export default function InfiniteProductGrid({
     }
   }
 
+  // 매 렌더마다 최신 loadMore 유지
   useEffect(() => { loadMoreRef.current = loadMore; });
 
+  // 센티넬 감시
   useEffect(() => {
     const sentinel = sentinelRef.current;
     if (!sentinel) return;
@@ -227,7 +308,9 @@ export default function InfiniteProductGrid({
     return () => observer.disconnect();
   }, []);
 
-  if (products.length === 0) {
+  const totalCount = columns.reduce((s, c) => s + c.length, 0);
+
+  if (totalCount === 0 && !loading) {
     return <p className="text-center text-gray-400 py-20">등록된 상품이 없습니다.</p>;
   }
 
@@ -237,10 +320,14 @@ export default function InfiniteProductGrid({
         <h2 className="text-lg font-black text-[#111111] mb-4">{heading}</h2>
       )}
 
-      {/* 메이슨리 갤러리 — CSS columns, 2/3/4열 반응형 */}
-      <div className="columns-2 sm:columns-3 lg:columns-4 gap-3">
-        {products.map((p) => (
-          <MasonryItem key={p.id} product={p} />
+      {/* JS 컬럼 메이슨리: 각 컬럼이 독립 flex-col → 새 아이템 추가 시 기존 아이템 위치 고정 */}
+      <div className="flex gap-3 items-start">
+        {columns.map((col, colIdx) => (
+          <div key={colIdx} className="flex-1 flex flex-col gap-3 min-w-0">
+            {col.map((p) => (
+              <MasonryItem key={p.id} product={p} />
+            ))}
+          </div>
         ))}
       </div>
 
@@ -249,7 +336,7 @@ export default function InfiniteProductGrid({
         {loading && (
           <div className="w-8 h-8 border-[3px] border-[#F5A623] border-t-transparent rounded-full animate-spin" />
         )}
-        {!loading && !hasMoreRef.current && products.length > 0 && (
+        {!loading && !hasMoreRef.current && totalCount > 0 && (
           <p className="text-xs text-gray-300">— 끝 —</p>
         )}
       </div>
