@@ -76,7 +76,7 @@ export default async function ProductPage({ params }: Props) {
     supabase.from("products").select("*").eq("id", id).single(),
     supabase
       .from("products")
-      .select("id, title, category, image_url, image_urls, video_url, affiliate_link, button_text", {
+      .select("id, title, category, image_url, image_urls, video_url, affiliate_link, button_text, media_width, media_height", {
         count: "exact",
       })
       .eq("is_active", true)

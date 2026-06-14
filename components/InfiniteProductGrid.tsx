@@ -12,30 +12,66 @@ export type GridProduct = {
   video_url: string | null;
   affiliate_link: string;
   button_text: string | null;
+  media_width?: number | null;
+  media_height?: number | null;
 };
 
-type Props = {
-  initialProducts: GridProduct[];
-  initialHasMore: boolean;
-  excludeId?: string;
-  category?: string;
-  heading?: string;
-};
+// aspect-ratio 문자열 — DB 값 있으면 사용, 없으면 4/5 fallback
+function aspectRatioStyle(w?: number | null, h?: number | null): string {
+  return w && h ? `${w} / ${h}` : "4 / 5";
+}
 
-// TODO: 영상 메모리 최적화(뷰포트 이탈 시 DOM 언마운트 등)는 다음 단계에서 별도 처리 예정
-function MasonryVideoItem({ src, poster }: { src: string; poster?: string }) {
-  const ref = useRef<HTMLVideoElement>(null);
-  const [videoReady, setVideoReady] = useState(false);
+/**
+ * 영상 카드
+ *
+ * 메모리 최적화:
+ *   - Observer 1 (넓은 범위, rootMargin 150%): 뷰포트에서 1.5화면 이상 벗어나면 <video> DOM 언마운트
+ *   - Observer 2 (좁은 범위, threshold 0.3): 뷰포트 30% 진입 시 play, 이탈 시 pause
+ *
+ * 레이아웃 안정화:
+ *   - 컨테이너에 aspect-ratio 고정 → 영상 로드 전에도 높이가 확정되어 리플로우 없음
+ *   - 언마운트 중엔 포스터 이미지(또는 회색 박스)가 동일 aspect-ratio 유지
+ */
+function MasonryVideoItem({
+  src,
+  poster,
+  aspectRatio,
+}: {
+  src: string;
+  poster?: string;
+  aspectRatio: string;
+}) {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const [mounted, setMounted] = useState(false); // <video> DOM 존재 여부
+  const [ready, setReady] = useState(false);     // 영상 재생 준비 완료
 
+  // Observer 1: 마운트 제어 — 뷰포트 기준 1.5화면 안쪽이면 마운트, 벗어나면 언마운트
   useEffect(() => {
-    setVideoReady(false);
-    const el = ref.current;
+    const el = containerRef.current;
     if (!el) return;
-
     const observer = new IntersectionObserver(
       ([entry]) => {
+        const near = entry.isIntersecting;
+        setMounted(near);
+        if (!near) setReady(false); // 언마운트 시 리셋 → 재마운트 때 포스터 먼저 표시
+      },
+      { rootMargin: "150% 0px 150% 0px" }
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
+
+  // Observer 2: play/pause — mounted 상태일 때만 실행
+  useEffect(() => {
+    if (!mounted) return;
+    const el = videoRef.current;
+    if (!el) return;
+
+    el.load();
+    const playObserver = new IntersectionObserver(
+      ([entry]) => {
         if (entry.isIntersecting) {
-          el.load();
           el.play().catch(() => {});
         } else {
           el.pause();
@@ -43,60 +79,64 @@ function MasonryVideoItem({ src, poster }: { src: string; poster?: string }) {
       },
       { threshold: 0.3 }
     );
-    observer.observe(el);
+    playObserver.observe(el);
 
     // 키프레임 1개짜리 영상 등 이벤트 미발화 케이스 방어
-    const timer = setTimeout(() => setVideoReady(true), 3000);
+    const timer = setTimeout(() => setReady(true), 3000);
 
     return () => {
-      observer.disconnect();
+      playObserver.disconnect();
       clearTimeout(timer);
+      el.pause();
     };
-  }, [src]);
+  }, [mounted, src]);
 
   return (
-    <div className="relative bg-white">
+    <div
+      ref={containerRef}
+      style={{ aspectRatio }}
+      className="relative overflow-hidden bg-white"
+    >
+      {/* 포스터: 영상 미준비(ready=false) 또는 언마운트 상태에서 표시 */}
       {poster ? (
-        // 포스터 이미지가 컨테이너의 자연 높이를 결정 — 영상 로드 전 레이아웃 안정화
         <img
           src={poster}
           alt=""
-          className="w-full block"
-          style={{ visibility: videoReady ? "hidden" : "visible" }}
+          className="absolute inset-0 w-full h-full object-contain"
+          style={{ visibility: mounted && ready ? "hidden" : "visible" }}
         />
       ) : (
-        !videoReady && <div className="w-full aspect-square bg-gray-100 animate-pulse" />
+        (!mounted || !ready) && (
+          <div className="absolute inset-0 bg-gray-100" />
+        )
       )}
-      <video
-        key={src}
-        ref={ref}
-        src={src}
-        muted
-        loop
-        playsInline
-        preload="metadata"
-        onLoadedMetadata={() => setVideoReady(true)}
-        onCanPlay={() => setVideoReady(true)}
-        className="w-full block"
-        style={
-          poster
-            ? { position: "absolute", top: 0, left: 0, right: 0, bottom: 0, height: "100%", objectFit: "contain" }
-            : !videoReady
-            ? { position: "absolute", top: 0, left: 0, opacity: 0 }
-            : undefined
-        }
-      />
+      {/* <video>: 근처에 있을 때만 DOM에 존재 */}
+      {mounted && (
+        <video
+          key={src}
+          ref={videoRef}
+          src={src}
+          muted
+          loop
+          playsInline
+          preload="metadata"
+          onLoadedMetadata={() => setReady(true)}
+          onCanPlay={() => setReady(true)}
+          className="absolute inset-0 w-full h-full object-contain"
+        />
+      )}
     </div>
   );
 }
 
 function MasonryItem({ product }: { product: GridProduct }) {
-  // 미디어 우선순위: video_url > image_urls(2장↑이면 첫 번째만, 슬라이드 없음) > image_url
   const isVideo = !!product.video_url;
   const displayImageUrl =
     !isVideo && product.image_urls && product.image_urls.length >= 2
       ? product.image_urls[0]
       : product.image_url;
+
+  const arStyle = aspectRatioStyle(product.media_width, product.media_height);
 
   return (
     <Link
@@ -107,15 +147,19 @@ function MasonryItem({ product }: { product: GridProduct }) {
         <MasonryVideoItem
           src={product.video_url!}
           poster={product.image_url || undefined}
+          aspectRatio={arStyle}
         />
       ) : (
-        <img
-          src={displayImageUrl}
-          alt={product.title}
-          className="w-full block"
-        />
+        // aspect-ratio로 컨테이너 높이 미리 확정 → 이미지 로드 전 리플로우 없음
+        <div style={{ aspectRatio: arStyle }} className="overflow-hidden">
+          <img
+            src={displayImageUrl}
+            alt={product.title}
+            className="w-full h-full object-cover block"
+          />
+        </div>
       )}
-      {/* PC 호버 시 어두운 오버레이 — 클릭 가능함을 암시 */}
+      {/* 호버 오버레이 */}
       <div className="absolute inset-0 bg-black opacity-0 group-hover:opacity-20 transition-opacity duration-200 pointer-events-none" />
     </Link>
   );
@@ -127,7 +171,13 @@ export default function InfiniteProductGrid({
   excludeId,
   category,
   heading,
-}: Props) {
+}: {
+  initialProducts: GridProduct[];
+  initialHasMore: boolean;
+  excludeId?: string;
+  category?: string;
+  heading?: string;
+}) {
   const [products, setProducts] = useState<GridProduct[]>(initialProducts);
   const [loading, setLoading] = useState(false);
 
@@ -142,10 +192,7 @@ export default function InfiniteProductGrid({
     loadingRef.current = true;
     setLoading(true);
 
-    const params = new URLSearchParams({
-      page: String(pageRef.current),
-      limit: "12",
-    });
+    const params = new URLSearchParams({ page: String(pageRef.current), limit: "12" });
     if (excludeId) params.set("excludeId", excludeId);
     if (category) params.set("category", category);
 
@@ -167,19 +214,13 @@ export default function InfiniteProductGrid({
     }
   }
 
-  // 매 렌더마다 최신 loadMore로 업데이트
-  useEffect(() => {
-    loadMoreRef.current = loadMore;
-  });
+  useEffect(() => { loadMoreRef.current = loadMore; });
 
-  // 센티넬이 뷰포트에 들어오면 다음 페이지 로드
   useEffect(() => {
     const sentinel = sentinelRef.current;
     if (!sentinel) return;
     const observer = new IntersectionObserver(
-      ([entry]) => {
-        if (entry.isIntersecting) loadMoreRef.current();
-      },
+      ([entry]) => { if (entry.isIntersecting) loadMoreRef.current(); },
       { rootMargin: "400px" }
     );
     observer.observe(sentinel);
@@ -187,9 +228,7 @@ export default function InfiniteProductGrid({
   }, []);
 
   if (products.length === 0) {
-    return (
-      <p className="text-center text-gray-400 py-20">등록된 상품이 없습니다.</p>
-    );
+    return <p className="text-center text-gray-400 py-20">등록된 상품이 없습니다.</p>;
   }
 
   return (
@@ -198,17 +237,14 @@ export default function InfiniteProductGrid({
         <h2 className="text-lg font-black text-[#111111] mb-4">{heading}</h2>
       )}
 
-      {/* 메이슨리 갤러리 — CSS columns 기반
-          모바일 2열, 태블릿(sm:640px+) 3열, PC(lg:1024px+) 4열
-          가상 스크롤(@tanstack/react-virtual) 제거 —
-          영상 메모리 최적화(뷰포트 이탈 시 언마운트 등)는 다음 단계에서 별도 처리 예정 */}
+      {/* 메이슨리 갤러리 — CSS columns, 2/3/4열 반응형 */}
       <div className="columns-2 sm:columns-3 lg:columns-4 gap-3">
         {products.map((p) => (
           <MasonryItem key={p.id} product={p} />
         ))}
       </div>
 
-      {/* 센티넬: 이 div가 뷰포트에 들어오면 다음 페이지 로드 */}
+      {/* 무한 스크롤 센티넬 */}
       <div ref={sentinelRef} className="flex justify-center py-10">
         {loading && (
           <div className="w-8 h-8 border-[3px] border-[#F5A623] border-t-transparent rounded-full animate-spin" />
