@@ -16,7 +16,7 @@
 
 ## 기술 스택
 
-- **Frontend**: Next.js 16 (TypeScript, App Router, Tailwind CSS), @tanstack/react-virtual v3 (가상 스크롤)
+- **Frontend**: Next.js 16 (TypeScript, App Router, Tailwind CSS)
 - **DB/Auth**: Supabase
 - **미디어 스토리지**: Cloudflare R2 (`@aws-sdk/client-s3`, S3 호환 API)
 - **배포**: Vercel CLI 직접 배포 (`npx vercel --prod --scope djk-s-projects --token=TOKEN`). GitHub 자동 배포는 Vercel Hobby Cron 제한(`*/30 * * * *` 불가) 해결 후 복구됨 — Cron을 하루 2회 이하로 유지하면 자동 배포 정상 동작
@@ -73,15 +73,17 @@ title         text          -- 드립형 짧은 제목 (메인 피드 카드에 
 seo_title     text          -- SEO용 제목 (상품명, 검색용 — 상세페이지 메타태그에 사용, null이면 title 폴백)
 category      text          -- 'mild' | 'medium' | 'hot'
 image_url     text          -- Cloudflare R2 퍼블릭 URL (기존 Supabase Storage에서 마이그레이션 완료)
-image_urls    text[]        -- 슬라이드용 추가 이미지 배열 (선택, null 가능, 2장 이상이면 카드에서 슬라이드)
+image_urls    text[]        -- 추가 이미지 배열 (선택, null 가능) — 상세페이지 상단 카드에서 슬라이드. 메인 갤러리에서는 첫 장만 표시
 video_url     text          -- Cloudflare R2 영상 URL (선택, null 가능)
 affiliate_link text         -- 쿠팡/알리/아마존 링크
 is_active     boolean       -- false면 메인페이지에 안 보임
 is_queued     boolean       -- true면 큐(임시저장) 상태, is_active=false와 함께 사용
-sort_order    integer       -- 노출 순서 (낮을수록 앞에 표시, null이면 맨 뒤)
+sort_order    integer       -- 어드민 순서 편집 탭 기준값 (시드 없을 때 API 정렬 기준, null이면 맨 뒤)
 platform      text          -- 'amazon_us' | 'amazon_jp' | 'aliexpress' | 'coupang' | 'klook' | 'etc' | null
-button_text   text          -- 카드/상세 페이지 버튼 텍스트 커스터마이징 (null이면 "구경하러 가기" 기본값)
+button_text   text          -- 상세페이지 버튼 텍스트 커스터마이징 (null이면 "구경하러 가기" 기본값)
 sns_safe      boolean       -- SNS 자동 발행 허용 여부 (true: 발행 가능, false: 발행 불가)
+media_width   integer       -- 대표 미디어 가로 픽셀 (probe-media가 등록/수정 시 자동 계산, null 가능)
+media_height  integer       -- 대표 미디어 세로 픽셀 (probe-media가 등록/수정 시 자동 계산, null 가능)
 ```
 
 > **가격(price) 컬럼은 제거됨** — 2026-05-23 `ALTER TABLE products DROP COLUMN price;` 실행 완료  
@@ -90,7 +92,8 @@ sns_safe      boolean       -- SNS 자동 발행 허용 여부 (true: 발행 가
 > **image_urls 컬럼 추가** — 2026-05-28 `ALTER TABLE products ADD COLUMN IF NOT EXISTS image_urls text[];` 실행 완료  
 > **button_text 컬럼 추가** — 2026-05-29 `ALTER TABLE products ADD COLUMN IF NOT EXISTS button_text text;` 실행 완료  
 > **sns_safe 컬럼 추가** — 2026-06-10 `ALTER TABLE products ADD COLUMN IF NOT EXISTS sns_safe boolean DEFAULT false;` 실행 완료. 백필: aliexpress/coupang/amazon_jp/klook → true, amazon_us/etc/null → false  
-> **seo_title 컬럼 추가** — 2026-06-13 `ALTER TABLE products ADD COLUMN IF NOT EXISTS seo_title text; UPDATE products SET seo_title = title;` 실행 완료
+> **seo_title 컬럼 추가** — 2026-06-13 `ALTER TABLE products ADD COLUMN IF NOT EXISTS seo_title text; UPDATE products SET seo_title = title;` 실행 완료  
+> **media_width / media_height 컬럼 추가** — 2026-06-14 `ALTER TABLE products ADD COLUMN IF NOT EXISTS media_width integer; ALTER TABLE products ADD COLUMN IF NOT EXISTS media_height integer;` 실행 완료
 
 **RLS**: 활성화됨 (2026-06-07)
 - SELECT: `is_active = true`인 상품만 공개 (anon 포함 누구나)
@@ -138,7 +141,7 @@ UNIQUE(user_id, product_id)
 - INSERT: `auth.uid() = user_id` (WITH CHECK)
 - DELETE: `auth.uid() = user_id`
 
-> **목적**: "안 본 것만 보기" 기능용. 사용자가 /unseen 페이지에서 스크롤로 상단을 벗어난 상품이 여기에 기록됨. 다음 방문 시 NOT IN 필터로 이미 본 상품 제외.
+> **목적**: "안 본 것만 보기" 기능용으로 생성됐으나, 해당 기능(EyeButton, /unseen 라우트)이 제거됨. 테이블은 DB에 남아 있으나 현재 미사용. RLS 정책은 유지 중.
 
 ### `sns_queue` 테이블
 ```sql
@@ -186,27 +189,48 @@ created_at      timestamptz DEFAULT now()
 - **배경**: `#FFFFFF`
 - **텍스트**: `#111111`
 - **포인트 컬러**: `#F5A623` — 버튼, 호버에만 제한적 사용 (호버: `#d8921f`)
-- **레이아웃**: 풀와이드 그리드, 사이드바 없음, 최대 3열
-  - 모바일 (< 640px): 1열
-  - 태블릿 (640px ~): 2열
-  - 데스크톱 (768px ~): 3열
+- **레이아웃**: 풀와이드 JS 메이슨리 갤러리, 사이드바 없음, 최대 4열
+  - 모바일 (< 640px): 2열
+  - 태블릿 (640px ~): 3열
+  - 데스크톱 (1024px ~): 4열
 - **헤더**: sticky, 흰 배경, 하단 border, 높이 74px
 - **헤더 아이콘/버튼**: `#555555` (돋보기, 로그인, 햄버거 3줄)
 
 ---
 
-## 카드 구조 (4층)
+## 메인 갤러리 구조 (메이슨리)
+
+메인 피드와 상세페이지 하단 "이건 또 머고?" 섹션은 **순수 이미지/영상 메이슨리 갤러리** (`InfiniteProductGrid`).  
+제목·버튼·하트·공유 버튼은 메인 갤러리 카드에 없음. 클릭 시 상세페이지(`/product/[id]`)로 이동.
 
 ```
 ┌─────────────────────────┐
-│ 1층: 드립형 제목 (2줄, 가운데 정렬, 고정 높이) │
-│ 2층: 1:1 영상/슬라이드/이미지                 │  ← 우선순위: video_url > image_urls(2장↑, 1초 자동슬라이드) > image_url
-│ 3층: [♡]              [🔗]                  │  ← 왼쪽 하트(찜하기, 로그인 필요), 오른쪽 🔗 클릭 시 상세페이지 URL 복사
-│ 4층: [구경하러 가기]                          │  ← 쿠팡/알리 링크 새 창 (button_text 커스터마이징 가능)
+│ 미디어 (이미지 또는 영상)  │  ← media_width/height 기반 aspect-ratio 자동 적용 (없으면 4:5 fallback)
+│ 클릭 → 상세페이지         │  ← 호버 시 반투명 오버레이
 └─────────────────────────┘
 ```
 
-> **카테고리 뱃지 제거됨** — 2026-05-29  
+- **이미지**: `image_urls`가 있어도 첫 장만 표시 (슬라이드 없음)
+- **영상**: video_url 있으면 자동재생 루프. 이중 IntersectionObserver 적용
+  - Observer 1 (rootMargin 150%): 뷰포트 1.5화면 밖 → `<video>` DOM에서 언마운트 (메모리 절약)
+  - Observer 2 (threshold 0.3): 30% 진입 → 재생 / 이탈 → 정지
+- **정렬**: created_at 최신 5개 상단 고정 + 나머지는 세션 시드(sessionStorage) 기반 Fisher-Yates 셔플
+  - 시드: 첫 방문 시 생성 → `sessionStorage["feed_shuffle_seed"]` 저장 → 같은 세션 내 동일 순서 유지
+  - 브라우저 탭을 닫고 새로 열면 새 시드 → 다른 순서
+
+## 상세페이지 상단 카드
+
+```
+┌─────────────────────────────────────────────┐
+│ 영상 또는 이미지 슬라이드 (1:1 정사각형)         │  ← image_urls 2장↑이면 auto 슬라이드 유지
+├─────────────────────────────────────────────┤
+│ 제목 (h1, 드립형 텍스트)                        │
+│ [♡ 찜하기]          [🔗 공유]  (50:50 분할)  │
+│ [구경하러 가기]  (button_text 커스터마이징 가능)  │
+└─────────────────────────────────────────────┘
+```
+
+> **카테고리 라벨 제거됨** — 2026-06-14  
 > **가격 표시 제거됨** — 2026-05-23 가격 기능 완전 삭제 (DB 컬럼 포함)
 
 ---
@@ -282,20 +306,19 @@ egomeo/
 │   │       └── page.tsx      # OAuth 콜백 처리 (PKCE 교환 → 리다이렉트)
 │   ├── search/
 │   │   └── page.tsx          # 검색 결과 페이지 (`/search?q=키워드`, ilike 검색, 카드 그리드)
-│   ├── unseen/
-│   │   └── page.tsx          # 안 본 것만 보기 페이지 — viewed_products NOT IN 필터, 클라이언트 페이징(12개), 카드 뷰 추적(IntersectionObserver + 배치 upsert)
 │   └── product/
 │       └── [id]/
 │           └── page.tsx      # 상품 상세 페이지 (공유 링크용, 영상 지원)
 ├── components/
-│   ├── Header.tsx            # 상단 고정 헤더 (클라이언트 컴포넌트) — 로고(/public/2.png, 66px) + 돋보기(검색팝업) + EyeButton + HeaderAuthStatus + HamburgerMenu
+│   ├── Header.tsx            # 상단 고정 헤더 (클라이언트 컴포넌트) — 로고(/public/2.png, 66px) + 돋보기(검색팝업) + HeaderAuthStatus + HamburgerMenu
 │   ├── Footer.tsx            # 쿠팡파트너스 고지 문구 + 저작권
-│   ├── EyeButton.tsx         # 안 본 것만 보기 토글 버튼 — ON(/unseen): 주황, OFF: 회색. 첫 클릭 시 설명 팝업, 비로그인 시 로그인 모달
 │   ├── HeaderAuthStatus.tsx  # 비로그인: "로그인" 버튼 → 로그인 모달 / 로그인: 원형 아바타 → /mypage (이미지 오류 시 이니셜 폴백, loading 중 placeholder로 레이아웃 유지)
-│   ├── ProductCard.tsx       # 4층 카드 컴포넌트 (제목→이미지→하트+공유→버튼)
+│   ├── InfiniteProductGrid.tsx  # JS 컬럼배열 메이슨리 갤러리 — 순수 이미지/영상, 제목/버튼 없음. 이중 IntersectionObserver 영상 메모리 최적화. matchMedia 브레이크포인트 리사이즈. 세션 시드 기반 셔플 정렬
+│   ├── ProductCard.tsx       # 4층 카드 컴포넌트 (검색 결과·마이페이지 찜 목록에서 사용)
 │   ├── CardLikeButton.tsx    # 찜하기 버튼 (로그인 시 토글, 비로그인 시 로그인 모달)
-│   ├── ImageSlider.tsx       # 이미지 슬라이더 (auto: IntersectionObserver 1초 자동, manual: 화살표)
+│   ├── ImageSlider.tsx       # 이미지 슬라이더 (auto: IntersectionObserver 1초 자동, manual: 화살표) — 상세페이지 상단 카드에서 사용
 │   ├── CardShareButton.tsx   # 카드 내 공유 버튼 (클라이언트)
+│   ├── VideoPlayer.tsx       # 영상 플레이어 — 상세페이지 상단 카드에서 사용
 │   ├── HamburgerMenu.tsx     # 우측 사이드 드로어 — About/Privacy/Contact 링크 + 로그인 시 마이페이지 + 로그아웃(드로어 맨 하단 고정)
 │   └── ShareButton.tsx       # 상세 페이지 공유 버튼 (클라이언트)
 ├── context/
@@ -304,7 +327,9 @@ egomeo/
 ├── lib/
 │   ├── supabase.ts           # Supabase 브라우저 클라이언트 싱글톤
 │   ├── supabase-admin.ts     # Supabase 서비스 롤 클라이언트 (서버 전용, getSupabaseAdmin())
-│   └── r2.ts                 # Cloudflare R2 S3 클라이언트 (endpoint/bucket/publicUrl export)
+│   ├── r2.ts                 # Cloudflare R2 S3 클라이언트 (endpoint/bucket/publicUrl export)
+│   ├── probe-media.ts        # 미디어 치수 자동 계산 (TypeScript, API Route용) — probeImage(probe-image-size HTTP byte-range), probeVideo(ffprobe-static, URL 직접, 로컬 저장 없음), getMediaDimension(video→image_urls[0]→image_url 우선순위)
+│   └── probe-media.mjs       # 미디어 치수 자동 계산 (ESM JS, scripts/ 용) — 동일 로직, createRequire로 CJS 패키지 로드
 ├── chrome-extension/         # 크롬 확장 프로그램 "참아야하느니라 미디어툴" (Manifest V3)
 │   ├── manifest.json         # MV3 설정 (host_permissions: aliexpress/alicdn, CSP: wasm-unsafe-eval)
 │   ├── background.js         # 아이콘 클릭 → 새 탭 열기
@@ -316,6 +341,8 @@ egomeo/
 │   ├── 814.ffmpeg.js         # ffmpeg.wasm Worker 스크립트 (ffmpeg.js가 로드)
 │   ├── ffmpeg-core.js        # @ffmpeg/core 112KB — Worker가 importScripts로 로드
 │   └── ffmpeg-core.wasm      # @ffmpeg/core WASM 바이너리 31MB
+├── scripts/
+│   └── fill-media-dimensions.mjs  # 1회성: products 테이블 media_width/height 일괄 채우기 (lib/probe-media.mjs 재사용, SUPABASE_SERVICE_ROLE_KEY 필요, is_null 항목만 처리)
 └── sourcing-extension/       # 크롬 확장 프로그램 "참아야하느니라 소싱툴" (Manifest V3)
     ├── manifest.json         # MV3 설정 (side_panel, content_scripts: aliexpress/coupang)
     ├── background.js         # 아이콘 클릭 → 사이드패널 열기 (setPanelBehavior)
@@ -331,13 +358,18 @@ egomeo/
 ## 페이지별 동작
 
 ### 메인 페이지 (`/`)
-- Supabase에서 `is_active = true` 상품을 최신순으로 fetch (서버 컴포넌트)
-- `InfiniteProductGrid`로 렌더링 — 가상 스크롤 적용 (뷰포트 근처 행만 DOM에 유지)
+- 서버 컴포넌트: Supabase에서 `is_active = true` 상품 첫 12개 SSR fetch (초기 화면 빠르게)
+- 클라이언트 마운트 후 `InfiniteProductGrid`가 sessionStorage 시드로 page 1 재조회 → SSR 데이터 교체
+- 이후 무한스크롤 page 2+도 동일 시드 유지 → 세션 내 순서 일관성 보장
+- 정렬: 최신 5개 상단 고정 + 나머지 시드 기반 셔플. 새 세션(탭 새로 열기)마다 다른 순서
+- `InfiniteProductGrid`: 2/3/4열 JS 컬럼배열 메이슨리. 순수 이미지/영상만 표시 (제목/버튼 없음)
 
 ### 상품 상세 페이지 (`/product/[id]`)
-- **공유 링크 전용** — 카드에서 직접 진입 불가, 공유 버튼으로만 접근
-- 상단: 해당 상품 크게 표시 (영상 또는 이미지 + 카테고리 + 제목 + 구경하러가기 버튼 + 공유 버튼)
-- 하단: 다른 상품 그리드 ("이건 또 머고?" 섹션)
+- **공유 링크 전용** — 메인 갤러리 카드 클릭으로도 진입 가능
+- 상단: 해당 상품 크게 표시 (영상 또는 이미지 슬라이드 + 제목 + [찜하기|공유] 50:50 + 구경하러가기 버튼)
+  - 카테고리 라벨 없음 (제거됨)
+  - image_urls 2장↑이면 상단 카드에서만 슬라이드 표시 (메인 갤러리에서는 첫 장만)
+- 하단: 다른 상품 메이슨리 갤러리 ("이건 또 머고?" 섹션) — 동일 세션 시드 사용 (순서 일관성)
 - OG 태그 포함 → 카톡/SNS 공유 시 미리보기 표시
 
 ### 마이페이지 (`/mypage`)
@@ -394,7 +426,39 @@ egomeo/
 
 ---
 
-## 최근 완료 작업 (2026-06-12 기준)
+## 최근 완료 작업 (2026-06-14 기준)
+
+- **메인 갤러리 메이슨리 전면 교체** (`components/InfiniteProductGrid.tsx`)
+  - 기존 react-virtual 가상스크롤 + 4층 카드형 UI → 순수 이미지/영상 JS 컬럼배열 메이슨리로 완전 교체
+  - 제목·버튼·찜하기·공유 버튼 완전 제거. 카드 = 미디어만. 클릭 → 상세페이지
+  - 이중 IntersectionObserver 영상 메모리 최적화: rootMargin 150%(마운트/언마운트) + threshold 0.3(재생/정지)
+  - aspect-ratio 자동 적용 (media_width/height 기반, 없으면 4:5 fallback)
+  - matchMedia 브레이크포인트 리사이즈 (640px/1024px) — 모바일 주소창 height 변화로 인한 재배치 버그 수정
+  - 컬럼 수: 모바일 2열 / 태블릿 3열 / 데스크톱 4열
+
+- **세션 시드 기반 셔플 정렬** (`app/api/products/route.ts`, `components/InfiniteProductGrid.tsx`, `app/page.tsx`, `app/product/[id]/page.tsx`)
+  - 최신 5개 created_at 기준 항상 상단 고정, 나머지 Mulberry32 PRNG + Fisher-Yates 셔플
+  - 시드: 첫 방문 시 `Math.random()`으로 생성 → `sessionStorage["feed_shuffle_seed"]` 저장. 같은 탭 세션 내 재방문 동일 순서. 새 탭이면 새 순서
+  - `/api/products?seed=N`: 전체 ID 조회 → JS 정렬 결정 → IN 쿼리로 페이지 데이터 조회 (중복/누락 없음)
+  - `InfiniteProductGrid(useSeed)`: 마운트 시 시드 생성/읽기 → page 1 재조회로 SSR 데이터 교체. 이후 무한스크롤도 동일 시드
+  - 메인 피드 ↔ 상세 하단 피드 동일 세션 시드 → 내비게이션 중 순서 일관성 유지
+
+- **미디어 치수(media_width/media_height) 자동 계산** (`lib/probe-media.ts`, `lib/probe-media.mjs`, `app/api/admin/products/route.ts`, `scripts/fill-media-dimensions.mjs`)
+  - `products` 테이블에 `media_width integer`, `media_height integer` 컬럼 추가
+  - 어드민 상품 등록(POST)/수정(PUT, 미디어 필드 변경 시)에서 `getMediaDimension()` 자동 호출
+  - 이미지: `probe-image-size` HTTP byte-range probe (로컬 저장 없음)
+  - 영상: `ffprobe-static` 바이너리로 URL 직접 probe (로컬 저장 없음, 30초 타임아웃)
+  - 우선순위: `video_url` → `image_urls[0]` → `image_url`
+  - `scripts/fill-media-dimensions.mjs`: 기존 상품 일괄 채우기 스크립트 (media_width=null 항목만, 배치 5개씩)
+  - `ffprobe-static`, `probe-image-size` — devDependencies → dependencies 이동 (Vercel 프로덕션 빌드 포함)
+  - **아마존 이미지는 probe 금지** (저작권 원칙 유지 — amazon_us 상품은 probe 시 null 반환)
+
+- **"안 본 것만 보기" 기능 제거** (`components/EyeButton.tsx` 삭제, `app/unseen/page.tsx` 삭제, `components/Header.tsx`에서 EyeButton 제거)
+  - `viewed_products` 테이블과 RLS 정책은 DB에 남아 있으나 미사용
+
+- **상세페이지 상단 카드 UI 정리** (`app/product/[id]/page.tsx`)
+  - 카테고리 라벨 제거
+  - [찜하기|공유] 50:50 가로분할 → 드립버튼 순서 유지
 
 - **SEO용 제목(seo_title) 분리 추가** (`app/product/[id]/page.tsx`, `app/admin/AdminPanel.tsx`, `app/sitemap.ts`)
   - `products` 테이블에 `seo_title text` 컬럼 추가 (nullable) — **Supabase SQL 실행 필요** (아래 "다음 할 일" 참고)
@@ -687,12 +751,23 @@ egomeo/
 - [완료] 검색엔진 배관 3종 — IndexNow(키 09a6bd0e6c07a387147a1720c7b3bc91, api.indexnow.org+네이버 동시 핑, 공개 전환 시 fire-and-forget), 이미지 사이트맵(image_urls/image_url 추가), RSS(/rss.xml, 최신 20개, amazon_us 제외)
 - [완료] 사이트맵 이미지 URL `&amp;` XML 이스케이프 수정 — `app/sitemap.ts`에서 `&` → `&amp;` 치환 추가 (Next.js가 images 배열 URL 자동 이스케이프 안 함)
 - [완료] SEO용 제목(seo_title) 분리 — `products` 테이블에 `seo_title text` 컬럼 추가(Supabase SQL 실행 필요). 상세페이지 메타태그(og:title/twitter:title/description/JSON-LD headline) 모두 `seo_title || title` 우선 사용. 어드민 모달에 "SEO 제목" 입력란 추가, 기존 제목 레이블 "메인 제목 (드립/짧은 제목)"으로 변경
+- [완료] 미디어 치수 자동 계산 (`lib/probe-media.ts`, `lib/probe-media.mjs`, `scripts/fill-media-dimensions.mjs`) — products 테이블 `media_width`/`media_height` 컬럼 추가. 어드민 등록/수정 시 자동 probe. 이미지: probe-image-size HTTP byte-range. 영상: ffprobe-static URL 직접(로컬 저장 없음). 기존 상품 일괄 채우기 스크립트 포함
+- [완료] "안 본 것만 보기" 기능 제거 — EyeButton.tsx 삭제, /unseen 라우트 삭제, Header에서 제거. viewed_products 테이블은 DB에 남아 미사용
+- [완료] 메인 갤러리 메이슨리 전면 교체 (`InfiniteProductGrid.tsx`) — react-virtual 가상스크롤 + 4층 카드 → 순수 이미지/영상 JS 컬럼배열 메이슨리. 이중 IntersectionObserver 영상 메모리 최적화. matchMedia 브레이크포인트 리사이즈. 2/3/4열
+- [완료] 세션 시드 기반 셔플 정렬 — 최신 5개 상단 고정 + 나머지 sessionStorage 시드로 Fisher-Yates 셔플. /api/products?seed=N 지원. 메인/상세 피드 동일 시드 사용
+- [완료] 상세페이지 상단 카드 UI 정리 — 카테고리 라벨 제거, [찜하기|공유] 50:50 → 드립버튼 순서 유지
 
 ---
 
 ## 다음 할 일 (우선순위순)
 
 1. **Supabase SQL 실행 필요** (아직 미실행):
+   - `media_width` / `media_height` 컬럼 추가 (미실행 시):
+     ```sql
+     ALTER TABLE products ADD COLUMN IF NOT EXISTS media_width integer;
+     ALTER TABLE products ADD COLUMN IF NOT EXISTS media_height integer;
+     ```
+   - 컬럼 추가 후 기존 상품 일괄 채우기: `node scripts/fill-media-dimensions.mjs`
    - `sns_queue` 테이블 CREATE + RLS ENABLE (미실행 시):
      ```sql
      CREATE TABLE IF NOT EXISTS sns_queue (
@@ -749,6 +824,10 @@ egomeo/
 | signOut() 즉시 로컬 상태 초기화 | `supabase.auth.signOut()` 완료를 기다리면 반응이 느리거나 onAuthStateChange 타이밍에 따라 profileLoaded가 false에 갇힐 수 있음. 상태 초기화는 동기적으로, 서버 세션 취소는 백그라운드 |
 | 어드민 모든 DB 작업을 API 라우트 경유 | 브라우저→Supabase 직접 연결이 특정 네트워크 환경에서 타임아웃 발생. 읽기(GET)뿐 아니라 쓰기(POST/PUT/PATCH/DELETE)도 모두 `/api/admin/products`로 중계. `AdminPanel`·`OrderEditor`에서 `supabase` 브라우저 클라이언트 import 완전 제거 |
 | title과 seo_title 분리 | 메인 피드 카드 제목은 드립/짧은 문구가 클릭률에 유리하지만, 검색엔진 메타태그(og:title·description 등)에는 실제 상품명이 있어야 SEO에 유리. 두 컬럼을 분리해 카드 표시(title)와 검색 최적화(seo_title)를 독립 관리. seo_title이 비어있으면 title로 자동 폴백 |
+| 메인 갤러리를 순수 이미지/영상으로만 | 제목·버튼·하트를 카드에서 제거해 핀터레스트식 비주얼 탐색 강화. 클릭 시 상세페이지에서 제목·버튼·찜을 모두 제공하는 구조로 분리 |
+| JS 컬럼배열 메이슨리 (react-virtual 제거) | react-virtual의 행 단위 가상화는 불균등 높이 카드에서 측정 오차로 빈 공간이 생기는 문제 있었음. 전체 카드를 DOM에 유지하되 영상만 이중 IntersectionObserver로 메모리 관리하는 방식으로 전환 |
+| 시드 기반 셔플 정렬 | sort_order 수동 정렬만으로는 방문할 때마다 같은 순서 → 신선함 부족. 세션 단위 시드로 매 방문(탭)마다 다른 순서를 제공하되, 같은 탭 내에서는 스크롤·내비게이션으로 왔다 갔다 해도 순서 일관성 유지 |
+| probe는 서버사이드 API Route에서만 실행 | probe-image-size/ffprobe-static는 Node.js 전용. 브라우저에서 직접 호출 불가. 어드민 등록/수정 API(/api/admin/products)에서만 호출하고 클라이언트에는 결과값만 전달 |
 
 ---
 
