@@ -26,6 +26,8 @@
     "@types/sharp": "^0.31.1",
     "eslint": "^9",
     "eslint-config-next": "16.2.6",
+    "ffprobe-static": "^3.1.0",
+    "probe-image-size": "^7.3.0",
     "tailwindcss": "^4",
     "typescript": "^5"
   }
