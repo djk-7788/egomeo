@@ -20,13 +20,6 @@ export type GridProduct = {
 // 유틸
 // ─────────────────────────────────────────────
 
-function getNumCols(): number {
-  if (typeof window === "undefined") return 2;
-  if (window.innerWidth >= 1024) return 4;
-  if (window.innerWidth >= 640) return 3;
-  return 2;
-}
-
 // 상품 높이 추정값 (컬럼 폭=1 기준, 실제 px 불필요)
 function estimateHeight(p: GridProduct): number {
   if (p.media_width && p.media_height) return p.media_height / p.media_width;
@@ -221,30 +214,30 @@ export default function InfiniteProductGrid({
   });
   const [loading, setLoading] = useState(false);
 
-  // 실제 컬럼 수 감지 + 리사이즈 시 재배치 (마운트 1회 + 리사이즈)
+  // 실제 컬럼 수 감지 + 브레이크포인트 전환 시 재배치
+  // matchMedia 사용: 너비 기반 브레이크포인트 변경 시에만 발화
+  // (모바일 주소창 숨김/표시 같은 height-only 변화는 무시됨)
   useEffect(() => {
-    let debounceTimer: ReturnType<typeof setTimeout>;
+    const q640 = window.matchMedia("(min-width: 640px)");
+    const q1024 = window.matchMedia("(min-width: 1024px)");
 
     function relayout() {
-      const n = getNumCols();
-      if (n === numColsRef.current) return; // 변화 없으면 스킵
+      const n = q1024.matches ? 4 : q640.matches ? 3 : 2;
+      if (n === numColsRef.current) return;
       numColsRef.current = n;
       const { cols, heights } = distributeToColumns(allProductsRef.current, n);
       colHeightsRef.current = heights;
       setColumns(cols);
     }
 
-    relayout(); // 초기 1회 (2열 → 실제 열 수로 전환)
+    relayout(); // 초기 1회 (SSR 2열 → 실제 열 수로 전환)
 
-    function onResize() {
-      clearTimeout(debounceTimer);
-      debounceTimer = setTimeout(relayout, 150);
-    }
+    q640.addEventListener("change", relayout);
+    q1024.addEventListener("change", relayout);
 
-    window.addEventListener("resize", onResize);
     return () => {
-      window.removeEventListener("resize", onResize);
-      clearTimeout(debounceTimer);
+      q640.removeEventListener("change", relayout);
+      q1024.removeEventListener("change", relayout);
     };
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
