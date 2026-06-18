@@ -214,7 +214,7 @@ created_at      timestamptz DEFAULT now()
 - **영상**: video_url 있으면 자동재생 루프. 이중 IntersectionObserver 적용
   - Observer 1 (rootMargin 150%): 뷰포트 1.5화면 밖 → `<video>` DOM에서 언마운트 (메모리 절약)
   - Observer 2 (threshold 0.3): 30% 진입 → 재생 / 이탈 → 정지
-- **정렬**: created_at 최신 5개 상단 고정 + 나머지는 세션 시드(sessionStorage) 기반 Fisher-Yates 셔플
+- **정렬**: 전체 상품을 세션 시드(sessionStorage) 기반 Fisher-Yates 셔플 (최신 고정 없음)
   - 시드: 첫 방문 시 생성 → `sessionStorage["feed_shuffle_seed"]` 저장 → 같은 세션 내 동일 순서 유지
   - 브라우저 탭을 닫고 새로 열면 새 시드 → 다른 순서
 
@@ -361,7 +361,7 @@ egomeo/
 - 서버 컴포넌트: Supabase에서 `is_active = true` 상품 첫 12개 SSR fetch (초기 화면 빠르게)
 - 클라이언트 마운트 후 `InfiniteProductGrid`가 sessionStorage 시드로 page 1 재조회 → SSR 데이터 교체
 - 이후 무한스크롤 page 2+도 동일 시드 유지 → 세션 내 순서 일관성 보장
-- 정렬: 최신 5개 상단 고정 + 나머지 시드 기반 셔플. 새 세션(탭 새로 열기)마다 다른 순서
+- 정렬: 전체 시드 기반 셔플. 새 세션(탭 새로 열기)마다 다른 순서
 - `InfiniteProductGrid`: 2/3/4열 JS 컬럼배열 메이슨리. 순수 이미지/영상만 표시 (제목/버튼 없음)
 
 ### 상품 상세 페이지 (`/product/[id]`)
@@ -437,9 +437,9 @@ egomeo/
   - 컬럼 수: 모바일 2열 / 태블릿 3열 / 데스크톱 4열
 
 - **세션 시드 기반 셔플 정렬** (`app/api/products/route.ts`, `components/InfiniteProductGrid.tsx`, `app/page.tsx`, `app/product/[id]/page.tsx`)
-  - 최신 5개 created_at 기준 항상 상단 고정, 나머지 Mulberry32 PRNG + Fisher-Yates 셔플
+  - 전체 상품을 Mulberry32 PRNG + Fisher-Yates 셔플 (최신 N개 고정 없음)
   - 시드: 첫 방문 시 `Math.random()`으로 생성 → `sessionStorage["feed_shuffle_seed"]` 저장. 같은 탭 세션 내 재방문 동일 순서. 새 탭이면 새 순서
-  - `/api/products?seed=N`: 전체 ID 조회 → JS 정렬 결정 → IN 쿼리로 페이지 데이터 조회 (중복/누락 없음)
+  - `/api/products?seed=N`: 전체 ID 조회 → JS 셔플 결정 → IN 쿼리로 페이지 데이터 조회 (중복/누락 없음)
   - `InfiniteProductGrid(useSeed)`: 마운트 시 시드 생성/읽기 → page 1 재조회로 SSR 데이터 교체. 이후 무한스크롤도 동일 시드
   - 메인 피드 ↔ 상세 하단 피드 동일 세션 시드 → 내비게이션 중 순서 일관성 유지
 
@@ -754,7 +754,7 @@ egomeo/
 - [완료] 미디어 치수 자동 계산 (`lib/probe-media.ts`, `lib/probe-media.mjs`, `scripts/fill-media-dimensions.mjs`) — products 테이블 `media_width`/`media_height` 컬럼 추가. 어드민 등록/수정 시 자동 probe. 이미지: probe-image-size HTTP byte-range. 영상: ffprobe-static URL 직접(로컬 저장 없음). 기존 상품 일괄 채우기 스크립트 포함
 - [완료] "안 본 것만 보기" 기능 제거 — EyeButton.tsx 삭제, /unseen 라우트 삭제, Header에서 제거. viewed_products 테이블은 DB에 남아 미사용
 - [완료] 메인 갤러리 메이슨리 전면 교체 (`InfiniteProductGrid.tsx`) — react-virtual 가상스크롤 + 4층 카드 → 순수 이미지/영상 JS 컬럼배열 메이슨리. 이중 IntersectionObserver 영상 메모리 최적화. matchMedia 브레이크포인트 리사이즈. 2/3/4열
-- [완료] 세션 시드 기반 셔플 정렬 — 최신 5개 상단 고정 + 나머지 sessionStorage 시드로 Fisher-Yates 셔플. /api/products?seed=N 지원. 메인/상세 피드 동일 시드 사용
+- [완료] 세션 시드 기반 셔플 정렬 — 전체 상품 sessionStorage 시드로 Fisher-Yates 셔플. /api/products?seed=N 지원. 메인/상세 피드 동일 시드 사용
 - [완료] 상세페이지 상단 카드 UI 정리 — 카테고리 라벨 제거, [찜하기|공유] 50:50 → 드립버튼 순서 유지
 
 ---

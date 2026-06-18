@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from "next/server";
 import { supabase } from "@/lib/supabase";
 
 const LIMIT = 12;
-const TOP_N = 5; // 최신 N개 항상 상단 고정
 
 // Mulberry32 PRNG — 시드 기반 결정적 난수
 function mulberry32(a: number) {
@@ -59,12 +58,12 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ products: data ?? [], hasMore, total: count ?? 0 });
   }
 
-  // ── 시드 있음: 최신 TOP_N 고정 + 나머지 시드 셔플 ──
+  // ── 시드 있음: 전체 시드 셔플 ──
 
-  // 1단계: 전체 ID + created_at 조회 (필터 적용)
+  // 1단계: 전체 ID 조회 (필터 적용)
   let idQuery = supabase
     .from("products")
-    .select("id, created_at")
+    .select("id")
     .eq("is_active", true);
   if (excludeId) idQuery = idQuery.neq("id", excludeId);
   if (category) idQuery = idQuery.eq("category", category);
@@ -73,18 +72,9 @@ export async function GET(req: NextRequest) {
   if (idError) return NextResponse.json({ error: idError.message }, { status: 500 });
   if (!allItems?.length) return NextResponse.json({ products: [], hasMore: false, total: 0 });
 
-  // 2단계: created_at 내림차순 정렬 → 최신 TOP_N 분리
-  const sorted = [...allItems].sort(
-    (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-  );
-  const topIds = sorted.slice(0, TOP_N).map((item) => item.id);
-  const restIds = seededShuffle(
-    sorted.slice(TOP_N).map((item) => item.id),
-    seed
-  );
-
-  // 3단계: 전체 순서 = 최신 TOP_N + 셔플된 나머지
-  const orderedIds = [...topIds, ...restIds];
+  // 2단계: 전체 ID를 시드 기반으로 셔플
+  const allIds = allItems.map((item) => item.id);
+  const orderedIds = seededShuffle(allIds, seed);
   const total = orderedIds.length;
 
   // 4단계: 현재 페이지 ID 슬라이스

@@ -328,6 +328,14 @@ export default function InfiniteProductGrid({
     } finally {
       loadingRef.current = false;
       setLoading(false);
+      setTimeout(() => {
+        if (!loadingRef.current && hasMoreRef.current && sentinelRef.current) {
+          const rect = sentinelRef.current.getBoundingClientRect();
+          if (rect.top < window.innerHeight + 200) {
+            loadMoreRef.current();
+          }
+        }
+      }, 100);
     }
   }
 
@@ -340,7 +348,7 @@ export default function InfiniteProductGrid({
     if (!sentinel) return;
     const observer = new IntersectionObserver(
       ([entry]) => { if (entry.isIntersecting) loadMoreRef.current(); },
-      { rootMargin: "400px" }
+      { rootMargin: "200px" }
     );
     observer.observe(sentinel);
     return () => observer.disconnect();
