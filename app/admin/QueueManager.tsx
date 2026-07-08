@@ -19,6 +19,7 @@ const PLATFORM_BADGE: Record<string, string> = {
   amazon_jp: "🇯🇵 아마존JP",
   aliexpress: "알리",
   coupang: "쿠팡",
+  etsy: "🧶 엣시",
   klook: "🎫 클룩",
   etc: "🌐",
 };
@@ -28,6 +29,7 @@ const PLATFORM_COLOR: Record<string, string> = {
   amazon_jp: "bg-indigo-100 text-indigo-700",
   aliexpress: "bg-orange-100 text-orange-700",
   coupang: "bg-red-100 text-red-700",
+  etsy: "bg-amber-100 text-amber-700",
   klook: "bg-purple-100 text-purple-700",
   etc: "bg-gray-100 text-gray-600",
 };

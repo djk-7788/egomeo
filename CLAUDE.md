@@ -79,7 +79,7 @@ affiliate_link text         -- 쿠팡/알리/아마존 링크
 is_active     boolean       -- false면 메인페이지에 안 보임
 is_queued     boolean       -- true면 큐(임시저장) 상태, is_active=false와 함께 사용
 sort_order    integer       -- 어드민 순서 편집 탭 기준값 (시드 없을 때 API 정렬 기준, null이면 맨 뒤)
-platform      text          -- 'amazon_us' | 'amazon_jp' | 'aliexpress' | 'coupang' | 'klook' | 'etc' | null
+platform      text          -- 'amazon_us' | 'amazon_jp' | 'aliexpress' | 'coupang' | 'etsy' | 'klook' | 'etc' | null
 button_text   text          -- 상세페이지 버튼 텍스트 커스터마이징 (null이면 "구경하러 가기" 기본값)
 sns_safe      boolean       -- SNS 자동 발행 허용 여부 (true: 발행 가능, false: 발행 불가)
 media_width   integer       -- 대표 미디어 가로 픽셀 (probe-media가 등록/수정 시 자동 계산, null 가능)
@@ -412,12 +412,12 @@ egomeo/
   - 드래그 앤 드롭으로 메인 피드 노출 순서 조정
   - `sort_order` 컬럼에 저장, 메인 피드는 sort_order ASC 정렬
   - 영상 상품은 썸네일 우상단에 🎬 배지 표시
-  - 플랫폼 뱃지: `platform` 컬럼 값 기반 (amazon_us → 🇺🇸 아마존, amazon_jp → 🇯🇵 아마존JP, aliexpress → 알리, coupang → 쿠팡, etc → 기타, null → 표시 안 함)
+  - 플랫폼 뱃지: `platform` 컬럼 값 기반 (amazon_us → 🇺🇸 아마존, amazon_jp → 🇯🇵 아마존JP, aliexpress → 알리, coupang → 쿠팡, etsy → 🧶 엣시, etc → 기타, null → 표시 안 함)
 - **상품 등록/수정 모달**:
   - 이미지 업로드 → R2 저장 (`/api/upload`)
   - 영상 업로드 (선택) → R2 저장, `video_url` 컬럼에 저장
   - **추가 이미지 (슬라이드용)**: URL 입력 또는 파일 직접 업로드(R2 저장)로 `image_urls` 배열 관리 (썸네일 미리보기, ↑↓ 순서변경, 🗑️ 삭제, URL 입력과 파일 업로드 혼용 가능)
-  - 제휴 링크 입력 시 platform 자동 감지: 알리/쿠팡은 URL로 자동, 아마존(amazon.com/amzn.to/amazon.co.jp)은 지역 라디오 버튼 표시 (🇺🇸 미국 기본 / 🇯🇵 일본), Involve Asia(invl.me/invol.co)는 파트너 선택 드롭다운 표시 (현재: 클룩), 그 외 URL은 'etc' 자동 저장
+  - 제휴 링크 입력 시 platform 자동 감지: 아마존(amazon.com/amzn.to/amazon.co.jp)은 지역 라디오 버튼 표시 (🇺🇸 미국 기본 / 🇯🇵 일본), etsy.com → 'etsy' 자동, aliexpress.com → 'aliexpress' 자동, coupang.com → 'coupang' 자동, Involve Asia(invl.me/invol.co)는 파트너 선택 드롭다운 표시 (현재: 클룩), 그 외 URL은 'etc' 자동 저장. 우선순위: 아마존 라디오 수동 > etsy > aliexpress > coupang > etc
   - Involve Asia 파트너는 `AdminPanel.tsx` 상단 `INVOLVE_ASIA_PARTNERS` 배열에 `{ value, label }` 추가하면 드롭다운에 자동 반영
   - URL 불러오기 탭에서 불러오면 platform 자동 설정 (aliexpress/coupang)
   - **공개 상태 라디오**: "바로 공개" (is_active=true, is_queued=false) / "큐에 저장" (is_active=false, is_queued=true) — **기본값: 큐에 저장**
@@ -425,6 +425,15 @@ egomeo/
   - 모달: X·취소 버튼으로만 닫기 (backdrop 클릭으로 닫히지 않음), 내부 스크롤(max-height 90vh)
 
 ---
+
+## 최근 완료 작업 (2026-07-08 기준)
+
+- **Etsy 플랫폼 지원 추가** (`app/admin/AdminPanel.tsx`, `OrderEditor.tsx`, `QueueManager.tsx`, `StatsPanel.tsx`)
+  - `Platform` 타입에 `'etsy'` 추가 (AdminPanel, StatsPanel)
+  - `detectPlatformFromUrl`: `etsy.com` 포함 URL → `'etsy'` 자동 판별 (aliexpress 앞, 우선순위: 아마존 라디오 수동 > etsy > aliexpress > coupang > etc)
+  - `snsSafeDefault`: etsy는 sns_safe 기본값 `true`
+  - 배지: `🧶 엣시` (amber 계열 — `bg-amber-100 text-amber-700` / StatsPanel: `bg-amber-50 border-amber-200 text-amber-700`)
+  - OrderEditor `platforms` 배열에 etsy 추가 (정렬 최적화 버킷 포함)
 
 ## 최근 완료 작업 (2026-06-14 기준)
 
@@ -662,6 +671,7 @@ egomeo/
 - [완료] 얀덱스 웹마스터 등록 + 사이트맵 제출 (소유 확인 메타태그: `yandex-verification`)
 - [완료] 바이두 — 중국 전화번호 필요로 패스
 - [완료] platform `'etc'` 추가 — 알리/쿠팡/아마존 외 URL 입력 시 자동으로 `platform = 'etc'` 저장, 순서 편집 탭에 '기타' 뱃지 표시
+- [완료] platform `'etsy'` 추가 — `etsy.com` URL 자동 판별, 배지 🧶 엣시(amber 계열), sns_safe 기본 true
 - [완료] 어드민 모달 backdrop 클릭 닫힘 방지 — X 버튼·취소 버튼으로만 닫기 (실수 입력 방지)
 - [완료] 알리 이미지 `upgradeAliRes` 강화 — `_.avif` 포맷 변환 접미사 포함 3단계 정규식으로 모든 크기/품질 파라미터 제거 (content.js + refresh-ali-images API 동일 적용)
 - [완료] 알리 이미지 일괄 고화질 교체 (`/api/admin/refresh-ali-images`) — AliExpress API 재조회 → R2 재업로드 → DB 업데이트, 스트리밍 NDJSON 진행 로그

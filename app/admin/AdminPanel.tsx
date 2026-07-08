@@ -15,7 +15,7 @@ const INVOLVE_ASIA_PARTNERS = [
 ] as const;
 
 type InvolveAsiaPartnerValue = (typeof INVOLVE_ASIA_PARTNERS)[number]["value"];
-type Platform = "amazon_us" | "amazon_jp" | "aliexpress" | "coupang" | "etc" | InvolveAsiaPartnerValue | null;
+type Platform = "amazon_us" | "amazon_jp" | "aliexpress" | "coupang" | "etsy" | "etc" | InvolveAsiaPartnerValue | null;
 
 type Product = {
   id: string;
@@ -134,6 +134,7 @@ export default function AdminPanel() {
     if (!url) return null;
     if (url.includes("amazon.co.jp")) return "amazon_jp";
     if (url.includes("amazon.com") || url.includes("amzn.to")) return "amazon_us";
+    if (url.includes("etsy.com")) return "etsy";
     if (url.includes("aliexpress.com")) return "aliexpress";
     if (url.includes("coupang.com")) return "coupang";
     return "etc";
@@ -146,6 +147,7 @@ export default function AdminPanel() {
       platform === "aliexpress" ||
       platform === "coupang" ||
       platform === "amazon_jp" ||
+      platform === "etsy" ||
       involveAsiaValues.includes(platform)
     );
   }
