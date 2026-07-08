@@ -8,6 +8,7 @@ import OrderEditor from "./OrderEditor";
 import QueueManager from "./QueueManager";
 import StatsPanel from "./StatsPanel";
 import SnsPublisher from "./SnsPublisher";
+import { getPlatformBadge, getPlatformColor } from "./platformBadge";
 
 // 나중에 파트너 추가 시 여기에만 추가하면 드롭다운에 자동 반영
 const INVOLVE_ASIA_PARTNERS = [
@@ -64,11 +65,6 @@ const emptyForm: FormState = {
   sns_safe: false,
 };
 
-const categoryLabel = {
-  mild: "순한맛",
-  medium: "보통맛",
-  hot: "매운맛",
-};
 
 export default function AdminPanel() {
   const [activeTab, setActiveTab] = useState<"list" | "queue" | "order" | "search" | "parse" | "stats" | "sns">("list");
@@ -758,7 +754,7 @@ export default function AdminPanel() {
                 <tr>
                   <th className="text-left px-4 py-3 font-semibold text-gray-500">순서</th>
                   <th className="text-left px-4 py-3 font-semibold text-gray-500">제목</th>
-                  <th className="text-left px-4 py-3 font-semibold text-gray-500">카테고리</th>
+                  <th className="text-left px-4 py-3 font-semibold text-gray-500">플랫폼</th>
                   <th className="text-left px-4 py-3 font-semibold text-gray-500">미디어</th>
                   <th className="text-left px-4 py-3 font-semibold text-gray-500">노출</th>
                   <th className="px-4 py-3"></th>
@@ -785,8 +781,14 @@ export default function AdminPanel() {
                         )}
                       </div>
                     </td>
-                    <td className="px-4 py-3 text-gray-500">
-                      {categoryLabel[product.category]}
+                    <td className="px-4 py-3">
+                      {getPlatformBadge(product.platform) ? (
+                        <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${getPlatformColor(product.platform)}`}>
+                          {getPlatformBadge(product.platform)}
+                        </span>
+                      ) : (
+                        <span className="text-xs text-gray-300">—</span>
+                      )}
                     </td>
                     <td className="px-4 py-3 text-gray-400 text-xs">
                       {product.video_url ? "🎥 영상+이미지" : "🖼️ 이미지"}
