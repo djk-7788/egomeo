@@ -65,6 +65,16 @@ CLOUDFLARE_R2_PUBLIC_URL=https://퍼블릭도메인
 
 ## Supabase 구조
 
+> **⚠️ 새 테이블 생성 규칙 (2026-10-30부터 public 스키마 자동 권한 부여 중단)**
+> - Supabase public 스키마에 새 테이블을 만들 때는 같은 SQL/마이그레이션 안에 **반드시 GRANT를 포함**한다.
+>   ```sql
+>   grant select on public.<table> to anon;                                   -- 공개 읽기가 필요한 경우만
+>   grant select, insert, update, delete on public.<table> to authenticated;  -- 로그인 유저 데이터인 경우
+>   grant select, insert, update, delete on public.<table> to service_role;   -- 어드민 API용, 항상 필요
+>   ```
+> - RLS 정책도 함께 설정한다 (`ALTER TABLE ... ENABLE ROW LEVEL SECURITY;` + 필요한 정책).
+> - 기존 테이블은 영향 없음.
+
 ### `products` 테이블
 ```sql
 id            uuid (PK, 자동생성)
